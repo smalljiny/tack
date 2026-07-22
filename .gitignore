@@ -5,5 +5,12 @@
 # leading-slash 없이 template/ 하위까지 무차별 매칭하므로, 디렉토리·파일을 모두 재포함해 상쇄한다.
 !template/**/
 !template/**
-# 단, OS junk 는 template 하위에서도 추적 제외 유지 (재포함 이후 재-ignore)
+# 단, 아래는 template 하위에서도 추적 제외 유지 (재포함 이후 재-ignore).
+# negation이 template/ 전체 안전망을 제거하므로, OS junk·비밀·크리덴셜이
+# 실수로 커밋돼 Copier로 모든 consuming 프로젝트에 배포되는 것을 막는다.
 template/**/.DS_Store
+template/**/.env
+template/**/.env.*
+template/**/*.pem
+template/**/*.key
+template/**/*credential*
