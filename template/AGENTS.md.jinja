@@ -12,8 +12,17 @@
    git-workflow·security·testing)에 한정한다. typescript/ 하위(patterns·testing)는
    Codex 대상 언어 규칙이 아니므로 인라인하지 않는다 (Story 2 완료 기준·spec §3.3).
 
-   include 경로는 Copier `_subdirectory: template` 기준 상대경로이며 렌더 시
-   template/.tack/rules/*.md 실파일로 해석된다.
+   include 경로 주의: Copier의 Jinja loader searchpath는 `_subdirectory`가 아니라
+   템플릿 clone 루트다. `_subdirectory: template`은 렌더·복사 대상 subtree만
+   정하고 include loader 루트는 옮기지 않는다. 따라서 include 경로는 clone 루트
+   기준(repo-root-relative)이어야 하며 `template/` 접두사가 필요하다 — 접두사가
+   없으면 `copier copy`가 TemplateNotFound로 전체 렌더를 중단한다 (Copier 9.17
+   실측 확인).
+
+   include 대상 rule 파일 주의: 이 4개 파일은 standalone 복사 시 verbatim(비-.jinja
+   미렌더)이지만 여기서 include되면 Jinja로 렌더된다. 향후 편집에서 `{{`·`{%`·`{#`
+   raw 델리미터를 넣으면 AGENTS.md 렌더만 조용히 깨진다 (CLAUDE.md는 @import라
+   무영향). 필요 시 `{% raw %}`로 감싸거나 델리미터를 피한다.
 ============================================================================ #}
 # AGENTS.md
 
@@ -28,11 +37,11 @@ Codex CLI가 이 저장소에서 작업할 때의 안내 파일. Claude Code는 
 <!-- flow-init이 스택 추론으로 채우는 슬롯 (Copier는 비워 둔다) -->
 
 <!-- shared-rules:begin -->
-{% include '.tack/rules/coding-style.md' %}
+{% include 'template/.tack/rules/coding-style.md' %}
 
-{% include '.tack/rules/git-workflow.md' %}
+{% include 'template/.tack/rules/git-workflow.md' %}
 
-{% include '.tack/rules/security.md' %}
+{% include 'template/.tack/rules/security.md' %}
 
-{% include '.tack/rules/testing.md' %}
+{% include 'template/.tack/rules/testing.md' %}
 <!-- shared-rules:end -->

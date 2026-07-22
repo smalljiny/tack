@@ -72,7 +72,8 @@ E7-S2 실패의 두 번째 근본 원인이다. Phase 0(부트스트랩)에서 w
 # template/ 은 tack이 추적하는 배포 source 트리 (E1-S1).
 !template/**/
 !template/**
-template/**/.DS_Store   # OS junk 는 재포함 이후 재-ignore
+# OS junk 는 재포함 이후 재-ignore (gitignore 는 인라인 주석 미지원 — 주석은 독립 라인)
+template/**/.DS_Store
 ```
 
 `.gitignore`(tree)는 `.git/info/exclude`보다 우선하므로, 디렉토리·파일을 모두 재포함해 광역 exclude를 상쇄한다. 배포 자산 story는 `template/` 파일을 stage할 때 `git status`가 실제로 그 파일을 tracked로 보는지 확인한다 — clean으로 위장된 유실을 조기에 잡는다.
