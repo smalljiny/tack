@@ -1,0 +1,38 @@
+{# ============================================================================
+   AGENTS.md.jinja — Codex 컨텍스트 파일 (하이브리드: managed 블록 + 보존 로컬)
+
+   배포 방식: 하이브리드 (base-layout §5·§8). Codex는 @import를 지원하지 않아
+   공유 코딩 규칙을 인라인해야 한다. managed 블록 안에서 .tack/rules/*를 Jinja
+   include 지시어로 인라인하고, `copier update`가 이 블록을 source의 최신
+   .tack/rules/로 재생성한다. 블록 밖 프로젝트 섹션(flow-init이 LLM으로 채운)은
+   3-way merge로 보존 → 도구 skew 없는 freshness.
+
+   managed 블록 마커 = `shared-rules` (T4.3 결정, CLAUDE.md.jinja와 통일).
+   include 대상 = .tack/rules/ 최상위 4개 공유 코딩 규칙(coding-style·
+   git-workflow·security·testing)에 한정한다. typescript/ 하위(patterns·testing)는
+   Codex 대상 언어 규칙이 아니므로 인라인하지 않는다 (Story 2 완료 기준·spec §3.3).
+
+   include 경로는 Copier `_subdirectory: template` 기준 상대경로이며 렌더 시
+   template/.tack/rules/*.md 실파일로 해석된다.
+============================================================================ #}
+# AGENTS.md
+
+Codex CLI가 이 저장소에서 작업할 때의 안내 파일. Claude Code는 `CLAUDE.md`를 사용한다.
+
+## 프로젝트 개요
+
+<!-- flow-init이 프로젝트 이해 기반으로 채우는 슬롯 (Copier는 비워 둔다) -->
+
+## 기술 스택
+
+<!-- flow-init이 스택 추론으로 채우는 슬롯 (Copier는 비워 둔다) -->
+
+<!-- shared-rules:begin -->
+{% include '.tack/rules/coding-style.md' %}
+
+{% include '.tack/rules/git-workflow.md' %}
+
+{% include '.tack/rules/security.md' %}
+
+{% include '.tack/rules/testing.md' %}
+<!-- shared-rules:end -->
