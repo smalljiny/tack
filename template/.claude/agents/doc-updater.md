@@ -1,9 +1,9 @@
 ---
-version: 3
+version: 4
 name: doc-updater
 description: Expert in synchronizing documentation with code changes. Use after implementation is complete, when invoking /dev:impl or /update-docs.
 tools: Read, Write, Edit, Grep, Glob
-model: sonnet
+model: haiku
 color: purple
 ---
 
