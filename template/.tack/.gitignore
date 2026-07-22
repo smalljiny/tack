@@ -1,0 +1,9 @@
+# .tack/ 런타임 상태 추적 제외 계약 (base-layout §6·§7)
+#
+# 이 파일은 배포되는 tracked 아티팩트다. `local/`을 ignore 대상으로 명시해
+# consuming repo가 별도 배선 없이도 런타임 상태(dev-context.json·story 산출물·
+# 세션 로그)를 커밋 대상에서 제외하도록 강제한다.
+#
+# 이 ignore 아티팩트는 `.tack/local/` seed·스캐폴딩보다 먼저 렌더돼야 하며
+# (선-gitignore, 후-seed), Copier의 "파일 렌더 → _tasks" 네이티브 순서가 이를 보장한다.
+local/
