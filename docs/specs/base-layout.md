@@ -25,7 +25,7 @@ tack은 Claude Code + Codex를 함께 구동하는 이중-도구 하네스이며
 | **Source 트리** | 배포될 하네스 구현체. Copier가 이 트리를 렌더한다. roadmap의 `template/`(레퍼런스 `src/` 트리를 대체, self-sync 층 제거). | **tack이 작성·git 추적**한다. tack이 개발하는 대상이 바로 이 source다. |
 | **Deploy destination** | Copier가 렌더한 결과. instance 루트의 `.tack/`·`.claude/`·`.codex/`·`CLAUDE.md`·`AGENTS.md`. | 배포된 instance(소비 측 repo)가 소유한다. instance 파일의 git 추적은 소비자의 몫(§7). |
 
-**핵심 원칙**: git이 추적하는 것은 **배포용 구현체(source)**이지 배포된 결과물이 아니다. tack repo는 source 트리를 추적하고, 배포된 instance의 추적은 소비 측 repo의 관심사다(§7, 3-way merge 필요).
+**핵심 원칙**: **tack repo가 추적하는 것은 배포용 구현체(source)다.** 배포된 instance도 자기 파일을 tracked하지만(D3, 3-way merge 전제) 그것은 소비 측 repo의 몫이며 tack의 추적 대상과 구분된다(§7).
 
 ## 3. source → deploy 매핑
 
@@ -97,7 +97,7 @@ source가 destination으로 렌더되는 방식은 세 가지다.
 - **배포된 instance(소비 측 repo)가 추적하는 것**: 렌더된 공유 인프라(`.tack/{contracts,rules,scripts,templates,commit-scopes.md}`)·프롬프트(`.claude/`·`.codex/`)·컨텍스트 파일. instance 파일을 git tracked로 두는 이유는 `copier update`의 3-way merge와 `.copier-answers.yml` 커밋이 로컬 수정 보존을 위해 tracked를 전제하기 때문이다.
 - **어느 층에서도 추적하지 않는 것**: `.tack/local/` — 배포되지 않는 per-checkout 런타임 스크래치. instance에서 gitignored.
 
-**요약**: tracked의 의미는 **"배포용 구현체(source)를 추적한다"**이며, "배포된 결과를 추적한다"가 아니다. 배포된 instance가 자기 파일을 추적하는 것(D3)은 소비자의 별도 관심사다.
+**이중 tracked 경계**: 두 layer가 각각 tracked를 갖는다 — **tack repo는 source(`template/`)를 추적**하고, **target/dogfood instance repo는 배포 결과(렌더된 `.tack/`·프롬프트·컨텍스트 파일)를 추적**한다(D3). 둘은 서로 다른 layer의 서로 다른 대상이며 모순이 아니다. tack 개발자가 커밋하는 것은 source, 배포된 instance가 커밋하는 것은 렌더 결과다.
 
 ## 8. 도구별 vs 공유 규칙 분리
 
@@ -140,7 +140,7 @@ source가 destination으로 렌더되는 방식은 세 가지다.
 | Open Question | 소유/처리 | 비고 |
 |---------------|-----------|------|
 | **세션 로그 이관** — 기존 도구별 세션 로그를 `.tack/local/sessions/`로 옮길지 | **E7-S1** (훅) | 위치는 이 문서에서 `.tack/local/sessions/`로 확정. 훅 경로 배선·이관은 E7-S1. |
-| **`.tack/local/` 하위구조** — `backlog/active/done` 구조를 그대로 승계할지, 재편할지 | **E2** (dev-context) | 이 문서는 스캐폴드 대상(§6)만 확정. 하위구조 재편은 dev-context 엔진 구현과 함께. |
+| **`.tack/local/` 내부구조 진화** — 라이프사이클 내부 조직을 E2가 재편할지 | **E2** (dev-context) | init 스캐폴드 집합(`dev-context.json` + 빈 `backlog/active/done/sessions`)·gitignore 대상은 §6에서 확정. 내부 조직 진화만 E2. |
 | **제품 정체성 규약 역반영** — `.tack/` override를 상위 규약 문서에 반영할지 | **지금 닫지 않음** | override 결정은 §9에 권위 있게 기록됨. 상위 규약 역반영 여부는 배포 정책 문서화 시 재검토. |
 | **target 배포 시 `.tack/` 이름 충돌** — target에도 `.tack/`이 생김(정상, `.git`처럼) | **E1-S1** (배포 정책) | 조직 표준과의 충돌 여부는 배포 정책에서 재확인. |
 
