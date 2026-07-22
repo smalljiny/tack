@@ -1,0 +1,53 @@
+# copier.yml — tack 하네스 Copier 배포 설정
+#
+# tack은 Copier로 배포되는 이중-도구(Claude Code + Codex) 개발 하네스다.
+# 이 파일은 source 트리(template/)를 consuming 프로젝트 루트로 렌더하는 배선을
+# 정의한다. base-layout(docs/specs/base-layout.md) §3 매핑·§5 배포 방식을 구현한다.
+#
+# ── 실행 (spec §3.5) ─────────────────────────────────────────────────────────
+#   최초 배포 : uvx copier copy gh:smalljiny/tack <dest>
+#   갱신      : uvx copier update            (대상 프로젝트 루트에서)
+#   롤백      : uvx copier update --vcs-ref <git-tag>
+#   uvx 정렬로 시스템 Python 오염 없음. 물리적 배포 실행은 E1-S3 소관.
+#
+# ── 버전 (spec §3.5, G5) ─────────────────────────────────────────────────────
+#   tack repo의 git 태그가 곧 템플릿 버전이다 (Copier 네이티브 단일 버전 스트림).
+#   copier update가 최신 태그로 갱신하고, --vcs-ref <tag>로 특정 버전에 고정·롤백.
+#   .copier-answers.yml 커밋 전제는 E1-S4(tracked 확정)가 배선한다.
+#   첫 git-tag 시점(v0.1.0 등)은 여기서 확정하지 않고 배포 정책(E1-S3 dogfood /
+#   E1-S4)으로 DEFER한다 — 동작하는 copier.yml·물리 배포 검증 전 태깅은 조급하다
+#   (spec §6 Open Question·base-layout §11 승계).
+
+# 템플릿 루트를 template/ 하위로 지정한다 — tack repo가 template/ 외 로드맵·
+# dossier·docs 등을 함께 담기 위함 (spec §3.1).
+_subdirectory: template
+
+# 질문 세트 = 0개 (spec §6 Open Question 확정).
+# 근거: 프로젝트 섹션(개요·기술 스택 등)은 flow-init이 LLM으로 채우는 슬롯이며
+# (Copier/flow-init 경계, spec §1.3), CLAUDE.md.jinja·AGENTS.md.jinja는 Jinja
+# 변수({{ ... }})를 전혀 쓰지 않고 골격만 렌더한다. 따라서 project_slug 등
+# 질문이 불필요하다. 향후 기계적 치환이 필요한 변수가 생기면 여기에 추가한다.
+
+# init-once (base-layout §5) — 최초 1회만 생성, copier update가 덮지 않아 로컬
+# 수정을 보존한다. 경로는 렌더 후 destination 이름 기준이다 (CLAUDE.md는 .jinja
+# 접미사가 제거된 이름). AGENTS.md는 하이브리드(shared-rules managed 블록을 매
+# update 재생성)이므로 여기서 제외한다 — init-once면 .tack/rules 갱신이 Codex에
+# 반영되지 않아 도구 skew가 발생한다 (base-layout §8).
+_skip_if_exists:
+  - CLAUDE.md
+  - .tack/.gitignore
+  - .tack/commit-scopes.md
+
+# 런타임 스캐폴딩 (base-layout §6, spec §3.4) — Copier는 모든 template 파일을
+# 렌더한 뒤 _tasks를 실행한다. 따라서 렌더 파일인 .tack/.gitignore(local/ ignore)가
+# _tasks의 .tack/local/ 스캐폴드보다 먼저 존재한다 → "선-gitignore, 후-seed"가
+# Copier 네이티브 순서로 충족된다 (CC: 정적 논증, copier 미실행).
+#
+# seed는 _tasks 생성물이며 template/.tack/local/ 렌더 파일이 아니다 — always-overwrite
+# 유출을 막기 위해 template/에 local/을 두지 않는다. dev-context.json은 최소
+# placeholder만 seed하고, 실제 스키마·상태 엔진은 E2(dev-context)가 소유한다.
+# 모든 task는 init-once 멱등(test -f 가드)으로, update 재실행이 런타임 상태를
+# 덮지 않는다.
+_tasks:
+  - "mkdir -p .tack/local/backlog .tack/local/active .tack/local/done .tack/local/sessions"
+  - "test -f .tack/local/dev-context.json || printf '%s\\n' '{\"current_topic\": null, \"topics\": {}}' > .tack/local/dev-context.json"
