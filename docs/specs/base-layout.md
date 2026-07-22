@@ -137,7 +137,7 @@ source가 destination으로 렌더되는 방식은 네 가지다.
 
 | 하류 story | 이 레이아웃에서 소비하는 것 | 그 story가 수행할 작업 |
 |------------|------------------------------|------------------------|
-| **E1-S1** (Copier 골격) | §3 매핑 + §5 배포 방식 + §8 managed 블록 | `template/` source 트리 골격 + `copier.yml` 작성, `_skip_if_exists`(init-once) 배선, `AGENTS.md` managed 블록 재생성 태스크, `.tack/.gitignore` 선행 배선(seed보다 앞) |
+| **E1-S1** (Copier 골격) | §3 매핑 + §5 배포 방식 + §8 managed 블록 | `template/` source 트리 골격 + `copier.yml` 작성, `_skip_if_exists`(init-once) 배선, `AGENTS.md` managed 블록 재생성 태스크, `.tack/.gitignore` 선행 배선(seed보다 앞) — **구현됨**: `docs/specs/copier-template.md` |
 | **E1-S3** (dogfood) | §4 destination 트리 + §6 스캐폴딩 규약 | `copier copy`/`update`로 source를 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행 |
 | **E1-S4** (tracked 확정) | §7 tracked 경계 | 배포된 instance 파일을 git tracked 커밋 (3-way merge 전제) |
 | **E2** (dev-context) | §6 `.tack/local/dev-context.json` 위치·seed | dev-context 엔진을 Python으로 구현 (E1-S2는 위치·스캐폴드 규약만 확정) |
