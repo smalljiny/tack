@@ -1,0 +1,42 @@
+{# ============================================================================
+   CLAUDE.md.jinja — Claude Code 컨텍스트 파일 골격 (init-once, @import 포인터)
+
+   배포 방식: init-once (_skip_if_exists). @import는 포인터이므로 참조 대상
+   (.claude/rules/·.tack/rules/)이 갱신되면 항상 fresh — init-once로도 stale
+   되지 않는다 (base-layout §5·§8).
+
+   프로젝트 섹션(개요·기술 스택 등)은 flow-init이 LLM으로 채우는 슬롯이다
+   (Copier/flow-init 경계, spec §1.3). Copier는 기계적 골격만 렌더한다.
+
+   managed 블록 마커 = `shared-rules` (T4.3 결정, spec §3.3 제안 채택).
+   레퍼런스 flow-init은 CLAUDE.md에 `harness-rules`, AGENTS.md에 `harness-guide`
+   마커를 쓰지만, tack 레이아웃은 두 파일 모두 공유 코딩 규칙을 다루므로 통일
+   마커 `shared-rules`로 확정. flow-init 마커와의 정합(마커 통일 또는 flow-init에
+   신규 마커 인지 추가)은 후속 story follow-up이며, 본 story는 flow-init SKILL
+   로직을 수정하지 않는다 (Non-goal).
+============================================================================ #}
+# CLAUDE.md
+
+Claude Code가 이 저장소에서 작업할 때의 안내 파일.
+
+## 프로젝트 개요
+
+<!-- flow-init이 프로젝트 이해 기반으로 채우는 슬롯 (Copier는 비워 둔다) -->
+
+## 기술 스택
+
+<!-- flow-init이 스택 추론으로 채우는 슬롯 (Copier는 비워 둔다) -->
+
+<!-- shared-rules:begin -->
+@.claude/rules/common/agents.md
+@.claude/rules/common/component-boundaries.md
+@.claude/rules/common/development-workflow.md
+@.claude/rules/common/performance.md
+@.claude/rules/common/prompt-authoring.md
+@.tack/rules/coding-style.md
+@.tack/rules/git-workflow.md
+@.tack/rules/security.md
+@.tack/rules/testing.md
+@.tack/rules/typescript/patterns.md
+@.tack/rules/typescript/testing.md
+<!-- shared-rules:end -->
