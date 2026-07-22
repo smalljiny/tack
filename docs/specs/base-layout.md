@@ -72,11 +72,11 @@ Copier가 source를 렌더한 결과, instance 루트는 다음 형태가 된다
 
 ## 5. 배포 방식
 
-source가 destination으로 렌더되는 방식은 세 가지다.
+source가 destination으로 렌더되는 방식은 네 가지다.
 
 | 방식 | 대상 | 동작 |
 |------|------|------|
-| **매-update 동기화** | 공유 인프라(contracts·rules·scripts·templates)·프롬프트(`.claude/`·`.codex/`)·`AGENTS.md`의 공유 인프라 managed 블록 | `copier update`가 source 변경을 destination에 3-way merge로 반영 |
+| **매-update 동기화** | 공유 인프라(contracts·rules·scripts·templates)·프롬프트(`.claude/`·`.codex/`) | `copier update`가 source 변경을 destination에 3-way merge로 반영 |
 | **하이브리드** (managed 블록 + 보존 로컬) | `AGENTS.md` | 공유 인프라를 `<!-- …:begin/end -->` managed 블록으로 인라인해 매 `update` 재생성, 블록 밖 로컬 프로젝트 섹션은 보존 (§8) |
 | **init-once** (`_skip_if_exists`) | `CLAUDE.md`·`.tack/.gitignore`·`commit-scopes.md` | 최초 배포 시 1회만 생성, 이후 로컬 수정 보존(update가 덮어쓰지 않음). `CLAUDE.md`는 @import 포인터라 참조 대상이 항상 fresh |
 | **런타임 스캐폴딩** | `.tack/local/` | 최초 배포/init 시 초기 구조 생성, 이후 gitignored 런타임(§6) |
