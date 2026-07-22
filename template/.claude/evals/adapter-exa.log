@@ -1,0 +1,53 @@
+## Run: 2026-04-24T11:34:24Z | Skill: stack-exa | Version: 6 | git: 109d448
+
+### Case: SKILL.md 파일이 존재한다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: search-adapter capabilities 필드가 올바르게 선언되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: 필수 operation 섹션 4개가 모두 기술되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: Response schema 표준 필드(query, results, source, operation)가 유지되어 있다 [REGRESSION]
+- Skipped: baseline.json not found; bootstrap mode runs capability evals only.
+
+### Skill 집계
+- Decision: PASS
+## Run: 2026-04-24T11:45:34Z | Skill: stack-exa | Version: 6 | git: 1b180bc
+
+### Case: SKILL.md 파일이 존재한다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: search-adapter capabilities 필드가 올바르게 선언되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: 필수 operation 섹션 4개가 모두 기술되어 있다 (/search, /contents, /answer, /findSimilar) [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: Response schema 표준 필드(query, results, source, operation)가 유지되어 있다 [REGRESSION]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass^3 = YES)
+
+### Skill 집계
+- Decision: PASS

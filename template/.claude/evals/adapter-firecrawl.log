@@ -1,0 +1,87 @@
+## Run: 2026-04-24T11:40:06Z | Skill: stack-firecrawl | Version: 2 | git: 109d448
+
+### Case: SKILL.md 파일이 존재한다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: search-adapter capabilities 필드가 올바르게 선언되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: 필수 operation 섹션 3개가 모두 기술되어 있다 (/v1/search, /v1/scrape, /v1/crawl) [CAPABILITY]
+- Trial 1: FAIL
+- Trial 2: FAIL
+- Trial 3: FAIL
+- pass@3: 0.00 | pass^3: NO | 판정: FAIL (기준: pass@3 ≥ 0.9)
+
+### Case: Response schema 표준 필드(query, results, source, operation)가 유지되어 있다 [REGRESSION]
+- Trial 1: FAIL
+- Trial 2: FAIL
+- Trial 3: FAIL
+- pass@3: 0.00 | pass^3: NO | 판정: FAIL (기준: pass^3 = YES)
+
+### Skill 집계
+- Decision: FAIL
+
+## Run: 2026-04-24T11:40:42Z | Skill: stack-firecrawl | Version: 2 | git: 109d448
+
+### Case: SKILL.md 파일이 존재한다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: search-adapter capabilities 필드가 올바르게 선언되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: 필수 operation 섹션 3개가 모두 기술되어 있다 (/v1/search, /v1/scrape, /v1/crawl) [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: Response schema 표준 필드(query, results, source, operation)가 유지되어 있다 [REGRESSION]
+- Trial 1: FAIL
+- Trial 2: FAIL
+- Trial 3: FAIL
+- pass@3: 0.00 | pass^3: NO | 판정: FAIL (기준: pass^3 = YES)
+
+### Skill 집계
+- Decision: FAIL
+
+## Run: 2026-04-24T11:49:28Z | Skill: stack-firecrawl | Version: 2 | git: 1b180bc
+
+### Case: SKILL.md 파일이 존재한다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: search-adapter capabilities 필드가 올바르게 선언되어 있다 [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: 필수 operation 섹션 3개가 모두 기술되어 있다 (/v1/search, /v1/scrape, /v1/crawl) [CAPABILITY]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass@3 ≥ 0.9)
+
+### Case: Response schema 표준 필드(query, results, source, operation)가 유지되어 있다 [REGRESSION]
+- Trial 1: PASS
+- Trial 2: PASS
+- Trial 3: PASS
+- pass@3: 1.00 | pass^3: YES | 판정: PASS (기준: pass^3 = YES)
+
+### Skill 집계
+- Decision: PASS
+

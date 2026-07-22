@@ -1,0 +1,103 @@
+[
+  {
+    "id": "session:start:load-context",
+    "description": "세션 시작 시 dev-context.json을 로드하고 이전 작업 컨텍스트를 복원한다.",
+    "matcher": "SessionStart",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-start.js\""
+      }
+    ]
+  },
+  {
+    "id": "pre:edit:suggest-compact",
+    "description": "Edit/Write 전 도구 호출 횟수를 추적하고 전략적 compaction 시점을 제안한다.",
+    "matcher": "Edit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.js\""
+      }
+    ]
+  },
+  {
+    "id": "pre:write:suggest-compact",
+    "description": "Write 전 도구 호출 횟수를 추적하고 전략적 compaction 시점을 제안한다.",
+    "matcher": "Write",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.js\""
+      }
+    ]
+  },
+  {
+    "id": "post:edit:typescript-check",
+    "description": "TypeScript 파일 편집 후 타입 체크를 실행한다.",
+    "matcher": "Edit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/type-check.js\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
+      }
+    ]
+  },
+  {
+    "id": "post:edit:prettier-format",
+    "description": "JS/TS 파일 편집 후 Prettier로 자동 포맷한다.",
+    "matcher": "Edit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/prettier-format.js\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
+      }
+    ]
+  },
+  {
+    "id": "post:tool:session-logger",
+    "description": "모든 도구 사용을 비동기로 세션 로그에 기록한다.",
+    "matcher": "*",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-logger.js\" \"${CLAUDE_TOOL_NAME}\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\"",
+        "timeout": 10000,
+        "async": true
+      }
+    ]
+  },
+  {
+    "id": "pre:bash:git-push-review",
+    "description": "git push 전 변경 사항을 검토하도록 안내한다.",
+    "matcher": "Bash",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/git-push-review.js\" \"${CLAUDE_TOOL_INPUT_COMMAND}\""
+      }
+    ]
+  },
+  {
+    "id": "stop:console-log-audit",
+    "description": "세션 종료 전 수정된 파일에서 console.log를 감사한다.",
+    "matcher": "Stop",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/console-log-audit.js\""
+      }
+    ]
+  },
+  {
+    "id": "stop:memory-persist",
+    "description": "세션 종료 시 현재 상태를 메모리에 저장한다.",
+    "matcher": "Stop",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/memory-persist.js\""
+      }
+    ]
+  }
+]
