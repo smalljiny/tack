@@ -94,8 +94,8 @@ echo "[2] symlinks injected:${INJECTED:- (none — all tracked/absent)}"
 # tracked 면 worktree add 가 실파일로 제공 → 아래 존재 검사가 skip(exclude 불요).
 # .tack/local 은 main 런타임 상태(dev-context.json·전 토픽 산출물·세션)라 wholesale
 # copy 로 worktree 에 새면 안 된다 — copy 직후 제거하고 step 5 가 요청 토픽만 격리
-# re-seed 한다. (구 레이아웃은 .harness 정적/docs/_local 런타임이 별개 트리라 이 leak
-# 이 없었다. .tack/local 중첩으로 생긴 격리 회귀를 여기서 닫는다.)
+# re-seed 한다. (과거엔 정적 하네스 트리와 런타임 트리가 분리돼 이 leak 이 없었다.
+# 런타임 트리가 .tack 하위로 중첩되며 생긴 격리 회귀를 여기서 닫는다.)
 HARNESS_COPIED=""
 if [ -e "$WT/.tack" ]; then
   echo "[3] .tack exists — skip"
