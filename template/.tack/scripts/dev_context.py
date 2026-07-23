@@ -370,6 +370,57 @@ def cmd_remove_topic(args):
     write_context(ctx)
 
 
+def cmd_force_state(args):
+    topic = args.get("topic")
+    phase = args.get("phase")
+    status = args.get("status")
+    if not topic:
+        die("force-state: --topic 필요")
+    if not phase:
+        die("force-state: --phase 필요")
+    if not status:
+        die("force-state: --status 필요")
+
+    # 예약어 토픽 이름 거부 (prototype pollution 방지)
+    if topic in ("__proto__", "constructor", "prototype"):
+        die(f"force-state: '{topic}' 토픽 이름은 사용할 수 없습니다")
+
+    to = f"{phase}:{status}"
+    if not is_known_state(to):
+        die(f"force-state: 알 수 없는 상태 '{to}'\n허용: {', '.join(STATE_ORDER)}")
+
+    ctx = read_context()
+    t = ctx["topics"].get(topic)
+    if t is None:
+        die(f"force-state: 토픽 '{topic}' 미존재")
+
+    frm = f"{t.get('phase')}:{t.get('status')}"
+    if frm == to:
+        # idempotent: 동일 상태는 무시 (updatedAt 불변)
+        return
+
+    # 순방향(forward) 점프는 아티팩트 검증 없이 후기 상태로 진입해 워크플로우 게이트를 우회한다.
+    # 역방향 복구가 force-state의 의도된 용도이므로, 순방향에는 명시적 플래그를 요구한다.
+    is_forward = is_forward_jump(frm, to)
+    if is_forward and not args.get("allow-unsafe-force"):
+        die(
+            f"force-state: '{frm}' → '{to}'는 순방향 점프입니다.\n"
+            "아티팩트 검증 없이 후기 상태로 이동하면 워크플로우 게이트를 우회합니다.\n"
+            "의도한 경우 --allow-unsafe-force 플래그를 추가하세요 (역방향 복구에는 불필요)."
+        )
+
+    forward_note = " [--allow-unsafe-force]" if is_forward else ""
+    sys.stderr.write(
+        f"force-state: VALID_TRANSITIONS를 우회해 {frm} → {to}로 강제 전환했습니다 "
+        f"(관리자 용도){forward_note}.\n"
+    )
+
+    t["phase"] = phase
+    t["status"] = status
+    t["updatedAt"] = _iso_now()
+    write_context(ctx)
+
+
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
@@ -384,6 +435,8 @@ def main(argv):
         cmd_read(args)
     elif subcommand == "remove-topic":
         cmd_remove_topic(args)
+    elif subcommand == "force-state":
+        cmd_force_state(args)
     else:
         die(
             f"알 수 없는 서브커맨드: {subcommand}\n"
