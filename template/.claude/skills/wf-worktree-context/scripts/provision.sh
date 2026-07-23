@@ -92,13 +92,18 @@ echo "[2] symlinks injected:${INJECTED:- (none — all tracked/absent)}"
 
 # --- 3. .tack copy (blocker-2: dev-context.js __dirname 기준 → symlink 시 main 격리붕괴) ---
 # tracked 면 worktree add 가 실파일로 제공 → 아래 존재 검사가 skip(exclude 불요).
+# .tack/local 은 main 런타임 상태(dev-context.json·전 토픽 산출물·세션)라 wholesale
+# copy 로 worktree 에 새면 안 된다 — copy 직후 제거하고 step 5 가 요청 토픽만 격리
+# re-seed 한다. (구 레이아웃은 .harness 정적/docs/_local 런타임이 별개 트리라 이 leak
+# 이 없었다. .tack/local 중첩으로 생긴 격리 회귀를 여기서 닫는다.)
 HARNESS_COPIED=""
 if [ -e "$WT/.tack" ]; then
   echo "[3] .tack exists — skip"
 else
   cp -R "$MAIN/.tack" "$WT/.tack"
+  rm -rf "$WT/.tack/local"
   HARNESS_COPIED="1"
-  echo "[3] .tack copied"
+  echo "[3] .tack copied (main .tack/local stripped — step 5 re-seeds per-worktree)"
 fi
 
 # --- 4. env copy (격리, 값 변경 안전). .secrets 는 never-tracked → 있으면 copy ---
