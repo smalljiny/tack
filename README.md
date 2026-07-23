@@ -12,7 +12,7 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 
 ## 개발 흐름
 
-토픽 하나가 아래 파이프라인을 따라 흐른다. 각 단계는 슬래시 커맨드로 실행하며 `dev-context`가 상태를 추적한다.
+토픽 하나가 아래 파이프라인을 따라 흐른다. 각 단계는 슬래시 커맨드로 실행하며 `dev-context` 엔진이 `phase:status` 상태 머신으로 진행을 추적한다 (→ [dev-context-engine](docs/specs/dev-context-engine.md) · [phase-state-machine](docs/specs/phase-state-machine.md)).
 
 ```
 /flow-spec → /flow-plan → /flow-impl → /flow-review → /flow-verify → /flow-docs → /flow-pr → /flow-done
