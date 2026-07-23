@@ -351,6 +351,25 @@ def cmd_read(args):
     _emit_scalar(t.get(field))
 
 
+def cmd_remove_topic(args):
+    topic = args.get("topic")
+    if not topic:
+        die("remove-topic: --topic 필요")
+
+    ctx = read_context()
+    if ctx["topics"].get(topic) is None:
+        die(f"remove-topic: 토픽 '{topic}' 미존재")
+
+    del ctx["topics"][topic]
+
+    # current_topic 전환 (남은 토픽 중 하나 또는 null)
+    if ctx.get("current_topic") == topic:
+        remaining = list(ctx["topics"].keys())
+        ctx["current_topic"] = remaining[0] if remaining else None
+
+    write_context(ctx)
+
+
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
@@ -363,6 +382,8 @@ def main(argv):
         cmd_set_field(args)
     elif subcommand == "read":
         cmd_read(args)
+    elif subcommand == "remove-topic":
+        cmd_remove_topic(args)
     else:
         die(
             f"알 수 없는 서브커맨드: {subcommand}\n"
