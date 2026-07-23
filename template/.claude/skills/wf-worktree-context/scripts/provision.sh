@@ -172,7 +172,7 @@ fi
 
 # --- 9. 격리 프로브 + git status 검증 ---
 echo "=== isolation probe (worktree .tack → worktree dev-context) ==="
-node "$WT/.tack/scripts/dev-context.js" read --field=current_topic || true
+python3 "$WT/.tack/scripts/dev_context.py" read --field=current_topic || true
 echo "=== worktree git status (expect clean) ==="
 git -C "$WT" status --short || true
 
