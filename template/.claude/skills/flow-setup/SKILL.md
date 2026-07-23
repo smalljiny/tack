@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: flow-setup
 description: Configure project-level settings in dev-context.json. Subcommand `git` auto-detects git remotes and saves config.git.* fields used by /flow-pr, /flow-docs, and /flow-review.
 origin: harness
@@ -119,10 +119,10 @@ If any validation fails, show the invalid value and expected format, then stop w
 
 Read the current values:
 ```bash
-node .tack/scripts/dev-context.js read --field=config.git.pushRemote
-node .tack/scripts/dev-context.js read --field=config.git.pullRemote
-node .tack/scripts/dev-context.js read --field=config.git.baseBranch
-node .tack/scripts/dev-context.js read --field=config.git.branchPattern
+python3 .tack/scripts/dev_context.py read --field=config.git.pushRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.pullRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.baseBranch
+python3 .tack/scripts/dev_context.py read --field=config.git.branchPattern
 ```
 
 When reading each field, an empty line from `dev-context.js read` (trimmed to `""`) means the field is unset — render as `(미설정)`. "All four are empty" means all four reads returned empty strings.
@@ -169,10 +169,10 @@ Show the proposed values and ask for confirmation:
 ### 9. Save to dev-context.json
 
 ```bash
-node .tack/scripts/dev-context.js set-field --field=config.git.pushRemote   --value='<pushRemote>'
-node .tack/scripts/dev-context.js set-field --field=config.git.pullRemote   --value='<pullRemote>'
-node .tack/scripts/dev-context.js set-field --field=config.git.baseBranch   --value='<baseBranch>'
-node .tack/scripts/dev-context.js set-field --field=config.git.branchPattern --value='<branchPattern>'
+python3 .tack/scripts/dev_context.py set-field --field=config.git.pushRemote   --value='<pushRemote>'
+python3 .tack/scripts/dev_context.py set-field --field=config.git.pullRemote   --value='<pullRemote>'
+python3 .tack/scripts/dev_context.py set-field --field=config.git.baseBranch   --value='<baseBranch>'
+python3 .tack/scripts/dev_context.py set-field --field=config.git.branchPattern --value='<branchPattern>'
 ```
 
 No `--topic` flag — these are global project settings.
@@ -183,10 +183,10 @@ If any `set-field` call fails, show the error and stop. The fields saved before 
 
 Read back and display the saved values so the user can verify:
 ```bash
-node .tack/scripts/dev-context.js read --field=config.git.pushRemote
-node .tack/scripts/dev-context.js read --field=config.git.pullRemote
-node .tack/scripts/dev-context.js read --field=config.git.baseBranch
-node .tack/scripts/dev-context.js read --field=config.git.branchPattern
+python3 .tack/scripts/dev_context.py read --field=config.git.pushRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.pullRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.baseBranch
+python3 .tack/scripts/dev_context.py read --field=config.git.branchPattern
 ```
 
 Show:

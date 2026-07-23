@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 name: flow-init
 description: Initialize or update project section of CLAUDE.md and AGENTS.md.
 origin: harness
@@ -200,7 +200,7 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 
 `scripts/deploy-harness.sh`가 존재하면 (하네스 저장소):
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.docs.sourceFilter \
   --value='[".claude/",".codex/",".tack/","CLAUDE.md","AGENTS.md"]'
 ```
@@ -208,7 +208,7 @@ node .tack/scripts/dev-context.js set-field \
 
 `scripts/deploy-harness.sh`가 없으면 (일반 프로젝트):
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.docs.sourceFilter \
   --value='[]'
 ```
@@ -216,7 +216,7 @@ node .tack/scripts/dev-context.js set-field \
 
 **수동 재설정**: 자동 감지값으로 강제 초기화하려면 사용자가 직접 빈 값으로 reset한 뒤 `/flow-init`을 재실행하거나, `dev-context.js set-field`로 임의 값을 지정한다:
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.docs.sourceFilter --value='["src/","lib/"]'
 ```
 
@@ -229,7 +229,7 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 **보존 정책 (선결 조건)**: 먼저 다음 명령으로 현재 값을 조회한다.
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.graphify.targets
+python3 .tack/scripts/dev_context.py read --field=config.graphify.targets
 ```
 
 `dev-context.js read`는 배열 원소를 한 줄당 하나씩 newline-delimited로 출력하며, 빈 배열·null·미설정은 빈 stdout을 낸다. `config.graphify.targets`는 문자열 배열로만 의미가 있지만 `dev-context.js`는 동일 키에 boolean·number·문자열 같은 scalar 값도 저장 가능하다. 다음 케이스로 분기한다:
@@ -256,7 +256,7 @@ node .tack/scripts/dev-context.js read --field=config.graphify.targets
 **기록 동작**: 확정값을 JSON 배열로 직렬화한 뒤 다음 명령으로 기록한다.
 
 ```bash
-node .tack/scripts/dev-context.js set-field --field=config.graphify.targets --value='<JSON 배열>'
+python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets --value='<JSON 배열>'
 ```
 
 옵션 2(건너뛰기)를 선택하면 `set-field`를 호출하지 않고 Step 7에 `[정보] config.graphify.targets 미설정 유지`를 출력한다. 추후 `/graphify` 호출 시 hard error로 안내된다.

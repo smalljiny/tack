@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: flow-spec
 description: Write a spec for a new topic. Registers the topic in dev-context.json, writes a spec draft using the brainstorming skill, runs the Codex review loop, and confirms the spec before planning.
 origin: harness
@@ -27,11 +27,11 @@ If `$ARGUMENTS` is provided:
 If no argument:
 - Read `current_topic` from `dev-context.json`:
   ```bash
-  node .tack/scripts/dev-context.js read --field=current_topic
+  python3 .tack/scripts/dev_context.py read --field=current_topic
   ```
 - If a topic is returned, read its phase:
   ```bash
-  node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+  python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
   ```
 - If `phase` is `spec`: use it automatically
 - Otherwise scan `.tack/local/backlog/` for existing directories
@@ -141,7 +141,7 @@ When brainstorming announces completion, save the presented spec to `.tack/local
 Then register the topic in `dev-context.json`:
 
 ```bash
-node .tack/scripts/dev-context.js register-topic \
+python3 .tack/scripts/dev_context.py register-topic \
   --topic=<topic> \
   --spec=.tack/local/backlog/<topic>/spec.md
 ```
@@ -151,7 +151,7 @@ node .tack/scripts/dev-context.js register-topic \
 Transition to `spec:reviewing`:
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> \
   --phase=spec \
   --status=reviewing
@@ -160,7 +160,7 @@ node .tack/scripts/dev-context.js update-state \
 Read `config.spec.auto_review`:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.spec.auto_review
+python3 .tack/scripts/dev_context.py read --field=config.spec.auto_review
 ```
 
 **If output is NOT `true`** (default / manual mode): show the user this message and stop:
@@ -177,7 +177,7 @@ Codex 리뷰를 실행하세요:
 **If output is `true`** (auto mode): sync `current_topic` to `<topic>` so the review skill resolves the correct topic:
 
 ```bash
-node .tack/scripts/dev-context.js set-field --field=current_topic --value=<topic>
+python3 .tack/scripts/dev_context.py set-field --field=current_topic --value=<topic>
 ```
 
 Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
@@ -195,7 +195,7 @@ Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
      - Apply Required Fixes from the review report to `spec.md`
      - Transition to `spec:drafting`:
        ```bash
-       node .tack/scripts/dev-context.js update-state \
+       python3 .tack/scripts/dev_context.py update-state \
          --topic=<topic> --phase=spec --status=drafting
        ```
      - Increment `attempt`. If `attempt > max_attempts`:
@@ -233,7 +233,7 @@ When the user returns after Codex review:
     > 이렇게 하면 리뷰어가 파일 부재를 Gate 7 실패가 아닌 선행 조건 미충족으로 처리한다.
   - Transition back to drafting:
     ```bash
-    node .tack/scripts/dev-context.js update-state \
+    python3 .tack/scripts/dev_context.py update-state \
       --topic=<topic> \
       --phase=spec \
       --status=drafting
@@ -248,7 +248,7 @@ When the user returns after Codex review:
 Transition to `spec:confirmed`:
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> \
   --phase=spec \
   --status=confirmed

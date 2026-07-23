@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: flow-worktree
 description: Manage a topic's isolated worktree lifecycle — provision + launch a worktree-rooted Claude session (start), or sync-back documents and remove the worktree (teardown). Delegates provisioning/teardown to wf-worktree-context; owns cmux launch, completion gate, and main dev-context reconciliation.
 origin: harness
@@ -32,7 +32,7 @@ user-invocable: true
 `<topic>` 인자가 있으면 그것을, 없으면 `current_topic` 을 읽는다:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=current_topic
+python3 .tack/scripts/dev_context.py read --field=current_topic
 ```
 
 토픽 이름이 `^[a-zA-Z0-9_-]+$` 에 맞지 않으면 중단한다:
@@ -45,8 +45,8 @@ node .tack/scripts/dev-context.js read --field=current_topic
 토픽의 `phase:status` 를 읽는다:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 `spec:confirmed` 이상(spec:confirmed·plan:* ·impl:* ·review:* 등)이면 진행한다. `spec:drafting`·`spec:reviewing` 이면 중단한다:
@@ -203,8 +203,8 @@ git -C "$MAIN" branch -d "feature/<topic>"
 worktree 의 `/flow-done` 은 worktree dev-context 에서만 토픽을 제거한다. main hub 의 dev-context 에는 프로비저닝 시점 상태(예: plan:confirmed)로 stale 하게 남는다. 토픽이 main 에 아직 있으면 제거한다:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase 2>/dev/null \
-  && node .tack/scripts/dev-context.js remove-topic --topic=<topic>
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase 2>/dev/null \
+  && python3 .tack/scripts/dev_context.py remove-topic --topic=<topic>
 ```
 
 ### T7. cmux pane 정리 (선택)

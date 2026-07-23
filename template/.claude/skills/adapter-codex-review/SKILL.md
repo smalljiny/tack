@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -25,9 +25,9 @@ The following are explicitly **out of scope** for this skill:
 ### 1. 현재 토픽과 상태 읽기
 
 ```bash
-TOPIC=$(node .tack/scripts/dev-context.js read --field=current_topic)
-PHASE=$(node .tack/scripts/dev-context.js read --topic="$TOPIC" --field=phase)
-STATUS=$(node .tack/scripts/dev-context.js read --topic="$TOPIC" --field=status)
+TOPIC=$(python3 .tack/scripts/dev_context.py read --field=current_topic)
+PHASE=$(python3 .tack/scripts/dev_context.py read --topic="$TOPIC" --field=phase)
+STATUS=$(python3 .tack/scripts/dev_context.py read --topic="$TOPIC" --field=status)
 ```
 
 ### 2. phase:status → 실행 스킬 결정
@@ -72,8 +72,8 @@ CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
 Before invoking `codex exec`, verify Codex is available and authenticated:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.codex.available
-node .tack/scripts/dev-context.js read --field=config.codex.authenticated
+python3 .tack/scripts/dev_context.py read --field=config.codex.available
+python3 .tack/scripts/dev_context.py read --field=config.codex.authenticated
 ```
 
 If either returns a value other than `"true"`:

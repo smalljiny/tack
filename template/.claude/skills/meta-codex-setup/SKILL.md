@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: meta-codex-setup
 description: Run the codex companion setup and refresh the codex status cache in dev-context.json. Harness entry point, user-invocable via /meta-codex-setup.
 origin: harness
@@ -70,8 +70,8 @@ codex 상태가 dev-context.json에 갱신되었습니다.
 
 Read and display the updated values:
 ```bash
-node .tack/scripts/dev-context.js read --field=config.codex.available
-node .tack/scripts/dev-context.js read --field=config.codex.authenticated
-node .tack/scripts/dev-context.js read --field=config.codex.version
-node .tack/scripts/dev-context.js read --field=config.codex.checked_at
+python3 .tack/scripts/dev_context.py read --field=config.codex.available
+python3 .tack/scripts/dev_context.py read --field=config.codex.authenticated
+python3 .tack/scripts/dev_context.py read --field=config.codex.version
+python3 .tack/scripts/dev_context.py read --field=config.codex.checked_at
 ```

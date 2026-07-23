@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: flow-plan
 description: Create an implementation plan from a confirmed spec. Moves topic from backlog to active, updates paths in dev-context.json, and generates implementation-plan.md.
 origin: harness
@@ -53,8 +53,8 @@ If no argument:
 Read `phase` and `status` from dev-context.json:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `spec:confirmed`, stop:
@@ -92,11 +92,11 @@ Move the topic directory from backlog to active:
 Update paths in dev-context.json to reflect the new location:
 
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=spec \
   --value=.tack/local/active/<topic>/spec.md
 
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=specReview \
   --value=.tack/local/active/<topic>/spec-review-<latest-timestamp>.md
 ```
@@ -142,10 +142,10 @@ If revisions are requested, re-invoke the planner agent.
 After approval, update state and register the plan path:
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> --phase=plan --status=ready
 
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=plan \
   --value=.tack/local/active/<topic>/implementation-plan.md
 ```
@@ -153,7 +153,7 @@ node .tack/scripts/dev-context.js set-field \
 If user confirmed `y` in Step 4, also update `current_topic`:
 
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=current_topic --value=<topic>
 ```
 
@@ -162,14 +162,14 @@ node .tack/scripts/dev-context.js set-field \
 Transition to `plan:reviewing`:
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> --phase=plan --status=reviewing
 ```
 
 Read `config.plan.auto_review`:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.plan.auto_review
+python3 .tack/scripts/dev_context.py read --field=config.plan.auto_review
 ```
 
 **If output is NOT `true`** (default / manual mode): show the user this message and stop:
@@ -186,8 +186,8 @@ Codex plan-review를 실행하세요:
 **If output is `true`** (auto mode): sync `current_topic` to `<topic>` and validate the plan path before invoking the review skill:
 
 ```bash
-node .tack/scripts/dev-context.js set-field --field=current_topic --value=<topic>
-PLAN_PATH=$(node .tack/scripts/dev-context.js read --topic=<topic> --field=plan)
+python3 .tack/scripts/dev_context.py set-field --field=current_topic --value=<topic>
+PLAN_PATH=$(python3 .tack/scripts/dev_context.py read --topic=<topic> --field=plan)
 ```
 
 Validate `PLAN_PATH` matches the expected pattern `.tack/local/active/<topic>/implementation-plan.md`. If the path is empty, absolute, contains `..`, or does not start with `.tack/local/active/<topic>/`: show **Manual Fallback** (below) and stop.
@@ -208,7 +208,7 @@ Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
      - Apply Required Fixes from the review report to `implementation-plan.md`
      - Transition to `plan:ready`:
        ```bash
-       node .tack/scripts/dev-context.js update-state \
+       python3 .tack/scripts/dev_context.py update-state \
          --topic=<topic> --phase=plan --status=ready
        ```
      - Increment `attempt`. If `attempt > max_attempts`:
@@ -234,8 +234,8 @@ Codex를 사용할 수 없어 수동으로 진행하세요:
 When the user returns after Codex plan-review, check the latest `planReview` state:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 Re-entry state table:
@@ -243,7 +243,7 @@ Re-entry state table:
 Read `planReview` field and check the Decision in the file (if it exists):
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=planReview
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=planReview
 ```
 
 | `phase:status` | `planReview` Decision | Action |

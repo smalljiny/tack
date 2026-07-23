@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: flow-docs
 description: Reconcile spec with implementation, update existing docs/specs/ files (or create new ones), and commit. Run before /flow-pr.
 origin: harness
@@ -23,7 +23,7 @@ Always operates on `current_topic`.
 ### 1. Read current topic and gate check
 
 ```bash
-node .tack/scripts/dev-context.js read --field=current_topic
+python3 .tack/scripts/dev_context.py read --field=current_topic
 ```
 
 If `current_topic` is empty, stop:
@@ -34,8 +34,8 @@ If `current_topic` is empty, stop:
 Read `phase` and `status`:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 Determine the entry mode based on `phase:status`:
@@ -67,15 +67,15 @@ If no passing verification is found:
 
 Read git config:
 ```bash
-node .tack/scripts/dev-context.js read --field=config.git.baseBranch
-node .tack/scripts/dev-context.js read --field=config.git.pullRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.baseBranch
+python3 .tack/scripts/dev_context.py read --field=config.git.pullRemote
 ```
 
 Use defaults if not set: `baseBranch=main`, `pullRemote=origin`.
 
 Read the source filter configuration:
 ```bash
-node .tack/scripts/dev-context.js read --field=config.docs.sourceFilter
+python3 .tack/scripts/dev_context.py read --field=config.docs.sourceFilter
 ```
 Parse the output as a line-by-line list of path prefixes: split by `\n`, filter out empty strings. Store as `sourceFilter`. If no non-empty lines remain, `sourceFilter` is an empty list (no filter).
 
@@ -225,7 +225,7 @@ After all files are updated or created, select the representative document for `
 
 Record the selected path:
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=refDoc \
   --value=docs/specs/<selected>.md
 ```
@@ -261,7 +261,7 @@ COMMIT_MSG
 ### 9. Update state
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> --phase=docs --status=generated
 ```
 

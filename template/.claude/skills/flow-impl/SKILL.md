@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: flow-impl
 description: Execute Stories from the implementation plan. Supports `--all` for sequential batch execution of all remaining Stories. Automatically invokes tdd-specialist and code-reviewer per Story. Stops after one Story by default; `--all` or `config.dev_impl.batch_mode=true` runs all remaining Stories sequentially.
 origin: harness
@@ -27,32 +27,32 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
    - Check if `--all` is present in `$ARGUMENTS`
    - Read batch mode config:
      ```bash
-     node .tack/scripts/dev-context.js read --field=config.dev_impl.batch_mode
+     python3 .tack/scripts/dev_context.py read --field=config.dev_impl.batch_mode
      ```
    - Set `batch = true` if `--all` is present OR (`batch_mode == "true"` AND no explicit Story ID/name argument is given). An explicit Story argument (e.g. `S2`) always runs a single Story regardless of `batch_mode`. Carry this value through all subsequent steps.
 
    **`currentBatchRunning` lifecycle:**
    - (a) If `batch == true`, read `current_topic` and persist batch state (anticipates item 2):
      ```bash
-     node .tack/scripts/dev-context.js read --field=current_topic
-     node .tack/scripts/dev-context.js set-field --field=config.dev_impl.currentBatchRunning --value=true
-     node .tack/scripts/dev-context.js set-field --field=config.dev_impl.currentBatchTopic --value=<current_topic>
+     python3 .tack/scripts/dev_context.py read --field=current_topic
+     python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchRunning --value=true
+     python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchTopic --value=<current_topic>
      ```
    - (b) If `batch == false`, check for a stale batch state:
      - **명시적 Story 인자가 주어진 경우 stale 감지를 건너뛴다** (explicit-Story-wins). 이 호출이 Step 11에 도달하면 `currentBatchRunning`은 그때 초기화된다. 배치를 재개하려면 이후 `/flow-impl --all`을 사용한다.
      - 그 외에는 stale 감지를 수행한다:
      ```bash
-     node .tack/scripts/dev-context.js read --field=config.dev_impl.currentBatchRunning
+     python3 .tack/scripts/dev_context.py read --field=config.dev_impl.currentBatchRunning
      ```
      - `"true"` (정확히 일치) → stale batch state detected. Also read `currentBatchTopic` and current active topic:
        ```bash
-       node .tack/scripts/dev-context.js read --field=config.dev_impl.currentBatchTopic
-       node .tack/scripts/dev-context.js read --field=current_topic
+       python3 .tack/scripts/dev_context.py read --field=config.dev_impl.currentBatchTopic
+       python3 .tack/scripts/dev_context.py read --field=current_topic
        ```
        - If `currentBatchTopic` ≠ `current_topic` → **topic mismatch**: silently reset both fields and continue as single-Story:
          ```bash
-         node .tack/scripts/dev-context.js set-field --field=config.dev_impl.currentBatchRunning --value=false
-         node .tack/scripts/dev-context.js set-field --field=config.dev_impl.currentBatchTopic --value=false
+         python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchRunning --value=false
+         python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchTopic --value=false
          ```
        - If topic matches (or `currentBatchTopic` is empty) → use `AskUserQuestion` (include topic name in message):
          - **재개 (Recommended)**: 이전 배치(`<topic>`)를 이어 실행 — override `batch = true`, then execute (a) above
@@ -61,20 +61,20 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
 
 2. Get the current topic from dev-context.json:
    ```bash
-   node .tack/scripts/dev-context.js read --field=current_topic
+   python3 .tack/scripts/dev_context.py read --field=current_topic
    ```
 
 3. Read `phase` and `status`:
    ```bash
-   node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-   node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+   python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+   python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
    ```
 
 4. Gate + transition: check `phase:status` against the table below. The table is exhaustive — any state not listed stops with the gate failure message.
 
    | `phase:status` | 동작 |
    |----------------|------|
-   | `plan:confirmed` | `node .tack/scripts/dev-context.js update-state --topic=<topic> --phase=impl --status=in-progress` 호출 → 이어서 다음 단계로 진행 |
+   | `plan:confirmed` | `python3 .tack/scripts/dev_context.py update-state --topic=<topic> --phase=impl --status=in-progress` 호출 → 이어서 다음 단계로 진행 |
    | `impl:in-progress` | 그대로 다음 단계로 진행 (no-op) |
    | (그 외) | 아래 메시지를 출력하고 정지 |
 
@@ -96,8 +96,8 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
 
 5. Get the plan path and determine which Story to run:
    ```bash
-   node .tack/scripts/dev-context.js read --topic=<topic> --field=plan
-   node .tack/scripts/dev-context.js read --topic=<topic> --field=currentStory
+   python3 .tack/scripts/dev_context.py read --topic=<topic> --field=plan
+   python3 .tack/scripts/dev_context.py read --topic=<topic> --field=currentStory
    ```
    - Explicit Story argument (not `--all`) → that Story
    - `currentStory` value → that Story
@@ -157,7 +157,7 @@ advisor 응답을 반영한 뒤 다음 단계로 진행한다. 이 호출은 `au
 그 다음, auto_start config를 읽는다:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.dev_impl.auto_start
+python3 .tack/scripts/dev_context.py read --field=config.dev_impl.auto_start
 ```
 
 Branch on the result:
@@ -286,7 +286,7 @@ Immediately review the Story code:
 Read the `auto_commit` config:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.dev_impl.auto_commit
+python3 .tack/scripts/dev_context.py read --field=config.dev_impl.auto_commit
 ```
 
 **Find the Commit message** from the current Story's plan block:
@@ -408,13 +408,13 @@ AskUserQuestion({
 ### 10. Update dev-context.json
 
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=currentStory --value=<next-story-id>
 ```
 
 Use `null` when all Stories are complete:
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<topic> --field=currentStory --value=null
 ```
 
@@ -426,8 +426,8 @@ Evaluate after Step 10 (sub-step 0 owns the full skip/recover/proceed logic):
    - If the invocation included an **explicit Story argument** (e.g. `/flow-impl S2`), skip this step entirely (explicit-Story-wins overrides persisted batch state — do not loop).
    - Otherwise, read the persisted fields:
      ```bash
-     node .tack/scripts/dev-context.js read --field=config.dev_impl.currentBatchRunning
-     node .tack/scripts/dev-context.js read --field=config.dev_impl.currentBatchTopic
+     python3 .tack/scripts/dev_context.py read --field=config.dev_impl.currentBatchRunning
+     python3 .tack/scripts/dev_context.py read --field=config.dev_impl.currentBatchTopic
      ```
    - If `currentBatchRunning == "true"` AND `currentBatchTopic` matches the active topic (or `currentBatchTopic` is empty), recover `batch = true` (세션 메모리 소실 보완).
    - If `currentBatchRunning == "true"` AND `currentBatchTopic` ≠ active topic, do not recover — topic mismatch; `batch` remains unchanged.
@@ -448,9 +448,9 @@ Reached only when the Batch Loop Decision (Step 10.5) jumps back to Step 2. Not 
 단일/배치 모드 무관하게 터미널 브리핑 직전 batch 상태 필드를 초기화한다. reset 명령 실패 시에는 오류를 표시하고 터미널 브리핑을 중단한다:
 
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.dev_impl.currentBatchRunning --value=false
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.dev_impl.currentBatchTopic --value=false
 ```
 
