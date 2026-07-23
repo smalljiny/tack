@@ -179,3 +179,19 @@ story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. GitHub su
 ### stdout·dry-run
 
 생성 성공 시 §stdout Return Convention에 따라 이슈 번호와 URL을 stdout으로 반환한다. `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue create` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 이슈를 생성하지 않는다.
+
+## Standalone Verification (G6 — 무오염 dry-run)
+
+소비자(E3) 배선 없이 컴포넌트를 독립 검증한다. 검증은 `GH_ISSUE_DRY_RUN=1` 하에서만 수행하며, §Dry-run Contract가 gh 미호출(zero gh calls)을 보장하므로 대상 repo(예: `smalljiny/tack`)를 오염시키지 않는다 — 무오염은 실행이 아니라 **구조적으로** 성립한다.
+
+### 검증 절차
+
+세 연산을 `GH_ISSUE_DRY_RUN=1`로 호출하고 stdout에 조합된 gh 명령이 출력되는지 확인한다:
+
+1. **라벨 부트스트랩** (§Label Bootstrap) — dry-run 시 두 `gh label create` 명령(`type:epic`·`type:story`)이 출력되고 라벨은 생성되지 않는다.
+2. **story 이슈** (§Story Issue Create) — dry-run 시 조합된 `gh issue create --label type:story` 명령이 출력되고 이슈·중복 검색(`gh issue list`) 모두 gh를 호출하지 않는다.
+3. **epic umbrella** (§Epic Umbrella Mint) — dry-run 시 조합된 `gh issue create --label type:epic` 명령이 출력되고 이슈는 생성되지 않는다.
+
+### 무오염 확인
+
+세 연산 모두 dry-run에서 gh를 호출하지 않으므로(§Dry-run Contract) 대상 repo에 실 이슈·라벨이 생성되지 않는다. 이 성질은 gh 미호출로 구조적으로 보장되며, 실 repo에 대한 조회·생성 없이 계약 텍스트의 정적 점검으로 확인한다. 실 이슈·라벨을 만들지 않는 것이 검증의 전제이므로 검증 자체가 repo를 변경하지 않는다.
