@@ -113,3 +113,40 @@ gh label create type:story --repo <owner>/<name> --color 1D76DB --description "S
 ### dry-run
 
 `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 두 `gh label create` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 라벨을 생성하지 않는다. 선체크(`gh label list`)도 gh 호출이므로 dry-run에서는 건너뛰고 두 create 명령만 출력한다.
+
+## Story Issue Create (G2 — 중복 가드 포함)
+
+`type:story` 라벨을 단 story 이슈를 생성한다. §Operational Contract를 따른다. 제목은 `<story-id> — <요약>`, 본문은 spec 요약과 링크다.
+
+### 중복 가드 (컴포넌트 책임 — OQ3)
+
+동일 story-id 이슈 재생성을 컴포넌트가 막는다 (caller 책임이 아니라 컴포넌트 소유). 생성 **전** 검색으로 기존 이슈를 확인한다:
+
+```bash
+gh issue list --repo <owner>/<name> --label type:story --search "<story-id> in:title" --json number,url,title --state all
+```
+
+- `--search`는 GitHub 검색의 하이픈 토크나이즈로 fuzzy 매칭되므로 결과를 **title로 post-filter**한다 (검색 출력에 `title` 필드를 포함한 이유).
+- 제목이 `<story-id> —`(story-id + 구분자 " — ")로 **정확히 시작**하는 이슈만 **중복**으로 판정한다. bare-prefix가 아니다 — `E5-S1`으로 검색해도 `E5-S10 — ...` 제목은 구분자 경계 불일치로 중복이 아니다 (false-positive 방지).
+- 중복이면 생성을 **skip**하고 기존 이슈의 번호·URL을 stdout으로 출력한 뒤 exit 0으로 종료한다 (skip-not-fail). 하드 실패하지 않는다.
+- 중복이 없으면 생성으로 진행한다.
+- `--state all`로 closed 이슈까지 감지해 재생성을 방지한다.
+
+### 생성 연산
+
+본문은 stdin(`--body-file -`)으로 전달한다 (§Shell-Injection Defense). 제목은 `--title` 단일 인자로 전달한다.
+
+```bash
+gh issue create --repo <owner>/<name> --label type:story \
+  --title "<story-id> — <요약>" --body-file - <<'BODY'
+<spec 요약>
+
+Spec: <spec 링크>
+BODY
+```
+
+생성 성공 시 §stdout Return Convention에 따라 이슈 번호와 URL을 stdout으로 반환한다.
+
+### dry-run
+
+`GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue create` 명령(제목·라벨·대상 repo 포함)을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 이슈를 생성하지 않는다. 중복 검색(`gh issue list`)도 gh 호출이므로 dry-run에서는 건너뛴다.
