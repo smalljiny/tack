@@ -175,6 +175,47 @@ def cmd_update_state(args):
     write_context(ctx)
 
 
+def cmd_set_field(args):
+    field = args.get("field")
+    topic = args.get("topic")
+    if not field:
+        die("set-field: --field 필요")
+    if "value" not in args:  # 레퍼런스 value === undefined (키 부재만)
+        die("set-field: --value 필요")
+    value = args["value"]
+
+    # 글로벌 필드: current_topic (--topic 없이 사용, read와 대칭)
+    if field == "current_topic":
+        if topic:
+            die("set-field: current_topic은 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
+        ctx = read_context()
+        ctx["current_topic"] = None if value == "null" else value
+        write_context(ctx)
+        return
+
+    # 글로벌 config 점 경로(config.<ns>.<key>)는 Story 6(T6.3)에서 배선한다.
+
+    if not topic:
+        die("set-field: --topic 필요 (current_topic 제외)")
+
+    if field in PROTECTED_FIELDS:
+        die(f"set-field: '{field}' 필드는 update-state 전용입니다")
+
+    # 프로토타입 오염 방지: topic 필드 예약 키 금지
+    if field in ("__proto__", "constructor", "prototype"):
+        die(f"set-field: '{field}' 필드는 사용할 수 없습니다")
+
+    ctx = read_context()
+    t = ctx["topics"].get(topic)
+    if t is None:
+        die(f"set-field: 토픽 '{topic}' 미존재")
+
+    # 토픽 필드 값은 타입 추론 없이 문자열 그대로 저장 (타입 추론은 config 전용)
+    t[field] = None if value == "null" else value
+    t["updatedAt"] = _iso_now()
+    write_context(ctx)
+
+
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
@@ -183,6 +224,8 @@ def main(argv):
         cmd_register_topic(args)
     elif subcommand == "update-state":
         cmd_update_state(args)
+    elif subcommand == "set-field":
+        cmd_set_field(args)
     else:
         die(
             f"알 수 없는 서브커맨드: {subcommand}\n"
