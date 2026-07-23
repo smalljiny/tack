@@ -8,9 +8,11 @@
    3-way merge로 보존 → 도구 skew 없는 freshness.
 
    managed 블록 마커 = `shared-rules` (T4.3 결정, CLAUDE.md.jinja와 통일).
-   include 대상 = .tack/rules/ 최상위 4개 공유 코딩 규칙(coding-style·
-   git-workflow·security·testing)에 한정한다. typescript/ 하위(patterns·testing)는
-   Codex 대상 언어 규칙이 아니므로 인라인하지 않는다 (Story 2 완료 기준·spec §3.3).
+   include 대상 = .tack/rules/ 전체 6개 규칙(coding-style·git-workflow·security·
+   testing + typescript/patterns·typescript/testing). CLAUDE.md @import 집합과
+   동일 세트를 보장한다 (base-layout §8, 규칙 집합 대칭). typescript/2가 Codex
+   대상 언어 규칙은 아니지만, 여기서는 규칙 **집합**만 대칭으로 맞춘다 — TS 규칙
+   본문을 tack 스택(Python)으로 교체하는 작업은 E7-S4 범위다.
 
    include 경로 주의: Copier의 Jinja loader searchpath는 `_subdirectory`가 아니라
    템플릿 clone 루트다. `_subdirectory: template`은 렌더·복사 대상 subtree만
@@ -19,8 +21,8 @@
    없으면 `copier copy`가 TemplateNotFound로 전체 렌더를 중단한다 (Copier 9.17
    실측 확인).
 
-   include 대상 rule 파일 주의: 이 4개 파일은 standalone 복사 시 verbatim(비-.jinja
-   미렌더)이지만 여기서 include되면 Jinja로 렌더된다. 향후 편집에서 `{{`·`{%`·`{#`
+   include 대상 rule 파일 주의: 이 6개 파일(typescript/2 포함)은 standalone 복사 시
+   verbatim(비-.jinja 미렌더)이지만 여기서 include되면 Jinja로 렌더된다. 향후 편집에서 `{{`·`{%`·`{#`
    raw 델리미터를 넣으면 AGENTS.md 렌더만 조용히 깨진다 (CLAUDE.md는 @import라
    무영향). 필요 시 `{% raw %}`로 감싸거나 델리미터를 피한다.
 ============================================================================ #}
@@ -44,4 +46,8 @@ Codex CLI가 이 저장소에서 작업할 때의 안내 파일. Claude Code는 
 {% include 'template/.tack/rules/security.md' %}
 
 {% include 'template/.tack/rules/testing.md' %}
+
+{% include 'template/.tack/rules/typescript/patterns.md' %}
+
+{% include 'template/.tack/rules/typescript/testing.md' %}
 <!-- shared-rules:end -->

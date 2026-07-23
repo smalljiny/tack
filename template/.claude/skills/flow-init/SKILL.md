@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 name: flow-init
 description: Initialize or update project section of CLAUDE.md and AGENTS.md.
 origin: harness
@@ -150,7 +150,7 @@ Claude Code가 이 저장소에서 작업할 때의 안내 파일.
 
 AGENTS.md는 CLAUDE.md와 동일한 `<!-- shared-rules:begin/end -->` 마커를 쓰되, 마커 사이에 `.tack/rules/` 규칙 **본문을 인라인**한다 (Codex는 `@import` 미지원).
 
-**인라인 대상**: `find .tack/rules -maxdepth 1 -name "*.md" -type f | sort` — top-level `.tack/rules/*.md` 파일만 인라인한다. `typescript/` 하위 규칙(patterns·testing)은 Claude 전용 언어 규칙이므로 인라인하지 않는다 (AGENTS.md.jinja와 정합). 각 파일은 읽은 뒤 YAML frontmatter 블록(`---\nversion: N\n---`)을 제외한 본문만 삽입하고, 파일 간 빈 줄 1개로 구분한다.
+**인라인 대상**: `find .tack/rules -name "*.md" -type f | sort` — `.tack/rules/` 전체(재귀, `typescript/` 하위 포함) 규칙 본문을 인라인한다. CLAUDE.md의 @import 집합과 동일 세트를 보장한다 (base-layout §8, 규칙 집합 대칭 · `AGENTS.md.jinja`와 정합). 각 파일은 읽은 뒤 YAML frontmatter 블록(`---\nversion: N\n---`)을 제외한 본문만 삽입하고, 파일 간 빈 줄 1개로 구분한다.
 
 **신규 생성**:
 
@@ -172,15 +172,15 @@ Codex CLI가 이 저장소에서 작업할 때의 안내 파일. Claude Code는 
 [언어 규칙]
 
 <!-- shared-rules:begin -->
-[top-level .tack/rules/*.md 본문 인라인 — 파일 간 빈 줄 1개로 구분]
+[.tack/rules/ 전체(재귀) 본문 인라인 — 파일 간 빈 줄 1개로 구분]
 <!-- shared-rules:end -->
 ```
 
-top-level `.tack/rules/*.md`가 존재하면 정렬 순서대로 본문을 인라인한다. 디렉토리가 없거나 top-level glob 결과가 0건이면 마커 사이를 빈 상태로 생성하고 경고를 출력한다.
+`.tack/rules/` 규칙 파일이 존재하면 정렬 순서대로 본문을 인라인한다. 디렉토리가 없거나 glob 결과가 0건이면 마커 사이를 빈 상태로 생성하고 경고를 출력한다.
 
 **업데이트**:
 - `<!-- shared-rules:begin -->` 이전 모든 내용을 새 프로젝트 섹션으로 교체한다.
-- begin/end 마커 사이 내용을 현재 top-level `.tack/rules/*.md` 본문 인라인으로 교체한다 (point-in-time 갱신).
+- begin/end 마커 사이 내용을 현재 `.tack/rules/`(재귀) 본문 인라인으로 교체한다 (point-in-time 갱신).
 - 마커 라인 자체(`<!-- shared-rules:begin -->`, `<!-- shared-rules:end -->`)는 그대로 유지한다.
 - `<!-- shared-rules:end -->` **이후의 내용도 그대로 보존**한다.
 - **trailing 줄바꿈 정규화**: 인라인 본문을 삽입할 때 마지막 본문 끝의 공백/줄바꿈을 rstrip한 뒤 정확히 `\n`(한 줄)을 붙여 end 마커 앞에 놓는다. end 마커 앞에 빈 줄이 생기지 않도록 한다.
@@ -300,6 +300,6 @@ node .tack/scripts/dev-context.js set-field --field=config.graphify.targets --va
 - **항상 루트 대상** — `src/` 여부와 관계없이 항상 루트 `CLAUDE.md`, `AGENTS.md`를 수정한다.
 - **AskUserQuestion 사용 필수** — 선택이 포함된 모든 질문에 적용. 첫 옵션에 `(Recommended)` 레이블.
 - **shared-rules 마커 기준 업데이트** — 두 파일 모두 공유 규칙 블록을 `<!-- shared-rules:begin -->` / `<!-- shared-rules:end -->` 마커 쌍으로 bound한다. 프로젝트 섹션은 begin 마커 직전까지로 정의되고, 마커 외부는 사용자 영역으로 보존된다. 마커 사이 시맨틱은 파일별로 다르다 — CLAUDE.md는 `@.tack/rules/<rel>` @import 포인터 목록, AGENTS.md는 `.tack/rules/` 본문 인라인.
-- **`.tack/rules/` 단일 소스** — CLAUDE.md import 블록과 AGENTS.md 인라인 블록 모두 `.tack/rules/` glob 결과로 재생성된다. CLAUDE.md는 재귀 glob(typescript/ 포함), AGENTS.md는 top-level만 인라인한다.
+- **`.tack/rules/` 단일 소스** — CLAUDE.md import 블록과 AGENTS.md 인라인 블록 모두 `.tack/rules/` 재귀 glob 결과(typescript/ 포함)로 재생성된다. 두 파일이 동일 규칙 집합을 보장한다 (base-layout §8 대칭). CLAUDE.md는 `@import` 포인터, AGENTS.md는 본문 인라인.
 - **저장소 유형 자동 감지** — `scripts/deploy-harness.sh` 존재 여부로 `config.docs.sourceFilter` 기본값을 결정한다 (하네스: prefix 목록 / 일반: 빈 배열). **기존 non-empty 값은 보존**한다 — `/flow-init`은 imports 재생성을 위해 재실행 가능하므로, 사용자 명시 설정을 재실행마다 덮어쓰지 않는다 (빈 배열·null·미설정일 때만 감지값 적용).
 - **graphify targets 추천** — 배포 직후 `config.graphify.targets`가 미설정·빈 배열일 때 추천값을 `AskUserQuestion`으로 확정한다. 비어 있지 않은 기존 값은 보존한다 (멱등).
