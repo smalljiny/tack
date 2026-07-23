@@ -11,6 +11,14 @@ import os
 import pathlib
 import tempfile
 
+import pytest
+
+
+@pytest.fixture
+def ctx_path(tmp_path):
+    """테스트별 독립 tmp 파일 경로 (파일은 생성하지 않음). 모든 test_*.py가 공유."""
+    return str(tmp_path / "dev-context.json")
+
 
 def pytest_configure(config):
     # coverage(--cov)가 활성일 때만 서브프로세스 측정을 배선한다.

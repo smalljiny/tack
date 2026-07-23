@@ -134,6 +134,10 @@ def coerce_config_value(value):
     배열은 '[' 시작 + ']' 끝 패턴만. '[A-Z].*' 같은 정규식 스칼라는 ']' 뒤에 문자가 있어 미매치.
     JS \\d는 ASCII이므로 [0-9]를 사용하고, JS /…/s(dotAll)는 re.DOTALL로 재현한다.
     """
+    # 값 없는 boolean flag(--value)는 parse_args가 True로 만든다. JS는 이 값을 그대로 저장하므로
+    # (String(true)이 정수·배열 정규식에 매치되지 않음), 비-str 입력은 타입 추론 없이 그대로 반환한다.
+    if not isinstance(value, str):
+        return value
     if value == "true":
         return True
     if value == "false":
@@ -145,7 +149,8 @@ def coerce_config_value(value):
     if re.fullmatch(r"\s*\[.*\]\s*", value, re.DOTALL):
         try:
             parsed = json.loads(value)
-        except ValueError as e:
+        except (ValueError, RecursionError) as e:
+            # 깊게 중첩된 대괄호는 json.loads가 RecursionError를 낸다 — clean die로 처리(traceback 회피).
             die(f"config 값 파싱 오류: JSON 배열 파싱 실패 — {e} (입력: {value})")
         if not isinstance(parsed, list) or not all(
             isinstance(el, str) and not re.search(r"[\r\n]", el) for el in parsed
