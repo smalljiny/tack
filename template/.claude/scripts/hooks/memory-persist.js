@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 const cwd = process.env.PWD || process.cwd()
-const contextPath = join(cwd, 'docs/_local/dev-context.json')
+const contextPath = join(cwd, '.tack/local/dev-context.json')
 
 function main() {
   if (!existsSync(contextPath)) {

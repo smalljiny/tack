@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # wf-worktree-context — worktree teardown (sync-back 우선)
 #
-# docs/_local 은 per-worktree 실디렉토리라 /flow-done 이 아카이브한
-# docs/_local/done/<topic>/ 가 worktree 에만 존재한다. worktree 제거 시 유실되므로
+# .tack/local 은 per-worktree 실디렉토리라 /flow-done 이 아카이브한
+# .tack/local/done/<topic>/ 가 worktree 에만 존재한다. worktree 제거 시 유실되므로
 # 제거 전 메인으로 sync-back 한다.
 #
-# sync-back 이 성공하면 main 의 원본 핸드오프본(docs/_local/{backlog,active}/<topic>)을
+# sync-back 이 성공하면 main 의 원본 핸드오프본(.tack/local/{backlog,active}/<topic>)을
 # 폐기한다 — done 아카이브가 정본이므로 stale 원본 스펙을 남기지 않는다(--keep-original 로 보존).
 #
 # Usage:
@@ -48,13 +48,13 @@ if [ ! -d "$WT" ]; then
 fi
 
 # --- 1. sync-back: worktree 의 done 아카이브를 메인으로 복사 ---
-SRC="$WT/docs/_local/done/$TOPIC"
+SRC="$WT/.tack/local/done/$TOPIC"
 SYNCED=""
 if [ -d "$SRC" ]; then
-  mkdir -p "$MAIN/docs/_local/done"
-  cp -R "$SRC" "$MAIN/docs/_local/done/$TOPIC"
+  mkdir -p "$MAIN/.tack/local/done"
+  cp -R "$SRC" "$MAIN/.tack/local/done/$TOPIC"
   SYNCED="1"
-  echo "[1] synced back: docs/_local/done/$TOPIC → main"
+  echo "[1] synced back: .tack/local/done/$TOPIC → main"
 else
   echo "[1] no done archive at $SRC — skip sync-back (토픽이 아직 /flow-done 전이면 정상)"
 fi
@@ -63,9 +63,9 @@ fi
 #          핸드오프본(backlog/active)을 폐기한다. done 을 정본으로 남긴다. ---
 if [ -n "$SYNCED" ] && [ -z "$KEEP_ORIGINAL" ]; then
   for stage in backlog active; do
-    if [ -d "$MAIN/docs/_local/$stage/$TOPIC" ]; then
-      rm -rf "$MAIN/docs/_local/$stage/$TOPIC"
-      echo "[1b] purged stale original: docs/_local/$stage/$TOPIC"
+    if [ -d "$MAIN/.tack/local/$stage/$TOPIC" ]; then
+      rm -rf "$MAIN/.tack/local/$stage/$TOPIC"
+      echo "[1b] purged stale original: .tack/local/$stage/$TOPIC"
     fi
   done
 elif [ -n "$KEEP_ORIGINAL" ]; then
