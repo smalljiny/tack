@@ -45,6 +45,9 @@ fail() { echo "[FAIL] $1"; exit 1; }
 # --trust 필수: 없으면 copier가 _tasks(.tack/local/ mkdir + dev-context.json seed)를
 # 건너뛰어 (a)·(c)가 미스캐폴드 dest에서 무의미해진다.
 # --defaults: 비대화형 실행 (스크립트 컨텍스트에 tty 없음).
+# 보안 가정: --trust는 template의 _tasks(임의 셸 명령)를 실행한다. SRC는 이 스크립트
+# 자신의 repo(신뢰됨)로 고정돼 안전하다. fork/PR 체크아웃을 SRC로 렌더하는 CI에는
+# 배선하지 않는다 — 그 경우 신뢰되지 않은 _tasks가 실행된다.
 echo "[render] uvx copier copy --trust --defaults $SRC $DEST"
 if ! uvx copier copy --trust --defaults "$SRC" "$DEST" >/dev/null 2>&1; then
   fail "copier 렌더가 nonzero exit로 종료됨"
@@ -63,7 +66,9 @@ echo "[PASS] (a) seed 존재 + 첫 read exit 0"
 
 # --- Check (b): 렌더 dest에 stale 토큰 0건 (T5.4) ---
 # git init(c) 이전에 실행해 .git 메타데이터를 스캔에서 배제한다.
-STALE="$(grep -rnE '\.harness|docs/_local/' "$DEST" 2>/dev/null || true)"
+# `docs/_local`은 후행 슬래시를 요구하지 않는다 — 슬래시 없는 bare 산문 참조
+# (예: "the docs/_local dir")까지 잡아 가드를 마이그레이션 검증 스윕과 정렬한다.
+STALE="$(grep -rnE '\.harness|docs/_local' "$DEST" 2>/dev/null || true)"
 if [ -n "$STALE" ]; then
   echo "$STALE"
   fail "(b) 렌더 dest에 stale 경로 토큰 잔존"
