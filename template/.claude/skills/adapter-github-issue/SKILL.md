@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: adapter-github-issue
 description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints flat epic umbrella issues with uniform personal/org account routing. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
 origin: harness
@@ -48,9 +48,15 @@ origin: harness
 `gh` 명령을 실행하기 전에 두 조건을 확인한다:
 
 1. `gh` CLI가 설치돼 있는가 — `command -v gh`.
-2. 대상 repo owner가 인증됐는가 — `gh auth status`가 해당 owner를 커버하는가.
+2. 대상 repo에 쓰기 권한이 있는가 — `gh api repos/<owner>/<name> --jq .permissions.push`가 `true`를 반환하는가.
 
-`gh auth status`는 인증된 계정·호스트 목록을 출력할 뿐 "owner X에 쓰기 가능"을 직접 단언하지 않는다. 감지된 owner 핸들이 인증 목록에 포함되면 커버로 간주하고, `gh` auth 관련 오류가 발생하면 커버 불확실로 보아 skip 경로로 폴백한다.
+owner 핸들을 `gh auth status` 출력과 대조하는 방식은 사용하지 않는다. `gh auth status`는 인증된 **사용자 계정**을 나열할 뿐이고 `gh repo view --json owner`가 반환하는 org repo의 owner는 **조직 login**이므로, 이름 대조는 org repo를 (사용자가 write 권한을 가져도) 미인증으로 오판해 mint를 조용히 skip한다 — G4 개인/조직 균일 라우팅을 훼손한다. 대신 대상 repo에 대한 실제 권한을 조회한다:
+
+```bash
+gh api repos/<owner>/<name> --jq '.permissions.push' 2>/dev/null
+```
+
+`true`면 커버로 간주하고 진행한다. `false`·빈 출력·비-0 exit(auth 오류·repo 미접근)면 커버 불충분으로 보아 skip 경로로 폴백한다. 이 검사는 owner가 개인 계정이든 조직 계정이든 동일하게 동작한다.
 
 `GH_ISSUE_DRY_RUN=1`이면 이 게이트를 평가하기 전에 §Dry-run Contract가 우선한다 — `gh`를 호출하지 않으므로 미설치·미인증 환경에서도 조합 명령 출력이 동작한다.
 
@@ -68,7 +74,7 @@ gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행�
 라벨(`type:epic`·`type:story`)은 개인·조직 repo에서 균일하게 동작하므로 타입 표현에 owner별 분기가 **없다**.
 
 - **owner 감지**: `gh repo view --json owner` — 배포된 repo의 실제 owner를 그대로 사용한다 (개인 계정이든 조직 계정이든 무관). 컴포넌트는 특정 계정 핸들을 하드코딩하지 않는다.
-- **인증 커버 확인**: `gh auth status`로 감지된 owner가 현재 인증에 포함되는지 확인한다.
+- **권한 커버 확인**: `gh api repos/<owner>/<name> --jq .permissions.push`로 대상 repo에 대한 실제 write 권한을 조회한다 (§Availability Gate). owner 이름을 `gh auth status`와 대조하지 않는다 — org repo 오판을 피한다.
 - **대상 지정**: 모든 연산은 `--repo <owner>/<name>`를 명시하거나 현재 repo 컨텍스트로 해석한다.
 
 ### Shell-Injection Defense
