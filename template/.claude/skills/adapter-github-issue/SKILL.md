@@ -150,3 +150,32 @@ BODY
 ### dry-run
 
 `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue create` 명령(제목·라벨·대상 repo 포함)을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 이슈를 생성하지 않는다. 중복 검색(`gh issue list`)도 gh 호출이므로 dry-run에서는 건너뛴다.
+
+## Epic Umbrella Mint (G3 — flat)
+
+`type:epic` 라벨을 단 umbrella 이슈를 생성한다. §Operational Contract를 따른다. epic 요약과 묶인 story 목록을 본문에 기술하는 상위 앵커다.
+
+### flat 생성 (계층 링크 없음)
+
+본문에 묶인 story id를 **텍스트로만** 나열한다. sub-issue 계층 링크(GraphQL node ID로 부모-자식 연결)는 **하지 않는다** — E5-S2 경계다. S1은 flat 이슈 생성까지다.
+
+본문은 stdin(`--body-file -`)으로 전달한다 (§Shell-Injection Defense).
+
+```bash
+gh issue create --repo <owner>/<name> --label type:epic \
+  --title "<epic-id> — <epic 요약>" --body-file - <<'BODY'
+<epic 요약>
+
+## 묶인 Story
+- <story-id-1> — <요약>
+- <story-id-2> — <요약>
+BODY
+```
+
+story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. GitHub sub-issue 위젯에 연결되는 링크·node ID 참조를 포함하지 않는다.
+
+> **중복 가드 이월**: story 이슈(§Story Issue Create)와 달리 epic umbrella는 재-mint 중복 가드를 두지 않는다. umbrella를 언제·누가 mint하는가(트리거)가 OQ4로 E3-S2에 이월됐으므로, 재-mint 멱등성도 트리거 배선과 함께 E3-S2에서 확정한다. 의도적 이월이며 누락이 아니다.
+
+### stdout·dry-run
+
+생성 성공 시 §stdout Return Convention에 따라 이슈 번호와 URL을 stdout으로 반환한다. `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue create` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 이슈를 생성하지 않는다.
