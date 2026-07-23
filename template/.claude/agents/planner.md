@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 name: planner
 description: Implementation planning expert for complex features and refactoring. Use proactively when implementing features, making architecture changes, or handling complex refactoring requests. Automatically invoked by the /dev:plan command.
 tools: Read, Grep, Glob, TaskCreate, TaskUpdate, Write
@@ -225,7 +225,6 @@ established paths. **Do not infer paths — verify with Glob/Grep first.**
 | ECC (Everything-Claude-Code) components | `references/everything-claude-code/` |
 | Harness skills | `.claude/skills/` |
 | Harness agents | `.claude/agents/` |
-| Harness commands | `.claude/commands/` |
 | Codex skills | `.codex/skills/` |
 | Active topic spec/plan | `.tack/local/active/<topic>/` |
 | Permanent reference docs | `docs/specs/<name>.md` |

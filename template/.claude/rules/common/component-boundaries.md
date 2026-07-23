@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 ---
 # Component Boundaries: 5-tier Skill System
 
@@ -13,9 +13,9 @@ version: 6
 | Unit | `wf-` | 재사용 단위 작업 — 오케스트레이터·에이전트가 `Load ... and follow` | 스킬 Load 지시 | 항상 실행 가능하며 내부 전제 조건 없는가? |
 | Adapter | `adapter-` | 외부 도구 래퍼 — 가용성 게이트·폴백 보유 | 오케스트레이터·다른 스킬이 Load | 외부 도구 없으면 자체적으로 skip/fallback하는가? |
 | Stack | `stack-` | 기술 패턴 가이드 — capabilities 기반 발견 | skill-registry 탐색 | 기술 지식 제공인가? |
-| Meta | `meta-` | 하네스 인프라 — 스킬 생성·상태 관리 | 직접 로드 (capabilities 미등록) | 하네스 자체를 관리하는가? |
+| Meta | `meta-` | 하네스 인프라 — 스킬 생성·상태 관리 | 직접 로드 또는 사용자 직접 (user-invocable: true 시) | 하네스 자체를 관리하는가? |
 
-`flow-*` 스킬은 frontmatter에 `user-invocable: true`를 명시한다. 플랫폼 버전별 기본값 차이를 회피하기 위한 명시적 선언이며, 슬래시 커맨드 노출의 단일 진실 원천이다.
+슬래시 커맨드 노출의 단일 진실 원천은 SKILL.md frontmatter의 `user-invocable: true`다 — tier와 무관하다. `true`면 `/<skill-name>` 형태로 노출하고, 미설정 또는 `false`면 오케스트레이터·에이전트·skill-registry 경유로만 호출한다. `flow-*` 스킬은 관례상 전부 `true`로 명시하며, `meta-*`도 사용자 직접 호출 진입점이면 `true`로 명시한다. 플랫폼 버전별 기본값 차이를 회피하려면 노출 대상 스킬 frontmatter에 `true`를 명시한다. 스킬 노출은 SKILL.md frontmatter가 결정하며, 스킬을 command 파일로 감싸 노출하지 않는다.
 
 ## Tier 결정 흐름
 
@@ -23,7 +23,7 @@ version: 6
 
 ```
 하네스 자체(스킬 생성·상태 관리·인프라)를 관리하는가?
-  → 예  : meta-*  (직접 로드, capabilities 미등록)
+  → 예  : meta-*  (직접 로드 또는 사용자 직접, capabilities 미등록)
   → 아니오
       사용자가 직접 타이핑해서 시작하는가?
         → 예  : flow-*  (user-invocable: true 명시)

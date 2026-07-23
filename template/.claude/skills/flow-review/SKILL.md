@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 name: flow-review
 description: Perform a final full code review. Runs code-reviewer and security-reviewer in parallel, then adversarial-review sequentially (opt-in).
 origin: harness
@@ -149,7 +149,7 @@ node .tack/scripts/dev-context.js set-field \
 
 **조건 충족 시**:
 
-companion 경로를 `/codex:setup` one-liner 패턴으로 해결한다:
+companion 경로를 `/meta-codex-setup` one-liner 패턴으로 해결한다:
 
 ```bash
 COMPANION_PATH=$(node -e "

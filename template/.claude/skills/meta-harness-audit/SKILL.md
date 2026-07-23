@@ -1,17 +1,19 @@
 ---
-version: 2
-description: Run a deterministic harness health audit and return a prioritized scorecard.
-category: harness-management
+version: 1
+name: meta-harness-audit
+description: Run a deterministic harness health audit and return a prioritized scorecard. User-invocable via /meta-harness-audit.
+origin: harness
+user-invocable: true
 ---
 
-# /harness:audit
+# /meta-harness-audit
 
 Scores the harness across 7 categories and lists the top actions to improve it.
 
 ## Usage
 
 ```
-/harness:audit [scope] [--format text|json]
+/meta-harness-audit [scope] [--format text|json]
 ```
 
 - `scope`: `repo` (default) · `hooks` · `skills` · `commands` · `agents`
@@ -19,7 +21,7 @@ Scores the harness across 7 categories and lists the top actions to improve it.
 
 ## Execution
 
-Always run the script directly — do not invent scores manually:
+Run the script directly — do not invent scores manually:
 
 ```bash
 node .claude/scripts/harness-audit.js [scope] [--format text|json]

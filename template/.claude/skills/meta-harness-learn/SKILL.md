@@ -1,10 +1,12 @@
 ---
-version: 4
-description: Analyze patterns used repeatedly in the current session and save them as reusable skills.
-category: harness-management
+version: 1
+name: meta-harness-learn
+description: Analyze patterns used repeatedly in the current session and save them as reusable skills. User-invocable via /meta-harness-learn.
+origin: harness
+user-invocable: true
 ---
 
-# /harness:learn
+# /meta-harness-learn
 
 Extract reusable patterns from the current session and save them to `.claude/skills/learned/`.
 

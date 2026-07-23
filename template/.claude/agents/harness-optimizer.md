@@ -1,7 +1,7 @@
 ---
-version: 2
+version: 3
 name: harness-optimizer
-description: Analyzes and improves harness configuration for reliability and cost. Use when the harness feels slow, expensive, or incomplete. Automatically activated by /harness:audit.
+description: Analyzes and improves harness configuration for reliability and cost. Use when the harness feels slow, expensive, or incomplete. Automatically activated by /meta-harness-audit.
 tools: Read, Grep, Glob, Bash, Edit
 model: sonnet
 color: teal

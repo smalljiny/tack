@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 name: wf-continuous-learning
 description: Use after long sessions or when you notice a recurring pattern. Guides how to extract high-quality reusable patterns from sessions and save them to skills/learned/.
 origin: harness
@@ -8,7 +8,7 @@ category: session-management
 
 ## When to Activate
 
-- Running `/harness:learn` at the end of a productive session
+- Running `/meta-harness-learn` at the end of a productive session
 - Noticing a pattern you've solved the same way multiple times
 - After debugging a non-obvious issue that took real effort
 - When a workaround or technique feels worth remembering
@@ -72,7 +72,7 @@ learned_at: <ISO 8601 date>
 
 ## Extraction Process
 
-When running `/harness:learn`:
+When running `/meta-harness-learn`:
 
 ### 1. Scan session log
 
@@ -118,6 +118,6 @@ Learned skills decay. When revisiting `skills/learned/`:
 - If a skill hasn't been recalled in 3+ months → consider removing
 - If a skill contradicts current `rules/` → remove and update the rule instead
 
-## Connection to /harness:learn
+## Connection to /meta-harness-learn
 
-This skill defines the *quality criteria* for `/harness:learn`. The command does the mechanics (read log, write file); this skill defines what's worth writing.
+This skill defines the *quality criteria* for `/meta-harness-learn`. The `/meta-harness-learn` skill does the mechanics (read log, write file); this skill defines what's worth writing.

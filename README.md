@@ -31,6 +31,8 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 
 보조 커맨드: `/flow-topic`(토픽 전환), `/flow-worktree`(격리 워크트리), `/flow-setup`·`/flow-init`(초기 설정).
 
+모든 슬래시 커맨드와 하네스 관리 진입점은 별도 커맨드 파일 없이 스킬로 노출된다 — prefix로 tier를 구분하고(`flow-`/`wf-`/`adapter-`/`stack-`/`meta-`) `user-invocable` 플래그로 노출을 결정하는 skills-only 모델이다 (→ [skill-taxonomy](docs/specs/skill-taxonomy.md)).
+
 전문 서브에이전트(planner·tdd-specialist·code-reviewer·architect 등 10개)가 단계별로 자동 호출된다 (→ [agent-roster](docs/specs/agent-roster.md)).
 
 ## 저장소 구조
@@ -52,5 +54,5 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 
 - **Python / uv** — 스크립트·상태 머신·훅 (전환 대상; 현재 부트스트랩은 레퍼런스 Node 하네스)
 - **Bash** — Copier 배포 substrate
-- **Markdown** — 에이전트·스킬·커맨드·규칙 컴포넌트
+- **Markdown** — 에이전트·스킬·규칙 컴포넌트
 - **MongoDB** — 공유 컨텍스트 저장소 (registry·lease·대시보드)

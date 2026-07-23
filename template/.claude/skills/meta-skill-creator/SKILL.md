@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 name: meta-skill-creator
 description: This skill should be used whenever a user wants to create a new skill from scratch, update or refine an existing skill, understand how skills are structured in this harness, or learn best practices for writing effective skill descriptions and eval loops. Use it for any question about skill anatomy, skill authorship, or skill quality — even if the user doesn't explicitly say "create a skill."
 origin: sample-claude-env+anthropic-official
@@ -242,6 +242,6 @@ When adding a skill to this harness:
 ## Related References
 
 - `references/sample-claude-env/.claude/skills/skill-creator/SKILL.md` — source basis (Apache 2.0; derived work — see repo LICENSE)
-- `references/everything-claude-code/commands/skill-create.md` — git-history pattern extractor (alternative to `/harness:learn` for existing repos)
+- `references/everything-claude-code/commands/skill-create.md` — git-history pattern extractor (alternative to `/meta-harness-learn` for existing repos)
 - Anthropic official plugin: `https://github.com/anthropics/claude-plugins-official/tree/main/plugins/skill-creator`
 - `.claude/skills/wf-brainstorming/SKILL.md` — style reference within this harness
