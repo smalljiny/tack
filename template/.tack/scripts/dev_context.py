@@ -141,12 +141,48 @@ def cmd_register_topic(args):
     write_context(ctx)
 
 
+def cmd_update_state(args):
+    topic = args.get("topic")
+    phase = args.get("phase")
+    status = args.get("status")
+    if not topic:
+        die("update-state: --topic 필요")
+    if not phase:
+        die("update-state: --phase 필요")
+    if not status:
+        die("update-state: --status 필요")
+
+    ctx = read_context()
+    t = ctx["topics"].get(topic)
+    if t is None:
+        die(f"update-state: 토픽 '{topic}' 미존재")
+
+    frm = f"{t.get('phase')}:{t.get('status')}"
+    to = f"{phase}:{status}"
+
+    if frm == to:
+        # 동일 상태는 무시 (idempotent) — 파일 미변경
+        return
+
+    if not is_valid_transition(frm, to):
+        allowed = allowed_transitions(frm)
+        allowed_str = ", ".join(allowed) if allowed else "없음"
+        die(f"update-state: 유효하지 않은 전환 '{frm}' → '{to}'\n허용: {allowed_str}")
+
+    t["phase"] = phase
+    t["status"] = status
+    t["updatedAt"] = _iso_now()
+    write_context(ctx)
+
+
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
 
     if subcommand == "register-topic":
         cmd_register_topic(args)
+    elif subcommand == "update-state":
+        cmd_update_state(args)
     else:
         die(
             f"알 수 없는 서브커맨드: {subcommand}\n"
