@@ -14,3 +14,18 @@ template/**/.env.*
 template/**/*.pem
 template/**/*.key
 template/**/*credential*
+
+# Python·pytest·coverage 런타임 아티팩트 (엔진 포트 테스트 실행 산출물).
+# 루트와 template/ 재포함 안전망 하위 모두 재-ignore한다.
+__pycache__/
+*.pyc
+.coverage
+.coverage.*
+template/**/__pycache__/
+template/**/*.pyc
+template/**/.coverage
+template/**/.coverage.*
+.cov_subprocess_boot/
+template/**/.cov_subprocess_boot/
+# 세션 로깅 훅이 스크립트 CWD에서 생성하는 stray 로그 (실제 harness .claude/sessions 아님).
+template/**/.tack/**/.claude/

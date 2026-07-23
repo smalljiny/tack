@@ -9,6 +9,7 @@ test_dev_context.py는 CLI 계약(exit code·stdout·stderr)을 검증하려고 
 
 import os
 import pathlib
+import tempfile
 
 
 def pytest_configure(config):
@@ -19,8 +20,8 @@ def pytest_configure(config):
         return
 
     rootdir = pathlib.Path(str(config.rootpath))
-    boot_dir = rootdir / ".cov_subprocess_boot"
-    boot_dir.mkdir(exist_ok=True)
+    # boot 파일(sitecustomize·coveragerc)은 시스템 tempdir에 둔다 — repo 트리를 오염시키지 않는다.
+    boot_dir = pathlib.Path(tempfile.mkdtemp(prefix="cov_subprocess_boot_"))
 
     data_file = rootdir / ".coverage"
     rc = boot_dir / "coveragerc"
