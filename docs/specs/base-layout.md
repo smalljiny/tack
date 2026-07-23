@@ -38,7 +38,7 @@ tack은 Claude Code + Codex를 함께 구동하는 이중-도구 하네스이며
 | 공유 코딩 규칙 | `template/…/rules/` | `.tack/rules/` | 매 `update` 동기화 |
 | 재사용 템플릿 (pr-body 등) | `template/…/templates/` | `.tack/templates/` | 매 `update` 동기화 |
 | 커밋 scope 목록 | `template/…/commit-scopes.md` | `.tack/commit-scopes.md` | init-once (`_skip_if_exists`) |
-| Claude 프롬프트 (agents·skills·commands·hooks·rules) | `template/…/.claude/` | 루트 `.claude/` | 매 `update` 동기화 |
+| Claude 프롬프트 (agents·skills·hooks·rules·scripts) | `template/…/.claude/` | 루트 `.claude/` | 매 `update` 동기화 |
 | Codex 프롬프트 (skills) | `template/…/.codex/` | 루트 `.codex/` | 매 `update` 동기화 |
 | 컨텍스트 파일 (CLAUDE.md) | `template/…/CLAUDE.md` | 루트 `CLAUDE.md` | init-once (`_skip_if_exists`) — @import 포인터라 참조 대상이 항상 fresh |
 | 컨텍스트 파일 (AGENTS.md) | `template/…/AGENTS.md` | 루트 `AGENTS.md` | 하이브리드 — 공유 인프라 managed 블록은 매 `update` 재생성, 블록 밖 로컬 섹션은 보존 (§8) |
@@ -51,7 +51,7 @@ Copier가 source를 렌더한 결과, instance 루트는 다음 형태가 된다
 
 ```
 <instance 루트>
-├── .claude/            [도구 고정] Claude Code — agents/ skills/ commands/ hooks/ rules/ scripts/ settings.json
+├── .claude/            [도구 고정] Claude Code — agents/ skills/ hooks/ rules/ scripts/ settings.json (command file 0 — skills-only, 상세: skill-taxonomy.md)
 ├── .codex/             [도구 고정] Codex — skills/
 ├── CLAUDE.md           [도구 고정] Claude 컨텍스트 (@import 공유 인프라)
 ├── AGENTS.md           [도구 고정] Codex 컨텍스트 (공유 인프라 managed 블록 인라인, update 재생성)
