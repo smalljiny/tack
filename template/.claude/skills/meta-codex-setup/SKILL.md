@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: meta-codex-setup
 description: Run the codex companion setup and refresh the codex status cache in dev-context.json. Harness entry point, user-invocable via /meta-codex-setup.
 origin: harness
@@ -8,7 +8,7 @@ user-invocable: true
 
 # /meta-codex-setup
 
-Check codex CLI availability, authentication status, and optionally toggle the stop-time review gate. After completing the standard setup check, updates `config.codex.*` in `dev-context.json` so harness commands (e.g., `/dev:review` adversarial-review) can read codex availability without re-running setup.
+Check codex CLI availability, authentication status, and optionally toggle the stop-time review gate. After completing the standard setup check, updates `config.codex.*` in `dev-context.json` so harness commands (e.g., `/flow-review` adversarial-review) can read codex availability without re-running setup.
 
 ## Notes: Relation to the external plugin codex setup
 
