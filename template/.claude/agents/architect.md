@@ -1,7 +1,7 @@
 ---
-version: 1
+version: 2
 name: architect
-description: Expert in system design and architecture decisions. Use for architecture decisions, design reviews, and technology stack selection.
+description: Expert in system design and architecture decisions. Use for architecture decisions, design reviews, and technology stack selection. In B6 flow-review (stage 1), judge structural placement and flow completeness, then lock the design before unit-review.
 tools: Read, Grep, Glob
 model: opus
 color: blue

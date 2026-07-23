@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 ---
 
 # Performance Optimization
@@ -23,8 +23,8 @@ Choose the model by task complexity, not habit. Default to the cheapest model th
 | code-reviewer | opus | Reviewing requires understanding intent, not just syntax |
 | architect | opus | Architectural decisions are hard to reverse |
 | security-reviewer | sonnet | Pattern matching against known vulnerabilities; Sonnet is sufficient |
-| build-error-resolver | sonnet | Error diagnosis is structured; Sonnet handles it well |
-| doc-updater | sonnet | Documentation writing does not require deep reasoning |
+| build-error-resolver | haiku | Error diagnosis is structured; Haiku is sufficient |
+| doc-updater | haiku | Documentation writing does not require deep reasoning; Haiku is sufficient |
 | refactor-cleaner | sonnet | Mechanical cleanup; Sonnet is sufficient |
 | harness-optimizer | sonnet | File-existence checks and configuration proposals |
 

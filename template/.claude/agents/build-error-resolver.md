@@ -1,9 +1,9 @@
 ---
-version: 1
+version: 2
 name: build-error-resolver
 description: Expert in resolving build errors, type errors, and lint errors. Automatically activated immediately on build failure. Invoked by the /dev:build-fix command.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: haiku
 color: orange
 ---
 

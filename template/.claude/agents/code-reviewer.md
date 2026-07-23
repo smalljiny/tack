@@ -1,7 +1,7 @@
 ---
-version: 2
+version: 3
 name: code-reviewer
-description: Senior code review expert who evaluates code quality, security, and maintainability. Use immediately after writing or modifying code. Automatically invoked after /dev:impl task completion and in /dev:review.
+description: Senior code review expert who evaluates code quality, security, and maintainability. Use immediately after writing or modifying code. Automatically invoked after /dev:impl task completion and in /dev:review. In B6 unit-review (stage 2), check per-function correctness and security after the flow-review lock.
 tools: Read, Grep, Glob, Bash
 model: opus
 color: yellow
