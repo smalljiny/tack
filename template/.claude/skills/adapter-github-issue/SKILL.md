@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: adapter-github-issue
 description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints flat epic umbrella issues with uniform personal/org account routing. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
 origin: harness
@@ -50,12 +50,17 @@ origin: harness
 1. `gh` CLI가 설치돼 있는가 — `command -v gh`.
 2. 대상 repo owner가 인증됐는가 — `gh auth status`가 해당 owner를 커버하는가.
 
-둘 중 하나라도 실패하면 mint를 **skip**하고 수동 명령을 안내한다. 하드 실패(비-0 exit)하지 않는다.
+`gh auth status`는 인증된 계정·호스트 목록을 출력할 뿐 "owner X에 쓰기 가능"을 직접 단언하지 않는다. 감지된 owner 핸들이 인증 목록에 포함되면 커버로 간주하고, `gh` auth 관련 오류가 발생하면 커버 불확실로 보아 skip 경로로 폴백한다.
+
+`GH_ISSUE_DRY_RUN=1`이면 이 게이트를 평가하기 전에 §Dry-run Contract가 우선한다 — `gh`를 호출하지 않으므로 미설치·미인증 환경에서도 조합 명령 출력이 동작한다.
+
+둘 중 하나라도 실패하면 mint를 **skip**하고 수동 명령을 안내한다. 하드 실패(비-0 exit)하지 않는다. 안내 명령의 전체 형태는 §Label Bootstrap·§Story Issue Create를 따른다 (제목은 §Shell-Injection Defense의 HEREDOC 캡처 패턴 사용).
 
 ```
-gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행하세요:
-  gh label create type:story --repo <owner>/<name>
-  gh issue create --repo <owner>/<name> --label type:story --title "<title>" --body-file -
+gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행하세요 (전체 명령은 §Label Bootstrap·§Story Issue Create 참조):
+  gh label create type:epic  --repo <owner>/<name> --color 5319E7 --description "Epic anchor issue"
+  gh label create type:story --repo <owner>/<name> --color 1D76DB --description "Story anchor issue"
+  # story 이슈: 제목을 단일따옴표 HEREDOC로 캡처한 뒤 --title "$TITLE" --body-file - 로 생성
 ```
 
 ### Account Routing (owner별 타입 분기 없음)
@@ -71,8 +76,20 @@ gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행�
 이슈 제목·본문 등 동적 문자열은 셸 인자로 보간하지 않는다 (`.tack/rules/security.md` Shell Injection Defense 준수).
 
 - **본문**: `--body-file -`로 stdin 전달한다. 여러 줄 본문은 단일따옴표 HEREDOC(`<<'BODY' ... BODY`)으로 파이프한다 — 변수 확장·명령 치환이 비활성화된다.
-- **제목**: `--title "$TITLE"` 단일 인자로 전달한다. 큰따옴표로 감싼 변수 확장은 값 **내부**의 백틱·`$()`를 재평가하지 않으므로 안전하다. 문자열 연결로 명령을 조립하지 않는다.
-- **금지**: `-m "$VAR"` 또는 `-m "$(...)"` 패턴. 위험한 것은 플래그 자체가 아니라 AI가 생성한 리터럴 메시지를 명령에 인라인 조립하는 경우다 — 백틱·`$()`·따옴표 escape 실패로 임의 명령이 실행될 수 있다. 동적 메시지는 항상 stdin(`--body-file -`)으로 우회한다.
+- **제목**: 동적 제목은 먼저 단일따옴표 HEREDOC로 변수에 **캡처**한 뒤 `--title "$TITLE"`로 전달한다. `"$TITLE"`은 이미 채워진 변수를 한 번만 확장하므로 값 내부의 백틱·`$()`를 재평가하지 않는다 — **단, 이 안전성은 변수가 단일따옴표 HEREDOC 캡처로 채워졌을 때만 성립한다**.
+
+  ```bash
+  TITLE=$(cat <<'TITLE_EOF'
+  <story-id> — <요약>
+  TITLE_EOF
+  )
+  gh issue create ... --title "$TITLE" --body-file - <<'BODY'
+  ...
+  BODY
+  ```
+
+- **금지 — 리터럴 직접 보간**: 신뢰불가 텍스트(spec 요약·AI 생성 문자열)를 `--title "<...>"`처럼 명령 소스의 큰따옴표 리터럴에 **직접 보간**하지 않는다. 큰따옴표는 리터럴 소스의 word-splitting·globbing만 억제할 뿐, 그 안에 실제로 존재하는 백틱·`$()`의 명령 치환은 막지 못한다. 제목이 백틱을 포함하면(예: `` Fix `parseUser()` bug `` — 마크다운 코드 관례로 흔함) gh 도달 전에 셸이 `parseUser()`를 실행한다. 이것이 `.tack/rules/security.md`가 금지한 "문자열 연결로 셸 인자 구성"이다.
+- **금지 — `-m` 인라인**: `-m "$VAR"` 또는 `-m "$(...)"` 패턴. 동적 메시지는 항상 stdin(`--body-file -`) 또는 위 HEREDOC 캡처로 우회한다.
 
 ### Dry-run Contract (echo-not-execute)
 
@@ -120,7 +137,9 @@ gh label create type:story --repo <owner>/<name> --color 1D76DB --description "S
 
 ### 중복 가드 (컴포넌트 책임 — OQ3)
 
-동일 story-id 이슈 재생성을 컴포넌트가 막는다 (caller 책임이 아니라 컴포넌트 소유). 생성 **전** 검색으로 기존 이슈를 확인한다:
+동일 story-id 이슈 재생성을 컴포넌트가 막는다 (caller 책임이 아니라 컴포넌트 소유). 생성 **전** 검색으로 기존 이슈를 확인한다.
+
+story-id는 셸 인자로 보간되기 전에 형식을 검증한다 — `^E[0-9]+-S[0-9]+$`에 매칭하지 않으면 skip한다. 이 어서션은 중복 가드 prefix 판정의 전제이자, 제약된 식별자가 셸에 도달하기 전 백틱·`$()` 유입을 차단하는 방어다.
 
 ```bash
 gh issue list --repo <owner>/<name> --label type:story --search "<story-id> in:title" --json number,url,title --state all
@@ -134,11 +153,15 @@ gh issue list --repo <owner>/<name> --label type:story --search "<story-id> in:t
 
 ### 생성 연산
 
-본문은 stdin(`--body-file -`)으로 전달한다 (§Shell-Injection Defense). 제목은 `--title` 단일 인자로 전달한다.
+본문은 stdin(`--body-file -`)으로 전달한다. 제목은 단일따옴표 HEREDOC로 변수에 캡처한 뒤 `--title "$TITLE"`로 전달한다 (§Shell-Injection Defense — 리터럴 직접 보간 금지).
 
 ```bash
+TITLE=$(cat <<'TITLE_EOF'
+<story-id> — <요약>
+TITLE_EOF
+)
 gh issue create --repo <owner>/<name> --label type:story \
-  --title "<story-id> — <요약>" --body-file - <<'BODY'
+  --title "$TITLE" --body-file - <<'BODY'
 <spec 요약>
 
 Spec: <spec 링크>
@@ -162,8 +185,12 @@ BODY
 본문은 stdin(`--body-file -`)으로 전달한다 (§Shell-Injection Defense).
 
 ```bash
+TITLE=$(cat <<'TITLE_EOF'
+<epic-id> — <epic 요약>
+TITLE_EOF
+)
 gh issue create --repo <owner>/<name> --label type:epic \
-  --title "<epic-id> — <epic 요약>" --body-file - <<'BODY'
+  --title "$TITLE" --body-file - <<'BODY'
 <epic 요약>
 
 ## 묶인 Story
@@ -186,7 +213,12 @@ story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. GitHub su
 
 ### 검증 절차
 
-세 연산을 `GH_ISSUE_DRY_RUN=1`로 호출하고 stdout에 조합된 gh 명령이 출력되는지 확인한다:
+G6 검증은 두 확인 행위로 구성되며 서로 다른 주체가 수행한다:
+
+- **(a) dry-run 출력 확인** — 계약을 실행하는 에이전트/소비자가 `GH_ISSUE_DRY_RUN=1` 하에서 세 연산의 bash를 해석·echo해 조합된 gh 명령이 stdout에 나오는지 확인한다. 본 컴포넌트는 실행 코드 없는 프롬프트 문서이므로 `GH_ISSUE_DRY_RUN`을 읽는 러너가 별도로 존재하지 않는다 — 라이브 dry-run 실행은 소비자(E3)가 컴포넌트를 구동할 때 일어난다.
+- **(b) 무오염 보장** — §Dry-run Contract의 zero gh calls로 **구조적으로** 성립하며, 실 repo 조회·생성 없이 계약 텍스트의 정적 점검(reasoning)으로 확인한다. S1의 코드 없는 범위에서 G6은 이 구조적·정적 확인이다.
+
+세 연산을 `GH_ISSUE_DRY_RUN=1`로 해석했을 때 stdout에 조합된 gh 명령이 출력되는지 확인한다:
 
 1. **라벨 부트스트랩** (§Label Bootstrap) — dry-run 시 두 `gh label create` 명령(`type:epic`·`type:story`)이 출력되고 라벨은 생성되지 않는다.
 2. **story 이슈** (§Story Issue Create) — dry-run 시 조합된 `gh issue create --label type:story` 명령이 출력되고 이슈·중복 검색(`gh issue list`) 모두 gh를 호출하지 않는다.
