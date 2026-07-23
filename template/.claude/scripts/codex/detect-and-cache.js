@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * codex 상태를 감지하여 dev-context.json의 config.codex.*에 캐시한다.
- * session-start.js와 /codex:setup 양쪽에서 사용하는 단일 진실 원천.
+ * session-start.js와 /meta-codex-setup 양쪽에서 사용하는 단일 진실 원천.
  *
  * 사용법:
  *   node .claude/scripts/codex/detect-and-cache.js

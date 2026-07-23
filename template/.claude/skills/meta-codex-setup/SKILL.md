@@ -1,22 +1,26 @@
 ---
-version: 2
-description: Check whether the local Codex CLI is ready and update the codex status cache in dev-context.json. Wraps the plugin /codex:setup and adds harness cache refresh.
-category: codex-workflow
+version: 1
+name: meta-codex-setup
+description: Run the codex companion setup and refresh the codex status cache in dev-context.json. Harness entry point, user-invocable via /meta-codex-setup.
+origin: harness
+user-invocable: true
 ---
 
-# /codex:setup
+# /meta-codex-setup
 
 Check codex CLI availability, authentication status, and optionally toggle the stop-time review gate. After completing the standard setup check, updates `config.codex.*` in `dev-context.json` so harness commands (e.g., `/dev:review` adversarial-review) can read codex availability without re-running setup.
 
-## Notes: Command Precedence
+## Notes: Relation to the external plugin codex setup
 
-This file (`.claude/commands/codex/setup.md`) is a harness-local command that **shadows** the plugin-provided `/codex:setup`. Claude Code loads `.claude/commands/` before plugin commands, so this wrapper is the single entry point for `/codex:setup` in this repo.
+This skill is the harness entry point for codex setup. It runs the codex companion setup and refreshes the harness codex cache in one step.
 
-The wrapper preserves all original plugin behavior by re-executing the companion script directly in Step 1.
+Earlier this logic lived at `.claude/commands/codex/setup.md`, a command file that **shadowed** the plugin-provided `/codex:setup` (Claude Code loads `.claude/commands/` before plugin commands). Migrating that wrapper to this skill removes the shadowing: `/meta-codex-setup` and the external plugin `/codex:setup` now coexist under distinct names.
+
+The external plugin `/codex:setup` still works unchanged. The harness codex cache also stays fresh independently: the `session-start` hook calls `.claude/scripts/codex/detect-and-cache.js` on every session start, so `config.codex.*` (and the availability gate that reads it) does not depend on running this skill.
 
 ## Notes: Single Source of Truth
 
-All codex detection logic (companion glob, semver sorting, containment validation, field mapping, TTL cache, silent failure) lives exclusively in `.claude/scripts/codex/detect-and-cache.js`. Both this command and `session-start.js` delegate to that script — do not duplicate the logic here.
+All codex detection logic (companion glob, semver sorting, containment validation, field mapping, TTL cache, silent failure) lives exclusively in `.claude/scripts/codex/detect-and-cache.js`. Both this skill and `session-start.js` delegate to that script — do not duplicate the logic here.
 
 ## Execution Flow
 
