@@ -53,4 +53,4 @@ flow-review는 2단으로 갈린다: **1단 flow-review = architect**가 구조�
 - **에이전트 프롬프트 본문**: frontmatter·description만 소유하며 프롬프트 본문 재작성·모델 버전 리터럴 대응은 E7-S3 소관.
 - **flow 스킬의 에이전트 호출 배선**: description의 기존 `/dev:*` 명령 참조는 보존하며 `/flow-*` 재배선은 E3 소관.
 - **에이전트 `tools` 배분**: 각 에이전트 `tools` 목록의 tack 도구(Python·Mongo) 조정 여부는 미결로, 레퍼런스 승계값을 유지한다.
-- **performance.md 근거 표의 잔여 stale**: 모델 리터럴(예: `Sonnet 4.6`)·prompt-engineer 미등재·2-tier 잔존은 E7-S3(또는 docs-sync)에서 정리한다.
+- **performance.md 잔여 stale**: 모델 선택 표(Model Selection Strategy)의 stale 모델 리터럴(`Sonnet 4.6`→`Sonnet 5`, `Opus 4.7`→`Opus 4.8`)은 E7-S3에서 해소했다. "Harness Agent Model Rationale" 표의 prompt-engineer 미등재는 E7-S3 범위 밖(E7-S3는 모델 선택 표 리터럴·prompt-authoring de-version만 소관)이라 후속 docs-sync 과제로 남는다.
