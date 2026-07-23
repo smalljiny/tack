@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: adapter-github-issue
 description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints flat epic umbrella issues with uniform personal/org account routing. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
 origin: harness
@@ -96,6 +96,10 @@ gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행�
 
 - **금지 — 리터럴 직접 보간**: 신뢰불가 텍스트(spec 요약·AI 생성 문자열)를 `--title "<...>"`처럼 명령 소스의 큰따옴표 리터럴에 **직접 보간**하지 않는다. 큰따옴표는 리터럴 소스의 word-splitting·globbing만 억제할 뿐, 그 안에 실제로 존재하는 백틱·`$()`의 명령 치환은 막지 못한다. 제목이 백틱을 포함하면(예: `` Fix `parseUser()` bug `` — 마크다운 코드 관례로 흔함) gh 도달 전에 셸이 `parseUser()`를 실행한다. 이것이 `.tack/rules/security.md`가 금지한 "문자열 연결로 셸 인자 구성"이다.
 - **금지 — `-m` 인라인**: `-m "$VAR"` 또는 `-m "$(...)"` 패턴. 동적 메시지는 항상 stdin(`--body-file -`) 또는 위 HEREDOC 캡처로 우회한다.
+- **HEREDOC delimiter 충돌**: 단일따옴표 HEREDOC은 변수 확장·명령 치환은 막지만 **delimiter 조기 종료**는 막지 못한다. 본문·제목·story 목록 내용에 delimiter 리터럴(`BODY`·`TITLE_EOF`)과 정확히 일치하는 라인이 있으면, 그 첫 매칭 라인에서 HEREDOC이 조기 종료되고 이후 라인이 셸 명령으로 실행된다. delimiter는 고정·공개 리터럴이므로 내용에 영향을 줄 수 있는 주체가 매칭 라인을 심어 브레이크아웃할 수 있다.
+  - **1차 완화 (신뢰불가 provenance 내용)**: 외부·미확인 출처 텍스트(raw issue/PR 본문, 웹훅 페이로드 등)를 본문으로 넘길 때는 HEREDOC 파이프 대신 Write 도구로 본문 바이트를 임시 파일에 쓰고 `--body-file <path>`(`-` 아님)로 전달한다. 내용이 셸 파싱에 재유입되지 않아 이 취약 클래스를 제거한다.
+  - **2차 완화 (HEREDOC 유지 시)**: delimiter를 고정 리터럴 대신 호출별 nonce를 붙인 예측불가 문자열로 사용하거나, 내용에 delimiter와 정확히 일치하는 라인이 있으면 임베딩 전에 거부한다.
+  - E3 소비자(E3-S2·E3-S5)가 less-trusted 텍스트를 이 어댑터로 흘리기 전에 1차 완화를 적용한다. S1 자체 흐름(spec 요약=semi-trusted)에서도 delimiter 매칭 라인 부재를 임베딩 전에 확인한다.
 
 ### Dry-run Contract (echo-not-execute)
 
