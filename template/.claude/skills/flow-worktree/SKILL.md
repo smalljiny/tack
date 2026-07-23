@@ -32,7 +32,7 @@ user-invocable: true
 `<topic>` 인자가 있으면 그것을, 없으면 `current_topic` 을 읽는다:
 
 ```bash
-node .harness/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --field=current_topic
 ```
 
 토픽 이름이 `^[a-zA-Z0-9_-]+$` 에 맞지 않으면 중단한다:
@@ -45,8 +45,8 @@ node .harness/scripts/dev-context.js read --field=current_topic
 토픽의 `phase:status` 를 읽는다:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 `spec:confirmed` 이상(spec:confirmed·plan:* ·impl:* ·review:* 등)이면 진행한다. `spec:drafting`·`spec:reviewing` 이면 중단한다:
@@ -125,7 +125,7 @@ cmux 를 쓸 수 없어 세션은 수동으로 여세요. 대상 터미널에서
 worktree 작업이 끝났을 때(`/flow-pr`·`/flow-done` 후) 문서를 main 으로 이관하고 worktree 를 제거한다. **문서 이관은 두 갈래**다:
 
 - `docs/specs/*.md`·코드(git-tracked) → **PR 머지**로 이관(파일 복사 아님, 브랜치에 커밋됨).
-- `docs/_local/done/<topic>/`(git-ignored, worktree 에만 존재) → **sync-back**(teardown.sh). 이후 main 의 stale 원본 backlog/active 핸드오프본은 폐기된다.
+- `.tack/local/done/<topic>/`(git-ignored, worktree 에만 존재) → **sync-back**(teardown.sh). 이후 main 의 stale 원본 backlog/active 핸드오프본은 폐기된다.
 
 ### T1. 실행 위치 가드 — main hub 에서만
 
@@ -147,9 +147,9 @@ worktree 가 없습니다: <WT> (이미 제거됐거나 토픽 이름이 틀림)
 
 ### T2. 완료 게이트 — done 아카이브 확인
 
-`<WT>/docs/_local/done/<topic>/` 존재를 확인한다. 있으면 `/flow-done` 이 실행돼 아카이브가 만들어진 것 → 진행한다.
+`<WT>/.tack/local/done/<topic>/` 존재를 확인한다. 있으면 `/flow-done` 이 실행돼 아카이브가 만들어진 것 → 진행한다.
 
-없으면 worktree 의 `docs/_local/active/<topic>/`(미아카이브 산출물)가 제거로 유실된다. `--force` 없이 실행됐으면 중단한다:
+없으면 worktree 의 `.tack/local/active/<topic>/`(미아카이브 산출물)가 제거로 유실된다. `--force` 없이 실행됐으면 중단한다:
 ```
 아직 /flow-done 전입니다 (done 아카이브 없음).
 worktree 의 active 산출물이 제거로 유실됩니다.
@@ -186,7 +186,7 @@ Load `.claude/skills/wf-worktree-context/SKILL.md` and follow its Procedure — 
 bash .claude/skills/wf-worktree-context/scripts/teardown.sh <topic>   # 또는 + --force
 ```
 
-teardown.sh 가 `docs/_local/done/<topic>/` → main sync-back → main 원본 backlog/active 폐기 → `git worktree remove` 한다. 원본을 보존하려면 `--keep-original` 을 전달한다.
+teardown.sh 가 `.tack/local/done/<topic>/` → main sync-back → main 원본 backlog/active 폐기 → `git worktree remove` 한다. 원본을 보존하려면 `--keep-original` 을 전달한다.
 
 ### T5. 브랜치 삭제 (선택)
 
@@ -203,8 +203,8 @@ git -C "$MAIN" branch -d "feature/<topic>"
 worktree 의 `/flow-done` 은 worktree dev-context 에서만 토픽을 제거한다. main hub 의 dev-context 에는 프로비저닝 시점 상태(예: plan:confirmed)로 stale 하게 남는다. 토픽이 main 에 아직 있으면 제거한다:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase 2>/dev/null \
-  && node .harness/scripts/dev-context.js remove-topic --topic=<topic>
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase 2>/dev/null \
+  && node .tack/scripts/dev-context.js remove-topic --topic=<topic>
 ```
 
 ### T7. cmux pane 정리 (선택)
@@ -221,8 +221,8 @@ cmux close-surface --workspace "${CMUX_WORKSPACE_ID}" --surface <ref>
 
 ```
 teardown 완료: <topic>
-  문서 sync-back: docs/_local/done/<topic>/ → main
-  원본 폐기: docs/_local/{backlog,active}/<topic> <폐기됨 / 보존됨(--keep-original)>
+  문서 sync-back: .tack/local/done/<topic>/ → main
+  원본 폐기: .tack/local/{backlog,active}/<topic> <폐기됨 / 보존됨(--keep-original)>
   docs/specs·코드: PR 머지 경로로 이관 (브랜치 머지 상태: <머지됨/미머지>)
   worktree 제거: <WT>
   브랜치 feature/<topic>: <삭제됨 / 보존됨>

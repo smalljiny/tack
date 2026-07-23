@@ -261,7 +261,7 @@ jq --arg skill "$SKILL_NAME" --arg ts "$NOW" --arg sha "$GIT_SHA" \
 
 ## Resources
 
-- `docs/_local/active/eval-harness/spec.md` — 스펙 (설계 결정 근거)
+- `.tack/local/active/eval-harness/spec.md` — 스펙 (설계 결정 근거)
 - `references/everything-claude-code/skills/eval-harness/SKILL.md` — ECC 원본 참조
 - `.codex/skills/spec-review/SKILL.md` — Codex 스킬 형식 참조
 - `.claude/evals/` — eval 케이스 파일 및 실행 이력 저장 디렉토리

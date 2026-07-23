@@ -9,12 +9,12 @@ origin: harness
 
 ## Overview
 
-All dev-context.json access goes through `.harness/scripts/dev-context.js`. Never read or write the file directly. This skill defines the canonical invocation patterns for each workflow command.
+All dev-context.json access goes through `.tack/scripts/dev-context.js`. Never read or write the file directly. This skill defines the canonical invocation patterns for each workflow command.
 
 ## CLI Reference
 
 ```
-node .harness/scripts/dev-context.js <subcommand> [--option=value ...]
+node .tack/scripts/dev-context.js <subcommand> [--option=value ...]
 ```
 
 ### `register-topic`
@@ -22,7 +22,7 @@ node .harness/scripts/dev-context.js <subcommand> [--option=value ...]
 Register a new topic at `spec:drafting`. Sets `current_topic`. Fails if the topic already exists.
 
 ```bash
-node .harness/scripts/dev-context.js register-topic \
+node .tack/scripts/dev-context.js register-topic \
   --topic=<name> \
   --spec=<spec-path>
 ```
@@ -32,7 +32,7 @@ node .harness/scripts/dev-context.js register-topic \
 Transition a topic to a new `phase:status`. Validates against the allowed transition table. Fails with non-zero exit on invalid transitions.
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<name> \
   --phase=<phase> \
   --status=<status>
@@ -43,7 +43,7 @@ node .harness/scripts/dev-context.js update-state \
 Update a single data field on a topic. `phase` and `status` are protected — use `update-state` for those.
 
 ```bash
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --topic=<name> \
   --field=<field> \
   --value=<value>        # use "null" to set null
@@ -54,7 +54,7 @@ node .harness/scripts/dev-context.js set-field \
 Remove a topic from dev-context.json. Switches `current_topic` to another remaining topic, or null if none remain. No state validation — the caller (`/flow-done`) is responsible for pre-validation.
 
 ```bash
-node .harness/scripts/dev-context.js remove-topic --topic=<name>
+node .tack/scripts/dev-context.js remove-topic --topic=<name>
 ```
 
 ### `read`
@@ -63,10 +63,10 @@ Print a single field value to stdout.
 
 ```bash
 # Topic-level field
-node .harness/scripts/dev-context.js read --topic=<name> --field=<field>
+node .tack/scripts/dev-context.js read --topic=<name> --field=<field>
 
 # Global field (current_topic only — no --topic)
-node .harness/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --field=current_topic
 ```
 
 > `--field=current_topic` must NOT be combined with `--topic`.
@@ -77,11 +77,11 @@ node .harness/scripts/dev-context.js read --field=current_topic
 
 ```bash
 # Update current_topic globally
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --field=current_topic --value=<topic>
 
 # Clear current_topic
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --field=current_topic --value=null
 ```
 
@@ -94,8 +94,8 @@ node .harness/scripts/dev-context.js set-field \
 Before proceeding in a command, verify the topic is in the expected state using **both fields as a pair**:
 
 ```bash
-PHASE=$(node .harness/scripts/dev-context.js read --topic=<name> --field=phase)
-STATUS=$(node .harness/scripts/dev-context.js read --topic=<name> --field=status)
+PHASE=$(node .tack/scripts/dev-context.js read --topic=<name> --field=phase)
+STATUS=$(node .tack/scripts/dev-context.js read --topic=<name> --field=status)
 ```
 
 Then check `$PHASE:$STATUS` against the required state. If it does not match, halt and show:

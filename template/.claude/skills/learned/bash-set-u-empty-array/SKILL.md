@@ -36,8 +36,8 @@ copy_item() {
   rsync -a ${extra_opts[@]+"${extra_opts[@]}"} "$rel" "$DEST/"
 }
 
-copy_item ".harness"                          # extra_opts 없음 — 안전
-copy_item ".harness" --exclude='commit-scopes.md'  # extra_opts 있음 — 안전
+copy_item ".tack"                          # extra_opts 없음 — 안전
+copy_item ".tack" --exclude='commit-scopes.md'  # extra_opts 있음 — 안전
 ```
 
 ## Why It Works

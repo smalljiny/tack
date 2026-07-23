@@ -69,7 +69,7 @@ Run this check on Story `**Commit**` fields. Findings emit WARNING only — no a
 
 ### Input source
 
-Read the current topic's plan at `docs/_local/active/<topic>/implementation-plan.md` and inspect each Story's `**Commit**` field. Do not use `git log` as the input source.
+Read the current topic's plan at `.tack/local/active/<topic>/implementation-plan.md` and inspect each Story's `**Commit**` field. Do not use `git log` as the input source.
 
 ### Check timing
 
@@ -80,7 +80,7 @@ Read the current topic's plan at `docs/_local/active/<topic>/implementation-plan
 
 ### Detection categories
 
-Load `.harness/rules/git-workflow.md` and follow its 메시지 콘텐츠 정책 절. The four forbidden categories (slash-command exposure, workflow narrative, internal-state references, procedural "via" phrasing) are defined there.
+Load `.tack/rules/git-workflow.md` and follow its 메시지 콘텐츠 정책 절. The four forbidden categories (slash-command exposure, workflow narrative, internal-state references, procedural "via" phrasing) are defined there.
 
 ### Carve-out rule
 

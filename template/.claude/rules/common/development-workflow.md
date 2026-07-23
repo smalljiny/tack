@@ -17,10 +17,10 @@ This rule extends the feature implementation workflow from git-workflow.md.
 
 - Start a new topic with `/flow-spec <topic>`
 - Load the brainstorming skill to write a spec draft collaboratively
-- Save draft to `docs/_local/backlog/<topic>/spec.md`
+- Save draft to `.tack/local/backlog/<topic>/spec.md`
 - **Register topic** in `dev-context.json` at `spec:drafting` immediately after saving
 - Transition to `spec:reviewing` before invoking Codex review
-- Run Codex review loop until READY: `codex "spec-review 스킬로 docs/_local/backlog/<topic>/spec.md를 리뷰해줘"`
+- Run Codex review loop until READY: `codex "spec-review 스킬로 .tack/local/backlog/<topic>/spec.md를 리뷰해줘"`
 - NOT READY → rollback to `spec:drafting`, fix and re-review
 - Spec is confirmed (`spec:confirmed`) when the latest `spec-review-*.md` has decision `READY` or `READY WITH NOTE`
 
@@ -29,8 +29,8 @@ This rule extends the feature implementation workflow from git-workflow.md.
 - **Gate**: topic must be `spec:confirmed` — checked via `dev-context.js read --field=phase/status`
 - Run with a topic argument or select from backlog list
 - Moves `backlog/<topic>/` → `active/<topic>/`, updates paths in `dev-context.json`
-- **planner** agent auto-activates with `docs/_local/active/<topic>/spec.md` as input
-- Deliverable: `docs/_local/active/<topic>/implementation-plan.md`
+- **planner** agent auto-activates with `.tack/local/active/<topic>/spec.md` as input
+- Deliverable: `.tack/local/active/<topic>/implementation-plan.md`
 - After planner completes: transition to `plan:ready`, then `plan:reviewing`
 - Run Codex plan-review: `codex "plan-review 스킬을 실행해줘"`
 - NOT READY → `plan:ready`, re-plan; READY → `plan:confirmed` (set by Codex plan-review)
@@ -70,13 +70,13 @@ Must pass before completing:
 
 - **Gate**: topic must be `docs:generated` — blocks if not met
 - Pushes the current branch to `pushRemote` and creates a GitHub Pull Request
-- PR title and body come from the plan `**Commit**` field + `.harness/templates/pr-body.md`
+- PR title and body come from the plan `**Commit**` field + `.tack/templates/pr-body.md`
 - On completion: transitions to `pr:created`
 
 ### 8. Done (`/flow-done`)
 
 - **Gate**: topic must be `pr:created` — blocks if not met
-- Moves **all** artifacts to `docs/_local/done/<topic>/` — no deletions: spec.md, spec-review-*.md, plan-review-*.md, implementation-plan.md, review-report-*.md
+- Moves **all** artifacts to `.tack/local/done/<topic>/` — no deletions: spec.md, spec-review-*.md, plan-review-*.md, implementation-plan.md, review-report-*.md
 - Removes topic from `dev-context.json` via `remove-topic`
 - Switches `current_topic` to next active topic (or null if none remain)
 - Reference document generation is handled by `/flow-docs` — `/flow-done` does not regenerate or modify `docs/specs/`
@@ -93,15 +93,15 @@ Topic registration happens at `/flow-spec` (not `/flow-plan`). Running `/flow-to
 ## Document Lifecycle
 
 ```
-스펙 초안  →  docs/_local/backlog/<topic>/spec.md        (git-ignored)
+스펙 초안  →  .tack/local/backlog/<topic>/spec.md        (git-ignored)
               dev-context.json: phase=spec, status=drafting
               /flow-spec 리뷰 루프 → status=reviewing → confirmed
 
-플랜 수립  →  docs/_local/active/<topic>/                (backlog/에서 이동)
+플랜 수립  →  .tack/local/active/<topic>/                (backlog/에서 이동)
               implementation-plan.md 생성
               dev-context.json: phase=plan, status=ready → reviewing → confirmed (Codex plan-review)
 
-구현 중    →  docs/_local/active/<topic>/                (git-ignored)
+구현 중    →  .tack/local/active/<topic>/                (git-ignored)
               dev-context.json: phase=impl, status=in-progress
 
 리뷰       →  dev-context.json: phase=review, status=in-progress
@@ -112,7 +112,7 @@ Topic registration happens at `/flow-spec` (not `/flow-plan`). Running `/flow-to
 PR         →  GitHub PR 생성, 브랜치 push
               dev-context.json: phase=pr, status=created
 
-완료       →  docs/_local/done/<topic>/                  (git-ignored, 모든 산출물 보존)
+완료       →  .tack/local/done/<topic>/                  (git-ignored, 모든 산출물 보존)
               dev-context.json에서 토픽 제거 (/flow-done은 docs/specs/를 변경하지 않음)
 ```
 
@@ -137,7 +137,7 @@ Claude Code Bash 도구도 zsh로 실행된다.
 
 **사전 점검:** 스킬·커맨드 파일 추가·수정 시 아래 명령으로 잔존 여부 확인 권장:
 ```bash
-grep -rnE 'declare\s+-[aA]|mapfile|readarray' .claude .harness
+grep -rnE 'declare\s+-[aA]|mapfile|readarray' .claude .tack
 ```
 
 현재 코드베이스 grep 결과: 0건 (2026-04-21 기준).

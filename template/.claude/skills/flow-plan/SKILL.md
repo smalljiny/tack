@@ -8,7 +8,7 @@ user-invocable: true
 
 # /flow-plan
 
-Create an implementation plan from a confirmed spec document and save it to `docs/_local/active/<topic>/implementation-plan.md`.
+Create an implementation plan from a confirmed spec document and save it to `.tack/local/active/<topic>/implementation-plan.md`.
 
 ## Usage
 
@@ -27,14 +27,14 @@ If `$ARGUMENTS` is provided:
   ```
   유효하지 않은 토픽 이름입니다. 영문자, 숫자, 하이픈, 언더스코어만 허용됩니다.
   ```
-- Verify `docs/_local/backlog/<topic>/` exists — if not, stop:
+- Verify `.tack/local/backlog/<topic>/` exists — if not, stop:
   ```
   '<topic>'이 backlog에 없습니다.
   먼저 /flow-spec <topic>으로 스펙을 작성하세요.
   ```
 
 If no argument:
-- Scan `docs/_local/backlog/` for topics
+- Scan `.tack/local/backlog/` for topics
 - If empty, stop:
   ```
   플랜할 토픽이 없습니다. 먼저 /flow-spec <topic>을 실행하세요.
@@ -53,8 +53,8 @@ If no argument:
 Read `phase` and `status` from dev-context.json:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `spec:confirmed`, stop:
@@ -86,19 +86,19 @@ Load `.claude/skills/adapter-dependency-analysis/SKILL.md` and follow its proces
 
 Move the topic directory from backlog to active:
 
-- If `docs/_local/active/<topic>/` already exists, skip the move (re-entry — directory already moved)
-- Otherwise move `docs/_local/backlog/<topic>/` → `docs/_local/active/<topic>/`
+- If `.tack/local/active/<topic>/` already exists, skip the move (re-entry — directory already moved)
+- Otherwise move `.tack/local/backlog/<topic>/` → `.tack/local/active/<topic>/`
 
 Update paths in dev-context.json to reflect the new location:
 
 ```bash
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --topic=<topic> --field=spec \
-  --value=docs/_local/active/<topic>/spec.md
+  --value=.tack/local/active/<topic>/spec.md
 
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --topic=<topic> --field=specReview \
-  --value=docs/_local/active/<topic>/spec-review-<latest-timestamp>.md
+  --value=.tack/local/active/<topic>/spec-review-<latest-timestamp>.md
 ```
 
 ### 4. Invoke the planner agent
@@ -121,12 +121,12 @@ If `current_topic` is already set to a different active topic, prompt:
 
 Pass the following to the planner agent:
 - Current topic name
-- Confirmed spec path: `docs/_local/active/<topic>/spec.md`
+- Confirmed spec path: `.tack/local/active/<topic>/spec.md`
 - Dependency analysis result (JS/TS projects only): `<DEPENDENCY_ANALYSIS>` — empty string if skipped
-- Instruction: **use `.harness/contracts/implementation-plan.md` as the output format** and include a `**Commit**` field in every Story block (type/scope from `.harness/commit-scopes.md`, subject ≤ 72 chars)
+- Instruction: **use `.tack/contracts/implementation-plan.md` as the output format** and include a `**Commit**` field in every Story block (type/scope from `.tack/commit-scopes.md`, subject ≤ 72 chars)
 
 The planner agent produces **only**:
-- `docs/_local/active/<topic>/implementation-plan.md`
+- `.tack/local/active/<topic>/implementation-plan.md`
 
 The planner agent saves this file directly using its Write tool — the main agent does not save it on the planner's behalf.
 
@@ -142,18 +142,18 @@ If revisions are requested, re-invoke the planner agent.
 After approval, update state and register the plan path:
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<topic> --phase=plan --status=ready
 
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --topic=<topic> --field=plan \
-  --value=docs/_local/active/<topic>/implementation-plan.md
+  --value=.tack/local/active/<topic>/implementation-plan.md
 ```
 
 If user confirmed `y` in Step 4, also update `current_topic`:
 
 ```bash
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --field=current_topic --value=<topic>
 ```
 
@@ -162,20 +162,20 @@ node .harness/scripts/dev-context.js set-field \
 Transition to `plan:reviewing`:
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<topic> --phase=plan --status=reviewing
 ```
 
 Read `config.plan.auto_review`:
 
 ```bash
-node .harness/scripts/dev-context.js read --field=config.plan.auto_review
+node .tack/scripts/dev-context.js read --field=config.plan.auto_review
 ```
 
 **If output is NOT `true`** (default / manual mode): show the user this message and stop:
 
 ```
-구현 계획이 작성되었습니다: docs/_local/active/<topic>/implementation-plan.md
+구현 계획이 작성되었습니다: .tack/local/active/<topic>/implementation-plan.md
 
 Codex plan-review를 실행하세요:
   codex "plan-review 스킬을 실행해줘"
@@ -186,11 +186,11 @@ Codex plan-review를 실행하세요:
 **If output is `true`** (auto mode): sync `current_topic` to `<topic>` and validate the plan path before invoking the review skill:
 
 ```bash
-node .harness/scripts/dev-context.js set-field --field=current_topic --value=<topic>
-PLAN_PATH=$(node .harness/scripts/dev-context.js read --topic=<topic> --field=plan)
+node .tack/scripts/dev-context.js set-field --field=current_topic --value=<topic>
+PLAN_PATH=$(node .tack/scripts/dev-context.js read --topic=<topic> --field=plan)
 ```
 
-Validate `PLAN_PATH` matches the expected pattern `docs/_local/active/<topic>/implementation-plan.md`. If the path is empty, absolute, contains `..`, or does not start with `docs/_local/active/<topic>/`: show **Manual Fallback** (below) and stop.
+Validate `PLAN_PATH` matches the expected pattern `.tack/local/active/<topic>/implementation-plan.md`. If the path is empty, absolute, contains `..`, or does not start with `.tack/local/active/<topic>/`: show **Manual Fallback** (below) and stop.
 
 Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
 
@@ -208,7 +208,7 @@ Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
      - Apply Required Fixes from the review report to `implementation-plan.md`
      - Transition to `plan:ready`:
        ```bash
-       node .harness/scripts/dev-context.js update-state \
+       node .tack/scripts/dev-context.js update-state \
          --topic=<topic> --phase=plan --status=ready
        ```
      - Increment `attempt`. If `attempt > max_attempts`:
@@ -234,8 +234,8 @@ Codex를 사용할 수 없어 수동으로 진행하세요:
 When the user returns after Codex plan-review, check the latest `planReview` state:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 Re-entry state table:
@@ -243,7 +243,7 @@ Re-entry state table:
 Read `planReview` field and check the Decision in the file (if it exists):
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=planReview
+node .tack/scripts/dev-context.js read --topic=<topic> --field=planReview
 ```
 
 | `phase:status` | `planReview` Decision | Action |
@@ -255,7 +255,7 @@ node .harness/scripts/dev-context.js read --topic=<topic> --field=planReview
 
 ## Plan Document Format
 
-See `.harness/contracts/implementation-plan.md` for the canonical format.
+See `.tack/contracts/implementation-plan.md` for the canonical format.
 
 ```markdown
 # Implementation Plan: <topic name>
@@ -264,7 +264,7 @@ See `.harness/contracts/implementation-plan.md` for the canonical format.
 [Summary]
 
 ## Spec Reference
-> Based on: `docs/_local/active/<topic>/spec.md`
+> Based on: `.tack/local/active/<topic>/spec.md`
 
 ## Story List
 
@@ -282,9 +282,9 @@ See `.harness/contracts/implementation-plan.md` for the canonical format.
 ## Key Principles
 
 - **Gate: spec:confirmed** — `/flow-plan` only proceeds when `phase=spec && status=confirmed`
-- **Planner reads spec, does not write it** — spec path is `docs/_local/active/<topic>/spec.md` after move
+- **Planner reads spec, does not write it** — spec path is `.tack/local/active/<topic>/spec.md` after move
 - **backlog → active is atomic** — directory move happens before planner invocation; if planner fails, the directory stays in `active/`
-- **Plans are stored in `docs/_local/active/`** (git-ignored)
+- **Plans are stored in `.tack/local/active/`** (git-ignored)
 - **plan:confirmed is set by Codex plan-review** — `/flow-plan` does not set `plan:confirmed`; that is owned by the Codex plan-review skill
 - After plan-review passes: run Stories with `/flow-impl`
 

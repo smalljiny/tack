@@ -25,9 +25,9 @@ The following are explicitly **out of scope** for this skill:
 ### 1. 현재 토픽과 상태 읽기
 
 ```bash
-TOPIC=$(node .harness/scripts/dev-context.js read --field=current_topic)
-PHASE=$(node .harness/scripts/dev-context.js read --topic="$TOPIC" --field=phase)
-STATUS=$(node .harness/scripts/dev-context.js read --topic="$TOPIC" --field=status)
+TOPIC=$(node .tack/scripts/dev-context.js read --field=current_topic)
+PHASE=$(node .tack/scripts/dev-context.js read --topic="$TOPIC" --field=phase)
+STATUS=$(node .tack/scripts/dev-context.js read --topic="$TOPIC" --field=status)
 ```
 
 ### 2. phase:status → 실행 스킬 결정
@@ -49,10 +49,10 @@ plan-review: /flow-plan에서 plan:reviewing 상태로 전환 후 실행하세�
 
 ```bash
 # spec-review인 경우
-CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=spec)
+CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
 
 # plan-review인 경우
-CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=plan)
+CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
 ```
 
 실패(비-0 exit) 시 즉시 중단. 성공 시 **사용자 확인 없이** Availability Gate → Invocation Pattern 순으로 바로 진행한다.
@@ -72,8 +72,8 @@ CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=pla
 Before invoking `codex exec`, verify Codex is available and authenticated:
 
 ```bash
-node .harness/scripts/dev-context.js read --field=config.codex.available
-node .harness/scripts/dev-context.js read --field=config.codex.authenticated
+node .tack/scripts/dev-context.js read --field=config.codex.available
+node .tack/scripts/dev-context.js read --field=config.codex.authenticated
 ```
 
 If either returns a value other than `"true"`:
@@ -85,7 +85,7 @@ If either returns a value other than `"true"`:
 
 ## Path Validation (Required Before Invocation)
 
-`.harness/scripts/validate-path.js`가 경로 읽기·검증·정규화를 단일 호출로 처리한다.
+`.tack/scripts/validate-path.js`가 경로 읽기·검증·정규화를 단일 호출로 처리한다.
 
 내부 동작:
 - `dev-context.json`에서 경로 읽기
@@ -95,7 +95,7 @@ If either returns a value other than `"true"`:
 
 ```bash
 # <field>: spec-review → spec / plan-review → plan
-CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=<field>)
+CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=<field>)
 # 오류 시 비-0 exit + stderr 출력
 ```
 
@@ -111,7 +111,7 @@ CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=<fi
 
 ```bash
 # Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=spec)
+CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
 
 # -s workspace-write: 리뷰 파일을 workdir 내에 쓸 수 있도록 명시적으로 허용.
 # 프로젝트 codex.toml에 workspace-write가 없어도 동작하도록 항상 붙인다.
@@ -129,7 +129,7 @@ fi
 
 ```bash
 # Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .harness/scripts/validate-path.js --topic="$TOPIC" --field=plan)
+CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
 
 # < /dev/null: bash 복합 명령 안에서 실행 시 codex가 stdin을 읽으려 대기하는 문제 방지.
 TIMEOUT_BIN=$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null || true)
@@ -145,11 +145,11 @@ fi
 ### Isolation via DEV_CONTEXT_PATH
 
 To run experiments without mutating the active development topic, point `DEV_CONTEXT_PATH`
-to a fixture dev-context file inside the repo (e.g. `docs/_local/.../fixture/`):
+to a fixture dev-context file inside the repo (e.g. `.tack/local/.../fixture/`):
 
 ```bash
 # Validate fixture path before use
-DEV_CONTEXT_PATH="docs/_local/active/codex-skill-bridge/fixture/fixture-dev-context.json"
+DEV_CONTEXT_PATH=".tack/local/active/codex-skill-bridge/fixture/fixture-dev-context.json"
 TIMEOUT_BIN="$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null)"
 if [ -n "$TIMEOUT_BIN" ]; then
   DEV_CONTEXT_PATH="$DEV_CONTEXT_PATH" "$TIMEOUT_BIN" 120 codex exec "..." < /dev/null

@@ -69,5 +69,5 @@ Task 완료의 단일 책임은 `T<storyN>.<taskM>` Task 도구 entry 상태가 
 
 ## Resources
 
-- `.harness/contracts/implementation-plan.md` — defines `**Tasks**:` list format and `T<storyN>.<taskM>` ID convention.
+- `.tack/contracts/implementation-plan.md` — defines `**Tasks**:` list format and `T<storyN>.<taskM>` ID convention.
 - `.claude/skills/flow-impl/SKILL.md` — owns Story-start `TaskCreate` batching and post-Story markdown sync.

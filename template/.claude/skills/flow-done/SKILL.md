@@ -23,7 +23,7 @@ Always operates on `current_topic`. To complete a different topic, run `/flow-to
 ### 1. Read current topic
 
 ```bash
-node .harness/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --field=current_topic
 ```
 
 - If `current_topic` is empty or missing, stop:
@@ -40,8 +40,8 @@ node .harness/scripts/dev-context.js read --field=current_topic
 ### 2. Gate: verify pr:created
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `pr:created`, stop immediately:
@@ -63,10 +63,10 @@ Do not warn and continue — stop entirely.
 
 Move all planning artifacts to `done/` — **no files are deleted**:
 
-1. Resolve active directory: `docs/_local/active/<topic>/`
-2. Create `docs/_local/done/` if it does not exist
-3. If `docs/_local/done/<topic>/` already exists, use `docs/_local/done/<topic>-<yyyyMMddHHmmss>/` instead
-4. Create `docs/_local/done/<topic>/`
+1. Resolve active directory: `.tack/local/active/<topic>/`
+2. Create `.tack/local/done/` if it does not exist
+3. If `.tack/local/done/<topic>/` already exists, use `.tack/local/done/<topic>-<yyyyMMddHHmmss>/` instead
+4. Create `.tack/local/done/<topic>/`
 5. Move these files if they exist (skip silently if absent — re-entrant safe):
    - `active/<topic>/spec.md` → `done/<topic>/spec.md`
    - `active/<topic>/spec-review-*.md` → `done/<topic>/` (all matching files)
@@ -76,13 +76,13 @@ Move all planning artifacts to `done/` — **no files are deleted**:
 6. Remove `active/<topic>/` directory if empty; if unexpected files remain, warn the user and ask for confirmation before removing
 7. Show:
    ```
-   아카이브: docs/_local/done/<topic>/
+   아카이브: .tack/local/done/<topic>/
    ```
 
 ### 4. Remove topic from dev-context.json
 
 ```bash
-node .harness/scripts/dev-context.js remove-topic --topic=<topic>
+node .tack/scripts/dev-context.js remove-topic --topic=<topic>
 ```
 
 `remove-topic` automatically sets `current_topic` to another remaining active topic, or `null` if none remain.
@@ -92,7 +92,7 @@ node .harness/scripts/dev-context.js remove-topic --topic=<topic>
 ```
 완료되었습니다: <topic>
 
-  아카이브:  docs/_local/done/<topic>/
+  아카이브:  .tack/local/done/<topic>/
 
   현재 주제: <next-active-topic or "없음">
 ```

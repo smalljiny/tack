@@ -6,7 +6,7 @@
 ## File Naming
 
 ```
-docs/_local/active/<topic>/review-report-<YYMMDDHHmmss>.md
+.tack/local/active/<topic>/review-report-<YYMMDDHHmmss>.md
 ```
 
 Timestamp format matches sibling contracts (`spec-review`, `plan-review`): 2-digit year, `YYMMDDHHmmss`.

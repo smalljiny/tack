@@ -23,14 +23,14 @@ Resolve the spec path using the first matching source:
 
 1. **Explicit argument** — user provides the path directly:
    ```
-   codex "spec-review 스킬로 docs/_local/backlog/<topic>/spec.md를 리뷰해줘"
+   codex "spec-review 스킬로 .tack/local/backlog/<topic>/spec.md를 리뷰해줘"
    ```
 
 2. **Auto-resolution** — read from dev-context.json via CLI:
    ```bash
-   node .harness/scripts/dev-context.js read --field=current_topic
+   node .tack/scripts/dev-context.js read --field=current_topic
    # then:
-   node .harness/scripts/dev-context.js read --topic=<current_topic> --field=spec
+   node .tack/scripts/dev-context.js read --topic=<current_topic> --field=spec
    ```
 
 3. **User prompt** — neither applies; ask the user for the spec path before proceeding.
@@ -48,7 +48,7 @@ If the user explicitly provides a spec path, always use it regardless of `dev-co
 
 - Determine spec path (see Required Inputs above)
 - Read the spec document in full
-- Read project rules from `.harness/rules/` (shared) and `.claude/rules/` (Claude operational) where relevant
+- Read project rules from `.tack/rules/` (shared) and `.claude/rules/` (Claude operational) where relevant
 
 ### 2. Evaluate the 8 mandatory checks
 
@@ -69,11 +69,11 @@ See `references/rules-and-inputs.md` for context loading rules and field definit
 - Determine the owning topic before writing `specReview`:
   1. Read `current_topic`:
      ```bash
-     node .harness/scripts/dev-context.js read --field=current_topic
+     node .tack/scripts/dev-context.js read --field=current_topic
      ```
   2. Read that topic's registered spec path:
      ```bash
-     node .harness/scripts/dev-context.js read --topic=<current_topic> --field=spec
+     node .tack/scripts/dev-context.js read --topic=<current_topic> --field=spec
      ```
   3. **If the resolved spec path does not match the spec actually reviewed**, ask the user:
      ```
@@ -83,9 +83,9 @@ See `references/rules-and-inputs.md` for context loading rules and field definit
        2. 업데이트 안 함
      ```
      Do not silently write to the wrong topic.
-- Update `docs/_local/dev-context.json` via CLI (Codex owns this update):
+- Update `.tack/local/dev-context.json` via CLI (Codex owns this update):
   ```bash
-  node .harness/scripts/dev-context.js set-field \
+  node .tack/scripts/dev-context.js set-field \
     --topic=<confirmed_topic> \
     --field=specReview \
     --value=<report-path>
@@ -94,7 +94,7 @@ See `references/rules-and-inputs.md` for context loading rules and field definit
 
 ## Output Format
 
-See `.harness/contracts/spec-review.md` for the canonical format contract.
+See `.tack/contracts/spec-review.md` for the canonical format contract.
 
 The review report written to disk must use this exact structure:
 
@@ -127,6 +127,6 @@ Use `[NOTE]` for non-blocking observations.
 
 - `references/checklist-template.md`: 8-check template with per-check evaluation instructions.
 - `references/rules-and-inputs.md`: Context loading rules, field definitions, fallback inputs.
-- `.harness/contracts/spec-review.md`: Canonical format contract for this report.
-- `.harness/rules/` (Read): Shared coding-style, git-workflow, testing, security, typescript rules — referenced during load context.
-- `docs/_local/dev-context.json`: Context source.
+- `.tack/contracts/spec-review.md`: Canonical format contract for this report.
+- `.tack/rules/` (Read): Shared coding-style, git-workflow, testing, security, typescript rules — referenced during load context.
+- `.tack/local/dev-context.json`: Context source.

@@ -24,8 +24,8 @@ Topic registration is no longer a separate step — use `/flow-spec <topic>` to 
 
 ### No arguments — Check current topic
 
-1. Read `docs/_local/dev-context.json` — source of truth for active topics and their phase
-2. Scan `docs/_local/backlog/` for backlog topics
+1. Read `.tack/local/dev-context.json` — source of truth for active topics and their phase
+2. Scan `.tack/local/backlog/` for backlog topics
 3. Print status (active topics from `dev-context.json`, backlog topics from directory scan):
 
    ```
@@ -54,7 +54,7 @@ Topic registration is no longer a separate step — use `/flow-spec <topic>` to 
 
 1. Check if `<name>` exists in `dev-context.json` topics (active topics only)
    - If found: update `current_topic` to `<name>` and save
-   - If not found in active topics: check if `<name>` exists in `docs/_local/backlog/`
+   - If not found in active topics: check if `<name>` exists in `.tack/local/backlog/`
      - If in backlog: stop with guidance:
        ```
        '<name>'은 backlog 토픽입니다.

@@ -263,6 +263,6 @@ follow the same adapter contract documented in this section as separate topics.
 
 - **Priority policy for multiple matches** — when >1 skill matches a query, the registry
   returns all matches. Selection logic belongs in the calling command, not the registry.
-- **Node.js registry script** — `.harness/scripts/registry.js` is not part of this implementation.
+- **Node.js registry script** — `.tack/scripts/registry.js` is not part of this implementation.
 - **wf-* / meta-* capability tagging** — these skill families use the direct-load pattern intentionally.
 - **deep-research redesign** — separate topic.

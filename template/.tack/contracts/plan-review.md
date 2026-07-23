@@ -6,7 +6,7 @@
 ## File Naming
 
 ```
-docs/_local/active/<topic>/plan-review-<YYMMDDHHmmss>.md
+.tack/local/active/<topic>/plan-review-<YYMMDDHHmmss>.md
 ```
 
 The latest review file is determined by descending filename sort (most recent timestamp first).
@@ -17,7 +17,7 @@ The plan-review skill must resolve two paths before reviewing:
 
 ### Plan path (required)
 1. Explicit path provided by user
-2. `node .harness/scripts/dev-context.js read --topic=<current_topic> --field=plan`
+2. `node .tack/scripts/dev-context.js read --topic=<current_topic> --field=plan`
 3. Ask user if neither is available
 
 **Mismatch handling**: If the explicit path differs from `topics[current_topic].plan`, ask the user:
@@ -26,7 +26,7 @@ The plan-review skill must resolve two paths before reviewing:
 ### Spec path (required — read separately from plan)
 Always read via:
 ```bash
-node .harness/scripts/dev-context.js read --topic=<current_topic> --field=spec
+node .tack/scripts/dev-context.js read --topic=<current_topic> --field=spec
 ```
 
 ## Required Format

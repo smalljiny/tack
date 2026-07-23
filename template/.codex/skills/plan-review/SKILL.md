@@ -26,14 +26,14 @@ Resolve the plan path using the first matching source:
 
 1. **Explicit argument** — user provides the path directly:
    ```
-   codex "plan-review 스킬로 docs/_local/active/<topic>/implementation-plan.md를 리뷰해줘"
+   codex "plan-review 스킬로 .tack/local/active/<topic>/implementation-plan.md를 리뷰해줘"
    ```
 
 2. **Auto-resolution** — read from dev-context.json:
    ```bash
-   node .harness/scripts/dev-context.js read --field=current_topic
+   node .tack/scripts/dev-context.js read --field=current_topic
    # then:
-   node .harness/scripts/dev-context.js read --topic=<current_topic> --field=plan
+   node .tack/scripts/dev-context.js read --topic=<current_topic> --field=plan
    ```
 
 3. **User prompt** — neither applies; ask the user for the plan path before proceeding.
@@ -49,7 +49,7 @@ Use the user's selection.
 
 Always read the spec path independently:
 ```bash
-node .harness/scripts/dev-context.js read --topic=<current_topic> --field=spec
+node .tack/scripts/dev-context.js read --topic=<current_topic> --field=spec
 ```
 
 Do not infer the spec path from the plan path or directory.
@@ -67,8 +67,8 @@ Do not infer the spec path from the plan path or directory.
 - Determine plan path (see Required Inputs above)
 - Determine spec path (always via `dev-context.js read --field=spec`)
 - Read both documents in full
-- Read `.harness/rules/git-workflow.md` for commit convention rules (type allowlist, scope warning level)
-- Read `.harness/commit-scopes.md` for project-specific scope list. Parse scope values using regex `^\|\s*([a-z0-9_-]+)\s*\|` on each line, excluding rows where the captured value is `scope` (header) or matches `^-+$` (separator)
+- Read `.tack/rules/git-workflow.md` for commit convention rules (type allowlist, scope warning level)
+- Read `.tack/commit-scopes.md` for project-specific scope list. Parse scope values using regex `^\|\s*([a-z0-9_-]+)\s*\|` on each line, excluding rows where the captured value is `scope` (header) or matches `^-+$` (separator)
 
 ### 2. Evaluate the 8 mandatory checks
 
@@ -78,7 +78,7 @@ Apply the checklist in `references/checklist-template.md`.
 
 For each Story block that contains a `**Commit**:` field (plans written after `pr-driven-commit-workflow` Task 4):
 - `type` must be one of: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci` → warn if not
-- `scope` should match an entry in `.harness/commit-scopes.md` (free-form is acceptable) → warn if not in list
+- `scope` should match an entry in `.tack/commit-scopes.md` (free-form is acceptable) → warn if not in list
 - `subject` must be 72 characters or fewer → warn if exceeded
 - Each Story's commit should reflect only that Story's output → flag if the message appears to cover multiple Stories
 
@@ -108,14 +108,14 @@ This check produces warnings; it does not add a 9th checklist item — Checklist
 
 | Decision | State Transition | Field Update |
 |----------|-----------------|--------------|
-| READY / READY WITH NOTE | `node .harness/scripts/dev-context.js update-state --topic=<name> --phase=plan --status=confirmed` | `set-field --field=planReview --value=<path>` |
-| NOT READY | `node .harness/scripts/dev-context.js update-state --topic=<name> --phase=plan --status=ready` | `set-field --field=planReview --value=<path>` |
+| READY / READY WITH NOTE | `node .tack/scripts/dev-context.js update-state --topic=<name> --phase=plan --status=confirmed` | `set-field --field=planReview --value=<path>` |
+| NOT READY | `node .tack/scripts/dev-context.js update-state --topic=<name> --phase=plan --status=ready` | `set-field --field=planReview --value=<path>` |
 
 Always write `planReview` regardless of decision.
 
 ## Output Format
 
-See `.harness/contracts/plan-review.md` for the canonical report format.
+See `.tack/contracts/plan-review.md` for the canonical report format.
 
 The report written to disk must follow this structure exactly:
 
@@ -146,9 +146,9 @@ The report written to disk must follow this structure exactly:
 ## Resources
 
 - `references/checklist-template.md`: 8-check template with per-check evaluation instructions.
-- `.harness/contracts/plan-review.md`: Canonical format contract for this report.
-- `.harness/contracts/implementation-plan.md`: Expected structure of the plan under review.
-- `.harness/rules/git-workflow.md` (Read): Commit convention rules (type allowlist, review-fix policy).
-- `.harness/rules/` (Read): Shared project rules for context.
-- `.harness/commit-scopes.md` (Read): Project-specific scope list for Commit field validation.
-- `docs/_local/dev-context.json`: Context source.
+- `.tack/contracts/plan-review.md`: Canonical format contract for this report.
+- `.tack/contracts/implementation-plan.md`: Expected structure of the plan under review.
+- `.tack/rules/git-workflow.md` (Read): Commit convention rules (type allowlist, review-fix policy).
+- `.tack/rules/` (Read): Shared project rules for context.
+- `.tack/commit-scopes.md` (Read): Project-specific scope list for Commit field validation.
+- `.tack/local/dev-context.json`: Context source.
