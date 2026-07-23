@@ -89,3 +89,27 @@ dry-run은 Availability Gate에 우선한다 — `gh`를 호출하지 않으므�
 ### stdout Return Convention
 
 생성 연산(story 이슈·epic umbrella)은 성공 시 생성된 이슈 **번호**와 **URL**을 stdout으로 반환한다. 호출자는 stdout을 파싱해 후속 배선에 사용한다. dry-run 모드에서는 실 번호·URL 대신 조합된 gh 명령만 출력한다.
+
+## Label Bootstrap (G1 — 멱등)
+
+`type:epic`·`type:story` 두 라벨을 대상 repo에 부트스트랩한다. §Operational Contract(가용성 게이트·계정 라우팅·dry-run)를 따른다.
+
+### 연산
+
+```bash
+gh label create type:epic  --repo <owner>/<name> --color 5319E7 --description "Epic anchor issue"
+gh label create type:story --repo <owner>/<name> --color 1D76DB --description "Story anchor issue"
+```
+
+### 멱등성
+
+라벨이 이미 존재해도 실패하지 않는다. 두 방식 중 하나를 사용한다:
+
+- **선체크**: `gh label list --repo <owner>/<name>`로 라벨 존재를 확인하고, 없는 라벨만 생성한다.
+- **오류 tolerate**: `gh label create ... 2>/dev/null || true`로 "already exists" 오류를 흡수한다. 이 방식은 auth·network 등 실 오류도 함께 흡수하므로 선체크를 우선한다.
+
+재실행 시 두 라벨이 모두 존재하면 no-op이며 exit 0으로 종료한다. 현재 대상 repo에 이미 존재하는 `type:epic`·`type:story`(수동 생성분)와 충돌하지 않는다.
+
+### dry-run
+
+`GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 두 `gh label create` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 라벨을 생성하지 않는다. 선체크(`gh label list`)도 gh 호출이므로 dry-run에서는 건너뛰고 두 create 명령만 출력한다.
