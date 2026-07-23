@@ -52,7 +52,7 @@ template/                              → (copier 렌더) → instance 루트
 
 ## 동작: AGENTS.md managed 블록 — Jinja include
 
-Codex는 @import를 지원하지 않아 공유 코딩 규칙을 인라인해야 한다. `AGENTS.md.jinja`는 `shared-rules` managed 블록 안에서 `.tack/rules/` 최상위 4개 규칙을 파일당 `{% include %}` 1개로 인라인한다.
+Codex는 @import를 지원하지 않아 공유 코딩 규칙을 인라인해야 한다. `AGENTS.md.jinja`는 `shared-rules` managed 블록 안에서 `.tack/rules/` **전체 6개 규칙**을 파일당 `{% include %}` 1개로 인라인한다.
 
 ```jinja
 <!-- shared-rules:begin -->
@@ -63,10 +63,14 @@ Codex는 @import를 지원하지 않아 공유 코딩 규칙을 인라인해야 
 {% include 'template/.tack/rules/security.md' %}
 
 {% include 'template/.tack/rules/testing.md' %}
+
+{% include 'template/.tack/rules/typescript/patterns.md' %}
+
+{% include 'template/.tack/rules/typescript/testing.md' %}
 <!-- shared-rules:end -->
 ```
 
-인라인 대상은 4개 공유 코딩 규칙(coding-style·git-workflow·security·testing)에 한정한다. `typescript/` 하위(patterns·testing)는 Codex 대상 언어 규칙이 아니므로 인라인하지 않는다.
+인라인 대상은 `.tack/rules/` 전체 6개 규칙(coding-style·git-workflow·security·testing + typescript/patterns·typescript/testing)이다 — `CLAUDE.md`의 @import 집합과 **동일 세트**를 보장한다(base-layout §8, 규칙 집합 대칭). Jinja native `{% include %}`는 glob(`**/*.md`)을 미지원하므로 명시적 6-path 정적 목록으로 배선한다. `typescript/2`가 Codex 대상 언어 규칙은 아니지만 여기서는 규칙 **집합**만 대칭으로 맞춘다 — TS 규칙 본문을 tack 스택(Python)으로 교체하는 작업은 E7-S4 범위다.
 
 **include 경로는 clone 루트 기준**이다. Copier의 Jinja loader searchpath는 `_subdirectory`가 아니라 템플릿 clone 루트이므로, include 경로에 `template/` 접두사가 필요하다 — 접두사가 없으면 `copier copy`가 `TemplateNotFound`로 전체 렌더를 중단한다(Copier 9.17 실측).
 
@@ -79,13 +83,12 @@ Codex는 @import를 지원하지 않아 공유 코딩 규칙을 인라인해야 
 
 ## 제약사항
 
-- **skeleton = verbatim copy — 렌더 instance는 아직 end-to-end 미작동**: `template/`의 프롬프트·스크립트는 레퍼런스 하네스에서 verbatim 복사된 상태라, 콘텐츠 내부가 여전히 레퍼런스 경로(`.harness/scripts/`, `docs/_local/`)를 참조한다. tack의 배포 레이아웃은 `.tack/scripts/`·`.tack/local/`이므로, 갓 `copier copy`한 instance는 첫 dev-context 명령부터 경로 불일치로 실패한다. `.harness/`→`.tack/`·`docs/_local/`→`.tack/local/` 콘텐츠 경로 마이그레이션 + 렌더 스모크 테스트는 후속 story가 소유하며, E1-S3(dogfood) 물리 배포보다 앞서 실행한다.
-- **물리적 배포 실행은 범위 밖**: `copier copy`/`update`로 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행은 E1-S3 소관이다. 이 문서가 확정하는 것은 배선(정적 아티팩트)이지 물리 배포가 아니다.
+- **물리적 배포 실행은 범위 밖**: `copier copy`/`update`로 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행은 E1-S3 소관이다. 이 문서가 확정하는 것은 배선(정적 아티팩트)이지 물리 배포가 아니다. 콘텐츠 경로는 `.tack/` 배포 레이아웃(`.tack/scripts/`·`.tack/local/`)으로 정합돼 있고, `scripts/render-smoke-test.sh`가 disposable dest에 렌더해 (a) 첫 dev-context 명령 동작 (b) stale 참조 0 (c) `.tack/local/` gitignore 강제를 검증한다.
 - **tracked 커밋 전제는 E1-S4**: `.copier-answers.yml` 커밋과 배포된 instance 파일의 git tracked 커밋(3-way merge 전제)은 E1-S4가 배선한다.
 - **dev-context 엔진은 E2**: `_tasks`가 seed하는 `dev-context.json`은 최소 placeholder이며, 스키마·상태 머신·Python 재작성은 E2가 소유한다.
 - **첫 git-tag 시점 DEFER**: 초기 버전 태그(v0.1.0 등) 부여 시점은 배포 정책(E1-S3/E1-S4)으로 미룬다 — 동작하는 copier.yml·물리 배포 검증 전 태깅은 조급하다.
-- **AGENTS.md 렌더 시 rule frontmatter 누수**: include되는 4개 rule 파일은 각각 YAML frontmatter를 가져, 렌더된 `shared-rules` 블록에 stray frontmatter가 섞인다(cosmetic). source rule frontmatter는 컴포넌트 버전 규약이라 strip 불가하고, Copier 기본 Jinja에 include-time strip 수단이 부재하다 — 후속 story defer.
-- **managed 블록 마커 정합**: 마커 이름은 `shared-rules`로 확정했으나, 레퍼런스 flow-init은 `harness-rules`(CLAUDE.md)·`harness-guide`(AGENTS.md)를 쓴다. 마커 통일 또는 flow-init 신규 마커 인지 추가는 후속 story follow-up이며, 이 골격은 flow-init SKILL 로직을 수정하지 않는다.
+- **AGENTS.md 렌더 시 rule frontmatter 누수**: include되는 6개 rule 파일은 각각 YAML frontmatter를 가져, 렌더된 `shared-rules` 블록에 stray frontmatter가 섞인다(cosmetic). source rule frontmatter는 컴포넌트 버전 규약이라 strip 불가하고, Copier 기본 Jinja에 include-time strip 수단이 부재하다 — 후속 story defer.
+- **managed 블록 마커**: 마커 이름은 CLAUDE.md·AGENTS.md 양쪽 `shared-rules`로 통일돼 있고, `flow-init` SKILL이 이 마커를 인지해 두 파일의 블록을 `.tack/rules/` 기준으로 재생성한다(CLAUDE.md는 @import 포인터 목록, AGENTS.md는 rules 본문 인라인).
 
 ## 관련 문서
 
