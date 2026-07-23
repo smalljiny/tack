@@ -38,7 +38,7 @@ A pattern is worth saving if it passes all three filters:
 | Simple typo fix | Fixed a missing semicolon |
 | One-time issue | Rotated an API key |
 | Project-specific logic | Specific domain rule for this app only |
-| Already in rules/ | Covered by `.harness/rules/coding-style.md` |
+| Already in rules/ | Covered by `.tack/rules/coding-style.md` |
 
 ## Output Format
 

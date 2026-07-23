@@ -23,7 +23,7 @@ Always operates on `current_topic`.
 ### 1. Read current topic and gate check
 
 ```bash
-node .harness/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --field=current_topic
 ```
 
 If `current_topic` is empty, stop:
@@ -34,8 +34,8 @@ If `current_topic` is empty, stop:
 Read `phase` and `status`:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 Determine the entry mode based on `phase:status`:
@@ -67,15 +67,15 @@ If no passing verification is found:
 
 Read git config:
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.baseBranch
-node .harness/scripts/dev-context.js read --field=config.git.pullRemote
+node .tack/scripts/dev-context.js read --field=config.git.baseBranch
+node .tack/scripts/dev-context.js read --field=config.git.pullRemote
 ```
 
 Use defaults if not set: `baseBranch=main`, `pullRemote=origin`.
 
 Read the source filter configuration:
 ```bash
-node .harness/scripts/dev-context.js read --field=config.docs.sourceFilter
+node .tack/scripts/dev-context.js read --field=config.docs.sourceFilter
 ```
 Parse the output as a line-by-line list of path prefixes: split by `\n`, filter out empty strings. Store as `sourceFilter`. If no non-empty lines remain, `sourceFilter` is an empty list (no filter).
 
@@ -117,7 +117,7 @@ Validate the user-provided branch name against `^[a-zA-Z0-9][a-zA-Z0-9_/.-]*$` b
 
 ### 4. Spec reconciliation
 
-Read `docs/_local/active/<topic>/spec.md`. Compare its contents against the collected changed files to identify discrepancies — things implemented but not described in the spec, or spec items that were not implemented.
+Read `.tack/local/active/<topic>/spec.md`. Compare its contents against the collected changed files to identify discrepancies — things implemented but not described in the spec, or spec items that were not implemented.
 
 **If discrepancies found**: first classify each discrepancy — mark items that would alter implementation goals with `⚠ 구현 목표 변경`. Then present the list:
 
@@ -225,7 +225,7 @@ After all files are updated or created, select the representative document for `
 
 Record the selected path:
 ```bash
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --topic=<topic> --field=refDoc \
   --value=docs/specs/<selected>.md
 ```
@@ -237,7 +237,7 @@ Show:
 
 ### 8. Commit
 
-Stage all updated and newly created `docs/specs/` files. Do **not** stage `spec.md` (it lives in `docs/_local/` which is git-ignored).
+Stage all updated and newly created `docs/specs/` files. Do **not** stage `spec.md` (it lives in `.tack/local/` which is git-ignored).
 
 ```bash
 git add docs/specs/<file1>.md docs/specs/<file2>.md ...
@@ -261,7 +261,7 @@ COMMIT_MSG
 ### 9. Update state
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<topic> --phase=docs --status=generated
 ```
 

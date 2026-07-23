@@ -59,12 +59,12 @@ describe('dev-context.js', () => {
 
   describe('register-topic', () => {
     test('정상 등록: spec:drafting 상태로 생성됨', () => {
-      run('register-topic', '--topic=test-topic', '--spec=docs/_local/backlog/test-topic/spec.md')
+      run('register-topic', '--topic=test-topic', '--spec=.tack/local/backlog/test-topic/spec.md')
       const ctx = readCtx()
       assert.equal(ctx.current_topic, 'test-topic')
       assert.equal(ctx.topics['test-topic'].phase, 'spec')
       assert.equal(ctx.topics['test-topic'].status, 'drafting')
-      assert.equal(ctx.topics['test-topic'].spec, 'docs/_local/backlog/test-topic/spec.md')
+      assert.equal(ctx.topics['test-topic'].spec, '.tack/local/backlog/test-topic/spec.md')
     })
 
     test('레거시 필드(current_spec, specConfirmed, planConfirmed) 자동 제거', () => {
@@ -86,10 +86,10 @@ describe('dev-context.js', () => {
 
     test('topics 없는 legacy current_spec 파일에서도 등록 성공', () => {
       writeFileSync(CTX_PATH, JSON.stringify({
-        current_spec: 'docs/_local/backlog/legacy/spec.md',
+        current_spec: '.tack/local/backlog/legacy/spec.md',
         updatedAt: new Date().toISOString(),
       }), 'utf8')
-      run('register-topic', '--topic=legacy-only', '--spec=docs/_local/backlog/legacy-only/spec.md')
+      run('register-topic', '--topic=legacy-only', '--spec=.tack/local/backlog/legacy-only/spec.md')
       const ctx = readCtx()
       assert.equal(ctx.current_spec, undefined)
       assert.equal(ctx.current_topic, 'legacy-only')
@@ -212,9 +212,9 @@ describe('dev-context.js', () => {
     })
 
     test('일반 필드 업데이트 성공', () => {
-      run('set-field', '--topic=sf-test', '--field=specReview', '--value=docs/_local/backlog/sf-test/spec-review-001.md')
+      run('set-field', '--topic=sf-test', '--field=specReview', '--value=.tack/local/backlog/sf-test/spec-review-001.md')
       const ctx = readCtx()
-      assert.equal(ctx.topics['sf-test'].specReview, 'docs/_local/backlog/sf-test/spec-review-001.md')
+      assert.equal(ctx.topics['sf-test'].specReview, '.tack/local/backlog/sf-test/spec-review-001.md')
     })
 
     test('currentStory null 설정', () => {
@@ -265,9 +265,9 @@ describe('dev-context.js', () => {
           legacy: {
             phase: 'impl',
             status: 'in-progress',
-            spec: 'docs/_local/active/legacy/spec.md',
+            spec: '.tack/local/active/legacy/spec.md',
             specReview: null,
-            plan: 'docs/_local/active/legacy/implementation-plan.md',
+            plan: '.tack/local/active/legacy/implementation-plan.md',
             planReview: null,
             currentTask: 'Task5',
             createdAt: new Date().toISOString(),
@@ -278,7 +278,7 @@ describe('dev-context.js', () => {
       }), 'utf8')
 
       // 어떤 쓰기 작업이든 readContext → writeContext 경로를 통과시키면 마이그레이션이 영속화된다
-      run('set-field', '--topic=legacy', '--field=planReview', '--value=docs/_local/active/legacy/plan-review-001.md')
+      run('set-field', '--topic=legacy', '--field=planReview', '--value=.tack/local/active/legacy/plan-review-001.md')
       const ctx = readCtx()
       assert.equal(ctx.topics.legacy.currentStory, 'Task5')
       assert.equal(Object.hasOwn(ctx.topics.legacy, 'currentTask'), false)
@@ -292,9 +292,9 @@ describe('dev-context.js', () => {
           both: {
             phase: 'impl',
             status: 'in-progress',
-            spec: 'docs/_local/active/both/spec.md',
+            spec: '.tack/local/active/both/spec.md',
             specReview: null,
-            plan: 'docs/_local/active/both/implementation-plan.md',
+            plan: '.tack/local/active/both/implementation-plan.md',
             planReview: null,
             currentTask: 'OldT',
             currentStory: 'NewS',
@@ -305,7 +305,7 @@ describe('dev-context.js', () => {
         updatedAt: new Date().toISOString(),
       }), 'utf8')
 
-      run('set-field', '--topic=both', '--field=planReview', '--value=docs/_local/active/both/plan-review-001.md')
+      run('set-field', '--topic=both', '--field=planReview', '--value=.tack/local/active/both/plan-review-001.md')
       const ctx = readCtx()
       // currentStory는 그대로, currentTask는 보존 (덮어쓰지 않음)
       assert.equal(ctx.topics.both.currentStory, 'NewS')
@@ -313,7 +313,7 @@ describe('dev-context.js', () => {
     })
 
     test('register-topic 초기화 시 currentStory: null 필드 생성, currentTask 키 부재', () => {
-      run('register-topic', '--topic=fresh', '--spec=docs/_local/backlog/fresh/spec.md')
+      run('register-topic', '--topic=fresh', '--spec=.tack/local/backlog/fresh/spec.md')
       const ctx = readCtx()
       assert.equal(ctx.topics.fresh.currentStory, null)
       assert.equal(Object.hasOwn(ctx.topics.fresh, 'currentTask'), false)
@@ -322,7 +322,7 @@ describe('dev-context.js', () => {
 
   describe('read', () => {
     beforeEach(() => {
-      run('register-topic', '--topic=read-test', '--spec=docs/_local/backlog/read-test/spec.md')
+      run('register-topic', '--topic=read-test', '--spec=.tack/local/backlog/read-test/spec.md')
     })
 
     test('read --topic=read-test --field=phase → "spec" 출력', () => {
@@ -342,7 +342,7 @@ describe('dev-context.js', () => {
 
     test('read --topic=read-test --field=spec → spec 경로 출력', () => {
       const out = run('read', '--topic=read-test', '--field=spec')
-      assert.equal(out, 'docs/_local/backlog/read-test/spec.md')
+      assert.equal(out, '.tack/local/backlog/read-test/spec.md')
     })
 
     test('존재하지 않는 토픽 읽기 → non-zero exit', async () => {
@@ -473,7 +473,7 @@ describe('dev-context.js', () => {
     test('set-field: config 없는 기존 파일에 대해 임의 set-field 실행 후 최상위 config 키가 영속화됨', () => {
       // config 없는 토픽을 만들고 토픽 필드 set-field → config 키가 파일에 생겨야 함
       run('register-topic', '--topic=sch-test', '--spec=some/spec.md')
-      run('set-field', '--topic=sch-test', '--field=plan', '--value=docs/_local/active/sch-test/plan.md')
+      run('set-field', '--topic=sch-test', '--field=plan', '--value=.tack/local/active/sch-test/plan.md')
       const ctx = readCtx()
       assert.ok(Object.hasOwn(ctx, 'config'), 'top-level config 키가 존재해야 함')
       assert.equal(typeof ctx.config, 'object')
@@ -580,16 +580,16 @@ describe('dev-context.js', () => {
 
     // 14. JSON 배열 리터럴 지원
     test('set-field config: JSON 문자열 배열 → 네이티브 배열 저장', () => {
-      run('set-field', '--field=config.docs.sourceFilter', '--value=[".claude/",".harness/"]')
+      run('set-field', '--field=config.docs.sourceFilter', '--value=[".claude/",".tack/"]')
       const ctx = readCtx()
-      assert.deepEqual(ctx.config.docs.sourceFilter, ['.claude/', '.harness/'])
+      assert.deepEqual(ctx.config.docs.sourceFilter, ['.claude/', '.tack/'])
       assert.ok(Array.isArray(ctx.config.docs.sourceFilter))
     })
 
     test('read config: 배열 값 → 줄바꿈 구분 출력 (각 원소 한 줄)', () => {
-      run('set-field', '--field=config.docs.sourceFilter', '--value=[".claude/",".harness/","CLAUDE.md"]')
+      run('set-field', '--field=config.docs.sourceFilter', '--value=[".claude/",".tack/","CLAUDE.md"]')
       const out = run('read', '--field=config.docs.sourceFilter')
-      assert.equal(out, '.claude/\n.harness/\nCLAUDE.md')
+      assert.equal(out, '.claude/\n.tack/\nCLAUDE.md')
     })
 
     test('set-field config: 빈 배열 [] 저장 → 네이티브 빈 배열', () => {

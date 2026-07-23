@@ -9,7 +9,7 @@ import { join } from 'path'
 import { spawnSync } from 'child_process'
 
 const cwd = process.env.PWD || process.cwd()
-const contextPath = join(cwd, 'docs/_local/dev-context.json')
+const contextPath = join(cwd, '.tack/local/dev-context.json')
 const detectScript = join(cwd, '.claude/scripts/codex/detect-and-cache.js')
 
 function main() {

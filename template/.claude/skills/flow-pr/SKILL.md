@@ -23,7 +23,7 @@ Always operates on `current_topic`.
 ### 1. Read current topic and gate check
 
 ```bash
-node .harness/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --field=current_topic
 ```
 
 If `current_topic` is empty, stop:
@@ -33,8 +33,8 @@ PR을 생성할 토픽이 없습니다.
 
 Read `phase` and `status`:
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 Determine the entry mode based on `phase:status`:
@@ -88,7 +88,7 @@ git rev-parse --abbrev-ref HEAD
 
 Read `config.git.branchPattern` (default: `^(feature|fix|chore)/`):
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.branchPattern
+node .tack/scripts/dev-context.js read --field=config.git.branchPattern
 ```
 
 If the current branch does not match the pattern, warn:
@@ -102,10 +102,10 @@ If the current branch does not match the pattern, warn:
 ### 3. Read config
 
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.pushRemote
-node .harness/scripts/dev-context.js read --field=config.git.pullRemote
-node .harness/scripts/dev-context.js read --field=config.git.baseBranch
-node .harness/scripts/dev-context.js read --topic=<topic> --field=baseBranch
+node .tack/scripts/dev-context.js read --field=config.git.pushRemote
+node .tack/scripts/dev-context.js read --field=config.git.pullRemote
+node .tack/scripts/dev-context.js read --field=config.git.baseBranch
+node .tack/scripts/dev-context.js read --topic=<topic> --field=baseBranch
 ```
 
 Defaults:
@@ -122,7 +122,7 @@ Defaults:
 
 Read the implementation plan to extract Story Commit fields:
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=plan
+node .tack/scripts/dev-context.js read --topic=<topic> --field=plan
 ```
 
 From the plan's Story blocks, extract all `**Commit**:` values. Parse `type` and `scope` from each. Find the most frequent `type` and `scope`.
@@ -153,7 +153,7 @@ If invalid, warn and re-prompt.
 
 ### 5. Draft PR body
 
-Load `.harness/templates/pr-body.md` and substitute placeholders:
+Load `.tack/templates/pr-body.md` and substitute placeholders:
 
 | Placeholder | Value |
 |---|---|
@@ -180,7 +180,7 @@ PR body 초안 (아래에 표시):
 
 **Skip this step entirely in re-entry (`pr:created`) mode.** In re-entry mode, jump directly to Step 7 to update the PR title/body via `gh pr edit`. Any new local commits must be published by returning to `docs:generated` state first:
 ```bash
-node .harness/scripts/dev-context.js update-state --topic=<topic> --phase=docs --status=generated
+node .tack/scripts/dev-context.js update-state --topic=<topic> --phase=docs --status=generated
 ```
 Then re-run `/flow-docs` and `/flow-pr` in sequence.
 
@@ -237,7 +237,7 @@ PR이 생성되었습니다: <pr-url>
 ### 8. Update state
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<topic> --phase=pr --status=created
 ```
 
@@ -268,7 +268,7 @@ After `/flow-pr` completes (`pr:created`):
 - **PR 제목·body만 수정**: `/flow-pr` 재실행 — `pr:created` 상태에서 자동으로 re-entry(update) 모드로 진입해 `gh pr edit`을 실행한다.
 - **참조 문서도 수정 필요**: `pr:created → docs:generated`로 상태를 복귀시킨 뒤 `/flow-docs`와 `/flow-pr`을 순서대로 실행한다.
   ```bash
-  node .harness/scripts/dev-context.js update-state \
+  node .tack/scripts/dev-context.js update-state \
     --topic=<topic> --phase=docs --status=generated
   ```
   그 다음 `/flow-docs` (참조 문서 재생성 + commit) → `/flow-pr` (재push + PR 업데이트).

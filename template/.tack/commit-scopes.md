@@ -13,11 +13,11 @@
 | agent | `.claude/agents/` 에이전트 정의 변경 |
 | skill | `.claude/skills/` 또는 `.codex/skills/` 스킬 변경 |
 | command | `.claude/commands/` 슬래시 명령어 변경 |
-| rule | `.harness/rules/` 또는 `.claude/rules/` 규칙 변경 |
+| rule | `.tack/rules/` 또는 `.claude/rules/` 규칙 변경 |
 | hook | `.claude/hooks/` 훅 설정 변경 |
-| script | `.harness/scripts/` CLI·자동화 스크립트 변경 |
-| contract | `.harness/contracts/` 계약 파일 변경 |
-| template | `.harness/templates/` 템플릿 파일 변경 |
+| script | `.tack/scripts/` CLI·자동화 스크립트 변경 |
+| contract | `.tack/contracts/` 계약 파일 변경 |
+| template | `.tack/templates/` 템플릿 파일 변경 |
 | docs | `docs/` 문서 변경 |
 | harness | 기타 하네스 루트 설정·메타 변경 (CLAUDE.md, AGENTS.md 등) |
 

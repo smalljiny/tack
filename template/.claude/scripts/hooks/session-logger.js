@@ -16,7 +16,7 @@ function getToday() {
 }
 
 function getCurrentTopic() {
-  const contextPath = join(cwd, 'docs/_local/dev-context.json')
+  const contextPath = join(cwd, '.tack/local/dev-context.json')
   if (!existsSync(contextPath)) return null
   try {
     const context = JSON.parse(readFileSync(contextPath, 'utf-8'))

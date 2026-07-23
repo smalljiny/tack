@@ -6,8 +6,8 @@
 ## File Naming
 
 ```
-docs/_local/backlog/<topic>/spec-review-<YYMMDDHHmmss>.md
-docs/_local/active/<topic>/spec-review-<YYMMDDHHmmss>.md
+.tack/local/backlog/<topic>/spec-review-<YYMMDDHHmmss>.md
+.tack/local/active/<topic>/spec-review-<YYMMDDHHmmss>.md
 ```
 
 The latest review file is determined by descending filename sort (most recent timestamp first).

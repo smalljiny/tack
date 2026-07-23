@@ -8,7 +8,7 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 
 - **이중 도구** — Claude Code가 각 단계를 실행하고, Codex가 spec·plan·최종 리뷰 게이트에서 독립 검토한다.
 - **spec 주도** — 모든 기능은 spec → plan → 구현 순으로 흐르며, 각 전환은 리뷰 게이트를 통과해야 한다.
-- **Copier 배포** — tack은 source 트리(`template/`)를 개발·추적하고, Copier가 이를 소비 프로젝트의 destination(`.claude/`·`.codex/`·`.tack/`)으로 렌더한다. source를 편집하고 destination은 렌더 결과다 (→ [base-layout](docs/specs/base-layout.md)).
+- **Copier 배포** — tack은 source 트리(`template/`)를 개발·추적하고, Copier가 이를 소비 프로젝트의 destination(`.claude/`·`.codex/`·`.tack/`)으로 렌더한다. source를 편집하고 destination은 렌더 결과다 (→ [base-layout](docs/specs/base-layout.md) · [copier-template](docs/specs/copier-template.md)).
 
 ## 개발 흐름
 

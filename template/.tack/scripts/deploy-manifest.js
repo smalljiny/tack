@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // deploy-manifest.js — deploy 매니페스트 JSON I/O + src/ 파일 열거 헬퍼
 // 사용법:
-//   node .harness/scripts/deploy-manifest.js list-src <src-dir>
-//   node .harness/scripts/deploy-manifest.js read-files <manifest-path>
-//   node .harness/scripts/deploy-manifest.js write <target-manifest> <files-list-path> --commit=<sha> --branch=<name>
-//   node .harness/scripts/deploy-manifest.js strip-gitignore-block <gitignore-path>
+//   node .tack/scripts/deploy-manifest.js list-src <src-dir>
+//   node .tack/scripts/deploy-manifest.js read-files <manifest-path>
+//   node .tack/scripts/deploy-manifest.js write <target-manifest> <files-list-path> --commit=<sha> --branch=<name>
+//   node .tack/scripts/deploy-manifest.js strip-gitignore-block <gitignore-path>
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, dirname } from 'node:path'

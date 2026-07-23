@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # wf-worktree-context — sibling worktree 프로비저닝 (멱등·프로젝트 무관)
 #
-# 하네스(.claude·.harness·.codex 등)가 git-미추적인 프로젝트에서 fresh worktree
+# 하네스(.claude·.tack·.codex 등)가 git-미추적인 프로젝트에서 fresh worktree
 # 체크아웃엔 이들이 없다. 이 스크립트가 git-미추적 컨텍스트를 주입한다.
 # 원 출처: marketing-strategist(2026-07-03/07-06 실증 교정) → muhan → 하네스 정본.
 #
@@ -90,15 +90,20 @@ link() { # link <rel-target>
 for s in .claude .codex .agents .mcp.json AGENTS.md CLAUDE.md .serena; do link "$s"; done
 echo "[2] symlinks injected:${INJECTED:- (none — all tracked/absent)}"
 
-# --- 3. .harness copy (blocker-2: dev-context.js __dirname 기준 → symlink 시 main 격리붕괴) ---
+# --- 3. .tack copy (blocker-2: dev-context.js __dirname 기준 → symlink 시 main 격리붕괴) ---
 # tracked 면 worktree add 가 실파일로 제공 → 아래 존재 검사가 skip(exclude 불요).
+# .tack/local 은 main 런타임 상태(dev-context.json·전 토픽 산출물·세션)라 wholesale
+# copy 로 worktree 에 새면 안 된다 — copy 직후 제거하고 step 5 가 요청 토픽만 격리
+# re-seed 한다. (과거엔 정적 하네스 트리와 런타임 트리가 분리돼 이 leak 이 없었다.
+# 런타임 트리가 .tack 하위로 중첩되며 생긴 격리 회귀를 여기서 닫는다.)
 HARNESS_COPIED=""
-if [ -e "$WT/.harness" ]; then
-  echo "[3] .harness exists — skip"
+if [ -e "$WT/.tack" ]; then
+  echo "[3] .tack exists — skip"
 else
-  cp -R "$MAIN/.harness" "$WT/.harness"
+  cp -R "$MAIN/.tack" "$WT/.tack"
+  rm -rf "$WT/.tack/local"
   HARNESS_COPIED="1"
-  echo "[3] .harness copied"
+  echo "[3] .tack copied (main .tack/local stripped — step 5 re-seeds per-worktree)"
 fi
 
 # --- 4. env copy (격리, 값 변경 안전). .secrets 는 never-tracked → 있으면 copy ---
@@ -113,28 +118,28 @@ else
   echo "[4] no .secrets — skip"
 fi
 
-# --- 5. docs/_local per-worktree 실디렉토리 (blocker-1: codex workspace-write 가
+# --- 5. .tack/local per-worktree 실디렉토리 (blocker-1: codex workspace-write 가
 #         worktree 밖 symlink 쓰기 차단) + 토픽 산출물 핸드오프 copy ---
-mkdir -p "$WT/docs/_local/backlog" "$WT/docs/_local/active" "$WT/docs/_local/done"
+mkdir -p "$WT/.tack/local/backlog" "$WT/.tack/local/active" "$WT/.tack/local/done"
 # 토픽이 있는 stage 를 탐지해 그 디렉토리를 통째로 copy (spec:confirmed=backlog, plan+=active)
 SRC_STAGE=""
 for stage in active backlog done; do
-  if [ -d "$MAIN/docs/_local/$stage/$TOPIC" ]; then SRC_STAGE="$stage"; break; fi
+  if [ -d "$MAIN/.tack/local/$stage/$TOPIC" ]; then SRC_STAGE="$stage"; break; fi
 done
 if [ -n "$SRC_STAGE" ]; then
-  if [ ! -d "$WT/docs/_local/$SRC_STAGE/$TOPIC" ]; then
-    cp -R "$MAIN/docs/_local/$SRC_STAGE/$TOPIC" "$WT/docs/_local/$SRC_STAGE/$TOPIC"
+  if [ ! -d "$WT/.tack/local/$SRC_STAGE/$TOPIC" ]; then
+    cp -R "$MAIN/.tack/local/$SRC_STAGE/$TOPIC" "$WT/.tack/local/$SRC_STAGE/$TOPIC"
   fi
-  echo "[5] handoff copied: docs/_local/$SRC_STAGE/$TOPIC"
+  echo "[5] handoff copied: .tack/local/$SRC_STAGE/$TOPIC"
 else
-  echo "[5] WARN: topic dir not found in main docs/_local/{active,backlog,done}/$TOPIC" >&2
+  echo "[5] WARN: topic dir not found in main .tack/local/{active,backlog,done}/$TOPIC" >&2
 fi
 # dev-context.json per-worktree (current_topic 격리). main 에 없으면(/flow-spec 전) 방어적 skip.
-if [ ! -f "$WT/docs/_local/dev-context.json" ] && [ -f "$MAIN/docs/_local/dev-context.json" ]; then
-  cp "$MAIN/docs/_local/dev-context.json" "$WT/docs/_local/dev-context.json"
+if [ ! -f "$WT/.tack/local/dev-context.json" ] && [ -f "$MAIN/.tack/local/dev-context.json" ]; then
+  cp "$MAIN/.tack/local/dev-context.json" "$WT/.tack/local/dev-context.json"
   echo "[5] dev-context.json provisioned (per-worktree)"
-elif [ ! -f "$MAIN/docs/_local/dev-context.json" ]; then
-  echo "[5] WARN: main docs/_local/dev-context.json 없음 — /flow-spec 후 재프로비저닝 필요" >&2
+elif [ ! -f "$MAIN/.tack/local/dev-context.json" ]; then
+  echo "[5] WARN: main .tack/local/dev-context.json 없음 — /flow-spec 후 재프로비저닝 필요" >&2
 fi
 
 # --- 6. git status 누출 처리: 공용 $MAIN/.git/info/exclude 에 실제 주입분만 등록.
@@ -144,7 +149,7 @@ fi
 EXCLUDE="$MAIN/.git/info/exclude"
 if [ -f "$EXCLUDE" ]; then
   EXC="$INJECTED"
-  [ -n "$HARNESS_COPIED" ] && EXC="$EXC .harness"
+  [ -n "$HARNESS_COPIED" ] && EXC="$EXC .tack"
   [ -n "$SECRETS_COPIED" ] && EXC="$EXC .secrets"
   for e in $EXC; do
     grep -qxF "$e" "$EXCLUDE" || printf '%s\n' "$e" >> "$EXCLUDE"
@@ -166,8 +171,8 @@ if [ -f "$WT/pnpm-lock.yaml" ] && [ -n "$(git -C "$WT" status --porcelain pnpm-l
 fi
 
 # --- 9. 격리 프로브 + git status 검증 ---
-echo "=== isolation probe (worktree .harness → worktree dev-context) ==="
-node "$WT/.harness/scripts/dev-context.js" read --field=current_topic || true
+echo "=== isolation probe (worktree .tack → worktree dev-context) ==="
+node "$WT/.tack/scripts/dev-context.js" read --field=current_topic || true
 echo "=== worktree git status (expect clean) ==="
 git -C "$WT" status --short || true
 

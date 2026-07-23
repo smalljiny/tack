@@ -108,7 +108,7 @@ Story 내부 `**Tasks**:` 목록의 각 라인은 `- [ ] T<storyN>.<taskM> — <
   - [ ] T1.2 — Verify version bump via grep
   ```
 
-전체 스키마는 `.harness/contracts/implementation-plan.md`의 `## Task Line Format` 섹션을 참조한다.
+전체 스키마는 `.tack/contracts/implementation-plan.md`의 `## Task Line Format` 섹션을 참조한다.
 
 #### 4.4.5. Tasks↔Criteria 1:1 매핑 자가 점검
 
@@ -117,7 +117,7 @@ Plan 출력 직전 각 Story에서 `preserve X` / `do not break Y` / `verify Z` 
 ### 4.5. `prompt` 타입 Story 작성 지침
 
 Story Type이 `prompt`인 경우 Completion Criteria를 다음 형식으로 작성한다.
-Eval Case 스키마 전체 명세는 `.harness/contracts/implementation-plan.md`의 `## Prompt Task Eval Schema` 섹션을 참조한다.
+Eval Case 스키마 전체 명세는 `.tack/contracts/implementation-plan.md`의 `## Prompt Task Eval Schema` 섹션을 참조한다.
 
 **언제 사용**: 에이전트·스킬·커맨드·규칙 등 Claude에게 전달되는 프롬프트 파일을 작성·개선하는 Story.
 
@@ -140,7 +140,7 @@ Eval Case 스키마 전체 명세는 `.harness/contracts/implementation-plan.md`
 
 #### 4.5.5. Story Type 결정 안내
 
-Story Type 결정 시 `.harness/contracts/implementation-plan.md`의 Story Type Definitions 표 Triggers 컬럼을 1차 단서로 사용한다. Path 트리거가 확장자 트리거보다 우선한다 — `scripts/` 하위 실행 코드는 확장자와 무관하게 `infra`이며, 이는 contract `config` 행 carve-out과 일치한다. 자연어 표현이 `restructure`/`rewrite`/`재배치`여도 변경 파일 확장자가 최종 결정 기준이다 (`.md`/`.yml`/`.json` → `config`, `.ts`/`.js`/`.py` → `refactor` 또는 `tdd`). Eval Case가 명시적으로 존재할 때만 `prompt`. .md 파일 변경이라도 Eval Case가 없으면 `config`.
+Story Type 결정 시 `.tack/contracts/implementation-plan.md`의 Story Type Definitions 표 Triggers 컬럼을 1차 단서로 사용한다. Path 트리거가 확장자 트리거보다 우선한다 — `scripts/` 하위 실행 코드는 확장자와 무관하게 `infra`이며, 이는 contract `config` 행 carve-out과 일치한다. 자연어 표현이 `restructure`/`rewrite`/`재배치`여도 변경 파일 확장자가 최종 결정 기준이다 (`.md`/`.yml`/`.json` → `config`, `.ts`/`.js`/`.py` → `refactor` 또는 `tdd`). Eval Case가 명시적으로 존재할 때만 `prompt`. .md 파일 변경이라도 Eval Case가 없으면 `config`.
 
 ### 4.6. Component Authoring — load prompt-authoring rule
 
@@ -154,15 +154,15 @@ For each Story, design a commit message that will be executed when the Story is 
 
 - **Format**: `<type>(<scope>): <subject>` (Conventional Commits)
 - **Type**: one of `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`
-- **Scope**: consult `.harness/commit-scopes.md` for project-specific scopes; free-form is also acceptable
+- **Scope**: consult `.tack/commit-scopes.md` for project-specific scopes; free-form is also acceptable
 - **Subject**: 72 characters or fewer, imperative mood ("add X", "extend Y", not "added" or "adds")
 - **Principle**: commit message reflects only what this Story produces — not what a future Story will change
 - **Optional body**: include when context is needed to understand the change (breaking changes, migration notes, etc.)
-- **Content policy**: Load .harness/rules/git-workflow.md and follow its 메시지 콘텐츠 정책 절.
+- **Content policy**: Load .tack/rules/git-workflow.md and follow its 메시지 콘텐츠 정책 절.
 
 ## Plan Output Format
 
-**When invoked from `/dev:plan`** (harness workflow): use `.harness/contracts/implementation-plan.md` as the canonical output format. Include a `**Commit**` field in every Story block as specified in that contract. Do NOT use the Phase/Architecture format below. When the plan is complete, save it to `docs/_local/active/<topic>/implementation-plan.md` using the Write tool. The `<topic>` value is the "Current topic name" passed by the caller (flow-plan SKILL Step 4). Do not return the plan as text only — the file must exist on disk before reporting completion.
+**When invoked from `/dev:plan`** (harness workflow): use `.tack/contracts/implementation-plan.md` as the canonical output format. Include a `**Commit**` field in every Story block as specified in that contract. Do NOT use the Phase/Architecture format below. When the plan is complete, save it to `.tack/local/active/<topic>/implementation-plan.md` using the Write tool. The `<topic>` value is the "Current topic name" passed by the caller (flow-plan SKILL Step 4). Do not return the plan as text only — the file must exist on disk before reporting completion.
 
 **When invoked for general planning** (not harness workflow): use the format below. Return the plan as text in the assistant response; do not write to disk.
 
@@ -227,7 +227,7 @@ established paths. **Do not infer paths — verify with Glob/Grep first.**
 | Harness agents | `.claude/agents/` |
 | Harness commands | `.claude/commands/` |
 | Codex skills | `.codex/skills/` |
-| Active topic spec/plan | `docs/_local/active/<topic>/` |
+| Active topic spec/plan | `.tack/local/active/<topic>/` |
 | Permanent reference docs | `docs/specs/<name>.md` |
 
 **Path discipline**: Never hard-code a path based on assumptions (e.g., `.kiro/`, `plugins/`).

@@ -66,8 +66,8 @@ codex 상태가 dev-context.json에 갱신되었습니다.
 
 Read and display the updated values:
 ```bash
-node .harness/scripts/dev-context.js read --field=config.codex.available
-node .harness/scripts/dev-context.js read --field=config.codex.authenticated
-node .harness/scripts/dev-context.js read --field=config.codex.version
-node .harness/scripts/dev-context.js read --field=config.codex.checked_at
+node .tack/scripts/dev-context.js read --field=config.codex.available
+node .tack/scripts/dev-context.js read --field=config.codex.authenticated
+node .tack/scripts/dev-context.js read --field=config.codex.version
+node .tack/scripts/dev-context.js read --field=config.codex.checked_at
 ```

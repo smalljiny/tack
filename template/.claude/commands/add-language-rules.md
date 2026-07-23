@@ -1,14 +1,14 @@
 ---
 version: 3
-description: Scaffold language-specific rule files (coding-style/security/testing) under .harness/rules/<language>/. Generative, not template copy.
+description: Scaffold language-specific rule files (coding-style/security/testing) under .tack/rules/<language>/. Generative, not template copy.
 category: harness-management
 ---
 
 # /add-language-rules
 
-Add new language or framework rules to the harness by generating three rule files under `.harness/rules/<language>/`. Claude writes the files based on the language's idioms, security conventions, and testing practices — not from a fixed template.
+Add new language or framework rules to the harness by generating three rule files under `.tack/rules/<language>/`. Claude writes the files based on the language's idioms, security conventions, and testing practices — not from a fixed template.
 
-> **Note**: Generated files go to `.harness/rules/<language>/` (shared Claude + Codex), not `.claude/rules/`.
+> **Note**: Generated files go to `.tack/rules/<language>/` (shared Claude + Codex), not `.claude/rules/`.
 
 ## Usage
 
@@ -47,7 +47,7 @@ If the result contains `.`, `/`, `\`, `..`, or any character outside `[a-z0-9-]`
 
 ### 2. Check for Existing Rules
 
-Check if `.harness/rules/<language>/` already exists (substitute actual language name — e.g. `ls .harness/rules/rust/ 2>/dev/null`).
+Check if `.tack/rules/<language>/` already exists (substitute actual language name — e.g. `ls .tack/rules/rust/ 2>/dev/null`).
 
 If the directory exists, use `AskUserQuestion` to ask:
 - (Recommended) 건너뛰기 — 기존 규칙이 이미 있음
@@ -58,15 +58,15 @@ If user selects 건너뛰기, stop. Otherwise proceed.
 ### 3. Load Reference Structure
 
 Read the following common rule files as section-structure references:
-- `.harness/rules/coding-style.md`
-- `.harness/rules/security.md`
-- `.harness/rules/testing.md`
+- `.tack/rules/coding-style.md`
+- `.tack/rules/security.md`
+- `.tack/rules/testing.md`
 
 Use these to understand the section headings and level of detail expected in each file type. Do not copy content — generate language-specific content.
 
 ### 4. Generate Rule Files
 
-Create `.harness/rules/<language>/` and write three files. Each file must include `version: 1` frontmatter.
+Create `.tack/rules/<language>/` and write three files. Each file must include `version: 1` frontmatter.
 
 Claude writes each file based on the target language's characteristics:
 
@@ -92,7 +92,7 @@ After generating the files, check if a relevant stack skill exists and suggest i
 | Python | `stack-python`, `stack-python-test` |
 | React / Next.js | `stack-frontend`, `stack-nextjs` |
 | Node.js / Fastify | `stack-backend`, `stack-fastify` |
-| TypeScript | `.harness/rules/typescript/` already exists |
+| TypeScript | `.tack/rules/typescript/` already exists |
 | PostgreSQL | `stack-postgres`, `stack-db-migrations` |
 | Docker | `stack-docker` |
 | LangChain | `stack-langchain` |
@@ -116,5 +116,5 @@ This line is informational. Do not invoke `/flow-init` automatically, do not cal
 ## Non-goals
 
 - `hooks.md` and `patterns.md` are **not** generated — scope is intentionally limited to the three files above
-- Codex-side synchronization is not triggered — `.harness/rules/<language>/` is already shared (Claude + Codex read from the same path)
-- `.claude/rules/` is not modified — generated files go to `.harness/rules/` only
+- Codex-side synchronization is not triggered — `.tack/rules/<language>/` is already shared (Claude + Codex read from the same path)
+- `.claude/rules/` is not modified — generated files go to `.tack/rules/` only

@@ -32,7 +32,7 @@ fi
 [ -z "$model" ] && model="?"
 
 # --- Current topic (cwd-independent path) ---
-topic=$(node "$PROJECT_ROOT/.harness/scripts/dev-context.js" read --field=current_topic 2>/dev/null)
+topic=$(node "$PROJECT_ROOT/.tack/scripts/dev-context.js" read --field=current_topic 2>/dev/null)
 topic="${topic%$'\n'}"   # strip trailing newline only (preserves spaces in topic names)
 [ -z "$topic" ] && topic="(no topic)"
 

@@ -48,7 +48,7 @@ Strategic compaction at logical boundaries preserves context through phases.
 | Git state (commits, branches) | Verbally stated preferences |
 | Files on disk (spec.md, plan.md) | Multi-step conversation context |
 
-**Before compacting**: save important context to `docs/_local/<topic>/` or memory.
+**Before compacting**: save important context to `.tack/local/<topic>/` or memory.
 
 ## Compacting with Intent
 

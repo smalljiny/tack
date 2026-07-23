@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // dev-context.js — dev-context.json 전담 CLI 스크립트
-// 사용법: node .harness/scripts/dev-context.js <subcommand> [options]
+// 사용법: node .tack/scripts/dev-context.js <subcommand> [options]
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DEV_CONTEXT_PATH = process.env.DEV_CONTEXT_PATH
-  ?? join(__dirname, '../../docs/_local/dev-context.json')
+  ?? join(__dirname, '../../.tack/local/dev-context.json')
 
 // 상태 전환 유효성 테이블 (phase:status → 허용 다음 상태 목록)
 const VALID_TRANSITIONS = {
@@ -57,7 +57,7 @@ function coerceConfigValue(value) {
       die(`config 값 파싱 오류: JSON 배열 파싱 실패 — ${e.message} (입력: ${value})`)
     }
     if (!Array.isArray(parsed) || !parsed.every(el => typeof el === 'string' && !/[\r\n]/.test(el))) {
-      die('config 배열 값은 문자열 원소만 허용합니다 — 줄바꿈 포함 및 비문자열 불가 (예: [".claude/", ".harness/"])')
+      die('config 배열 값은 문자열 원소만 허용합니다 — 줄바꿈 포함 및 비문자열 불가 (예: [".claude/", ".tack/"])')
     }
     return parsed
   }

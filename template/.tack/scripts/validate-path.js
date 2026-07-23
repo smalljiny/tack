@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // validate-path.js — dev-context.json의 경로 필드를 읽어 검증·정규화 후 canonical 절대경로를 stdout에 출력.
-// 사용법: node .harness/scripts/validate-path.js --topic=<topic> --field=<field>
+// 사용법: node .tack/scripts/validate-path.js --topic=<topic> --field=<field>
 // 성공: exit 0 + canonical 절대경로 출력
 // 실패: exit 1 + 오류 메시지를 stderr에 출력
 

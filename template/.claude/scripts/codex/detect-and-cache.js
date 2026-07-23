@@ -14,7 +14,7 @@ import { spawnSync } from 'child_process'
 import { homedir } from 'os'
 
 const cwd = process.env.PWD || process.cwd()
-const devContextScript = join(cwd, '.harness/scripts/dev-context.js')
+const devContextScript = join(cwd, '.tack/scripts/dev-context.js')
 
 const TTL_MS = 60 * 60 * 1000  // 1시간
 

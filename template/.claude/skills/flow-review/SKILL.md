@@ -17,9 +17,9 @@ After all Stories are complete, perform a comprehensive review of the entire cha
 Read `phase` and `status`:
 
 ```bash
-node .harness/scripts/dev-context.js read --field=current_topic
-node .harness/scripts/dev-context.js read --topic=<topic> --field=phase
-node .harness/scripts/dev-context.js read --topic=<topic> --field=status
+node .tack/scripts/dev-context.js read --field=current_topic
+node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
+node .tack/scripts/dev-context.js read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `impl:in-progress`, stop immediately:
@@ -37,8 +37,8 @@ Do not warn and continue — stop entirely.
 Read `currentStory` and the plan file:
 
 ```bash
-node .harness/scripts/dev-context.js read --topic=<topic> --field=currentStory
-node .harness/scripts/dev-context.js read --topic=<topic> --field=plan
+node .tack/scripts/dev-context.js read --topic=<topic> --field=currentStory
+node .tack/scripts/dev-context.js read --topic=<topic> --field=plan
 ```
 
 Block if any condition is true:
@@ -48,7 +48,7 @@ Block if any condition is true:
 
 게이트 검증 명령:
 ```bash
-grep -nE "^### \[ \]|^- \[ \] T" docs/_local/active/<topic>/implementation-plan.md
+grep -nE "^### \[ \]|^- \[ \] T" .tack/local/active/<topic>/implementation-plan.md
 ```
 
 위 grep이 1건 이상 hit하면 차단:
@@ -63,7 +63,7 @@ grep -nE "^### \[ \]|^- \[ \] T" docs/_local/active/<topic>/implementation-plan.
 ### 3. Transition to `review:in-progress`
 
 ```bash
-node .harness/scripts/dev-context.js update-state \
+node .tack/scripts/dev-context.js update-state \
   --topic=<topic> --phase=review --status=in-progress
 ```
 
@@ -77,8 +77,8 @@ SAVED_SHA=$(git rev-parse HEAD)
 
 Read the base branch from config (default: `main`):
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.baseBranch
-node .harness/scripts/dev-context.js read --field=config.git.pullRemote
+node .tack/scripts/dev-context.js read --field=config.git.baseBranch
+node .tack/scripts/dev-context.js read --field=config.git.pullRemote
 ```
 
 ```bash
@@ -122,7 +122,7 @@ Invoke both agents simultaneously:
   refactor: address review comments
   ```
 - 여러 이슈를 수정한 경우 하나의 review-fix commit으로 묶거나 이슈별로 분리 가능.
-- 참조: `.harness/rules/git-workflow.md` — "Review-fix Commit" 섹션
+- 참조: `.tack/rules/git-workflow.md` — "Review-fix Commit" 섹션
 
 ### 7. Adversarial Review (conditional, sequential)
 
@@ -131,9 +131,9 @@ CRITICAL·HIGH 수정이 완료된 후 실행한다 (정제된 상태를 대상�
 **활성화 조건** — 아래 순서로 평가하고 첫 매치만 적용 (미정의/빈값은 false로 취급):
 
 ```bash
-node .harness/scripts/dev-context.js read --field=config.review.adversarial_enabled
-node .harness/scripts/dev-context.js read --field=config.codex.available
-node .harness/scripts/dev-context.js read --field=config.codex.authenticated
+node .tack/scripts/dev-context.js read --field=config.review.adversarial_enabled
+node .tack/scripts/dev-context.js read --field=config.codex.available
+node .tack/scripts/dev-context.js read --field=config.codex.authenticated
 ```
 
 1. `adversarial_enabled`이 false이거나 미정의 → `skipReason="disabled"` (조용히 skip, 경고 없음)
@@ -143,7 +143,7 @@ node .harness/scripts/dev-context.js read --field=config.codex.authenticated
 
 활성화 방법 (기본값 false, 명시적 opt-in 필요):
 ```bash
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --field=config.review.adversarial_enabled --value=true
 ```
 
@@ -213,10 +213,10 @@ severity가 명시되지 않은 adversarial-review 이슈(설계 challenge 등)�
 
 파일 경로:
 ```
-docs/_local/active/<topic>/review-report-<YYMMDDHHmmss>.md
+.tack/local/active/<topic>/review-report-<YYMMDDHHmmss>.md
 ```
 
-`.harness/contracts/review-report.md`의 Required Format을 준수해 파일을 작성한다:
+`.tack/contracts/review-report.md`의 Required Format을 준수해 파일을 작성한다:
 
 ```markdown
 # Review Report
@@ -260,7 +260,7 @@ MEDIUM: [N]
 LOW: [N]
 
 adversarial-review: [run | skipped (<skipReason>)]
-보고서: docs/_local/active/<topic>/review-report-<YYMMDDHHmmss>.md
+보고서: .tack/local/active/<topic>/review-report-<YYMMDDHHmmss>.md
 
 Next: pass the verification gate with /flow-verify
 ```

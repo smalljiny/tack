@@ -31,7 +31,7 @@ origin: harness
 
 ## Eval Case 읽기
 
-Eval Case 형식은 `.harness/contracts/implementation-plan.md`의 `## Prompt Task Eval Schema` 섹션에 정의돼 있다. 전략 태그(`[rubric]`, `[judge]`)가 없으면 `direct`로 해석한다.
+Eval Case 형식은 `.tack/contracts/implementation-plan.md`의 `## Prompt Task Eval Schema` 섹션에 정의돼 있다. 전략 태그(`[rubric]`, `[judge]`)가 없으면 `direct`로 해석한다.
 
 Pass 임계값:
 - `direct`: Expected와 일치 여부 (boolean)

@@ -31,7 +31,7 @@ Start by understanding the current project context, then ask questions one at a 
 - Once you understand what you're building, write the spec
 - Break it into sections of 200-300 words
 - Ask after each section whether it looks right so far — use `AskUserQuestion` for section approval too
-- If a caller has injected a format (e.g., via `.harness/contracts/spec.md`), follow that format; otherwise use whatever structure fits the output
+- If a caller has injected a format (e.g., via `.tack/contracts/spec.md`), follow that format; otherwise use whatever structure fits the output
 - Be ready to go back and clarify if something doesn't make sense
 
 ## Asking Questions
@@ -52,7 +52,7 @@ After presenting, announce completion so the caller can save the file:
 
 > 스펙 초안이 완성되었습니다. /flow-spec이 파일로 저장합니다.
 
-The specific document structure (sections, headings, format) is determined by the caller. If the caller has injected a format (e.g., via `.harness/contracts/spec.md`), follow that format. Otherwise, apply the format that best fits the context.
+The specific document structure (sections, headings, format) is determined by the caller. If the caller has injected a format (e.g., via `.tack/contracts/spec.md`), follow that format. Otherwise, apply the format that best fits the context.
 
 ## Key Principles
 

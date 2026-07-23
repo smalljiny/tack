@@ -119,10 +119,10 @@ If any validation fails, show the invalid value and expected format, then stop w
 
 Read the current values:
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.pushRemote
-node .harness/scripts/dev-context.js read --field=config.git.pullRemote
-node .harness/scripts/dev-context.js read --field=config.git.baseBranch
-node .harness/scripts/dev-context.js read --field=config.git.branchPattern
+node .tack/scripts/dev-context.js read --field=config.git.pushRemote
+node .tack/scripts/dev-context.js read --field=config.git.pullRemote
+node .tack/scripts/dev-context.js read --field=config.git.baseBranch
+node .tack/scripts/dev-context.js read --field=config.git.branchPattern
 ```
 
 When reading each field, an empty line from `dev-context.js read` (trimmed to `""`) means the field is unset — render as `(미설정)`. "All four are empty" means all four reads returned empty strings.
@@ -169,10 +169,10 @@ Show the proposed values and ask for confirmation:
 ### 9. Save to dev-context.json
 
 ```bash
-node .harness/scripts/dev-context.js set-field --field=config.git.pushRemote   --value='<pushRemote>'
-node .harness/scripts/dev-context.js set-field --field=config.git.pullRemote   --value='<pullRemote>'
-node .harness/scripts/dev-context.js set-field --field=config.git.baseBranch   --value='<baseBranch>'
-node .harness/scripts/dev-context.js set-field --field=config.git.branchPattern --value='<branchPattern>'
+node .tack/scripts/dev-context.js set-field --field=config.git.pushRemote   --value='<pushRemote>'
+node .tack/scripts/dev-context.js set-field --field=config.git.pullRemote   --value='<pullRemote>'
+node .tack/scripts/dev-context.js set-field --field=config.git.baseBranch   --value='<baseBranch>'
+node .tack/scripts/dev-context.js set-field --field=config.git.branchPattern --value='<branchPattern>'
 ```
 
 No `--topic` flag — these are global project settings.
@@ -183,10 +183,10 @@ If any `set-field` call fails, show the error and stop. The fields saved before 
 
 Read back and display the saved values so the user can verify:
 ```bash
-node .harness/scripts/dev-context.js read --field=config.git.pushRemote
-node .harness/scripts/dev-context.js read --field=config.git.pullRemote
-node .harness/scripts/dev-context.js read --field=config.git.baseBranch
-node .harness/scripts/dev-context.js read --field=config.git.branchPattern
+node .tack/scripts/dev-context.js read --field=config.git.pushRemote
+node .tack/scripts/dev-context.js read --field=config.git.pullRemote
+node .tack/scripts/dev-context.js read --field=config.git.baseBranch
+node .tack/scripts/dev-context.js read --field=config.git.branchPattern
 ```
 
 Show:

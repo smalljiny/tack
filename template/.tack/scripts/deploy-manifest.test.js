@@ -69,16 +69,16 @@ describe('deploy-manifest.js', () => {
     test('중첩 파일이 src/ 기준 상대 경로로 정렬되어 줄 단위 출력', () => {
       const srcDir = workPath('src')
       mkdirSync(join(srcDir, '.claude', 'agents'), { recursive: true })
-      mkdirSync(join(srcDir, '.harness', 'scripts'), { recursive: true })
+      mkdirSync(join(srcDir, '.tack', 'scripts'), { recursive: true })
       writeFileSync(join(srcDir, 'CLAUDE.md'), 'root\n', 'utf8')
       writeFileSync(join(srcDir, '.claude', 'agents', 'planner.md'), 'a\n', 'utf8')
-      writeFileSync(join(srcDir, '.harness', 'scripts', 'helper.js'), 'h\n', 'utf8')
+      writeFileSync(join(srcDir, '.tack', 'scripts', 'helper.js'), 'h\n', 'utf8')
 
       const result = run('list-src', srcDir)
       const lines = result.stdout.split('\n').filter(Boolean)
       const expected = [
         '.claude/agents/planner.md',
-        '.harness/scripts/helper.js',
+        '.tack/scripts/helper.js',
         'CLAUDE.md',
       ].sort((a, b) => a.localeCompare(b))
       assert.deepEqual(lines, expected)
@@ -87,12 +87,12 @@ describe('deploy-manifest.js', () => {
     test('빈 디렉토리는 결과에 포함되지 않음 (파일만)', () => {
       const srcDir = workPath('src')
       mkdirSync(join(srcDir, '.claude', 'empty-skill'), { recursive: true })
-      mkdirSync(join(srcDir, '.harness'), { recursive: true })
-      writeFileSync(join(srcDir, '.harness', 'note.md'), 'n\n', 'utf8')
+      mkdirSync(join(srcDir, '.tack'), { recursive: true })
+      writeFileSync(join(srcDir, '.tack', 'note.md'), 'n\n', 'utf8')
 
       const result = run('list-src', srcDir)
       const lines = result.stdout.split('\n').filter(Boolean)
-      assert.deepEqual(lines, ['.harness/note.md'])
+      assert.deepEqual(lines, ['.tack/note.md'])
     })
 
     test('비존재 src/ → non-zero exit + stderr 메시지', () => {
@@ -138,12 +138,12 @@ describe('deploy-manifest.js', () => {
         manifest_version: 1,
         deployed_at: '2026-05-04T00:00:00.000Z',
         source: { commit: null, branch: null },
-        files: ['.claude/agents/a.md', '.harness/scripts/x.js', 'CLAUDE.md'],
+        files: ['.claude/agents/a.md', '.tack/scripts/x.js', 'CLAUDE.md'],
       }, null, 2) + '\n', 'utf8')
 
       const result = run('read-files', manifestPath)
       const lines = result.stdout.split('\n').filter(Boolean)
-      assert.deepEqual(lines, ['.claude/agents/a.md', '.harness/scripts/x.js', 'CLAUDE.md'])
+      assert.deepEqual(lines, ['.claude/agents/a.md', '.tack/scripts/x.js', 'CLAUDE.md'])
     })
 
     test('비존재 파일 → 빈 출력 + exit 0 + stderr 경고', () => {
@@ -196,14 +196,14 @@ describe('deploy-manifest.js', () => {
           '/etc/passwd',
           'foo/../bar.md',
           'with\nnewline.md',
-          '.harness/another-safe.md',
+          '.tack/another-safe.md',
         ],
       }), 'utf8')
 
       const result = run('read-files', malicious)
       const lines = result.stdout.split('\n').filter(Boolean)
       // 안전한 항목만 출력
-      assert.deepEqual(lines, ['.claude/agents/safe.md', '.harness/another-safe.md'])
+      assert.deepEqual(lines, ['.claude/agents/safe.md', '.tack/another-safe.md'])
       // 의심스러운 경로 4건이 stderr 로 보고됨
       assert.ok(result.stderr.includes('의심스러운 경로'), 'stderr 에 경고 필요')
       assert.ok(result.stderr.includes('../../../etc/passwd'), '.. 경고')
@@ -226,20 +226,20 @@ describe('deploy-manifest.js', () => {
   describe('write', () => {
     test('files-list 의 줄을 정렬·중복제거해 files 에 기록', () => {
       const filesList = workPath('files.txt')
-      writeFileSync(filesList, '.harness/x.js\nCLAUDE.md\n.claude/a.md\nCLAUDE.md\n', 'utf8')
-      const target = workPath('target', '.harness', '.deploy-manifest.json')
+      writeFileSync(filesList, '.tack/x.js\nCLAUDE.md\n.claude/a.md\nCLAUDE.md\n', 'utf8')
+      const target = workPath('target', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=abc123', '--branch=main')
 
       const manifest = JSON.parse(readFileSync(target, 'utf8'))
       // SUT 로직을 미러링하지 않도록 기대 값을 리터럴로 고정한다 (localeCompare 정렬 + 중복 제거 확정값).
-      assert.deepEqual(manifest.files, ['.claude/a.md', '.harness/x.js', 'CLAUDE.md'])
+      assert.deepEqual(manifest.files, ['.claude/a.md', '.tack/x.js', 'CLAUDE.md'])
     })
 
     test('manifest_version=1, deployed_at ISO8601 UTC, source 채워짐', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\nb\n', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=deadbeef', '--branch=develop')
 
@@ -254,7 +254,7 @@ describe('deploy-manifest.js', () => {
     test('--commit= 빈 값 → source.commit = null', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\n', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=', '--branch=main')
 
@@ -266,7 +266,7 @@ describe('deploy-manifest.js', () => {
     test('--branch= 빈 값 → source.branch = null', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\n', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=abc', '--branch=')
 
@@ -278,7 +278,7 @@ describe('deploy-manifest.js', () => {
     test('부모 디렉토리 없을 때 자동 생성', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\n', 'utf8')
-      const target = workPath('deep', 'nested', 'path', '.harness', '.deploy-manifest.json')
+      const target = workPath('deep', 'nested', 'path', '.tack', '.deploy-manifest.json')
       assert.equal(existsSync(dirname(target)), false)
 
       run('write', target, filesList, '--commit=abc', '--branch=main')
@@ -291,7 +291,7 @@ describe('deploy-manifest.js', () => {
     test('빈 files-list → files: []', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, '', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=abc', '--branch=main')
 
@@ -302,7 +302,7 @@ describe('deploy-manifest.js', () => {
     test('files-list 에 빈 줄/공백 줄 섞여도 무시', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\n\n  \nb\n', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=abc', '--branch=main')
 
@@ -313,7 +313,7 @@ describe('deploy-manifest.js', () => {
     test('JSON 들여쓰기 2칸 + 끝 개행', () => {
       const filesList = workPath('files.txt')
       writeFileSync(filesList, 'a\n', 'utf8')
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
 
       run('write', target, filesList, '--commit=abc', '--branch=main')
 
@@ -323,7 +323,7 @@ describe('deploy-manifest.js', () => {
     })
 
     test('files-list 파일 비존재 → non-zero exit', () => {
-      const target = workPath('out', '.harness', '.deploy-manifest.json')
+      const target = workPath('out', '.tack', '.deploy-manifest.json')
       const result = runExpectFail('write', target, workPath('no-such-list.txt'), '--commit=abc', '--branch=main')
       assert.notEqual(result.status, 0)
     })

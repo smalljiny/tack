@@ -6,7 +6,7 @@
 ## File Location
 
 ```
-docs/_local/active/<topic>/implementation-plan.md
+.tack/local/active/<topic>/implementation-plan.md
 ```
 
 ## Required Format
@@ -18,7 +18,7 @@ docs/_local/active/<topic>/implementation-plan.md
 [One paragraph summary of what this plan implements and why]
 
 ## Spec Reference
-> Based on: `docs/_local/active/<topic>/spec.md`
+> Based on: `.tack/local/active/<topic>/spec.md`
 
 ## Story List
 
@@ -61,7 +61,7 @@ docs/_local/active/<topic>/implementation-plan.md
 | Type | When to Use | Triggers |
 |------|-------------|----------|
 | `tdd` | 새 동작 추가 (RED-GREEN-REFACTOR) | 신규 함수·클래스·API 동작 |
-| `config` | 프롬프트·문서·설정 파일 변경 (실행 코드 아님) | `.claude/`, `.codex/`, `.harness/`, `docs/`, README, spec 재배치, skill/command/rule 파일 추가·이동·병합. **단, LLM 프롬프트 본문 개선(에이전트·스킬·커맨드·규칙 프롬프트 내용 자체)은 `prompt`; `scripts/` 하위 실행 코드(`.js`/`.ts`/`.py` 등)는 `infra`·`refactor`·`tdd`** |
+| `config` | 프롬프트·문서·설정 파일 변경 (실행 코드 아님) | `.claude/`, `.codex/`, `.tack/`, `docs/`, README, spec 재배치, skill/command/rule 파일 추가·이동·병합. **단, LLM 프롬프트 본문 개선(에이전트·스킬·커맨드·규칙 프롬프트 내용 자체)은 `prompt`; `scripts/` 하위 실행 코드(`.js`/`.ts`/`.py` 등)는 `infra`·`refactor`·`tdd`** |
 | `infra` | 스크립트·툴링 (비즈니스 로직 아님) | `scripts/`, CI 워크플로우, deploy 스크립트 |
 | `refactor` | **실행 코드 파일 (`.ts`/`.js`/`.py` 등)** 재구조화 (테스트 커버리지 존재) | 코드 파일 재구조화. **markdown·yaml·json 변경은 `config`** |
 | `prompt` | LLM 프롬프트 작성/개선 + Eval Case 평가 | 프롬프트 본문 개선 + PROPOSE→EVAL→REFINE 사이클 필요 |
@@ -160,7 +160,7 @@ Optional multi-line body (indented under the backtick line):
 
 **Validation** (performed by `plan-review`, warning level only — not blocking):
 - `type` must be one of: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`
-- `scope` should match an entry in `.harness/commit-scopes.md` (free-form also accepted)
+- `scope` should match an entry in `.tack/commit-scopes.md` (free-form also accepted)
 - `subject` must be 72 characters or fewer
 - Scope parser regex: `^\|\s*([a-z0-9_-]+)\s*\|` (first column of the Markdown table, excluding `scope` header and separator rows)
 

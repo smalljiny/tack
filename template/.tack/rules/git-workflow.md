@@ -13,7 +13,7 @@ version: 4
 
 **Types**: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
-**Scope**: 변경 범위를 나타낸다. 프로젝트별 허용 scope 목록은 `.harness/commit-scopes.md`에 정의된다.
+**Scope**: 변경 범위를 나타낸다. 프로젝트별 허용 scope 목록은 `.tack/commit-scopes.md`에 정의된다.
 `plan-review`는 이 목록을 warning 수준으로만 검증한다 (error 아님).
 
 ```
@@ -74,7 +74,7 @@ planner는 변경된 파일(`.claude/agents/planner.md`)이므로 메시지에 �
 
 ```bash
 # auto_commit 활성화
-node .harness/scripts/dev-context.js set-field \
+node .tack/scripts/dev-context.js set-field \
   --field=config.dev_impl.auto_commit --value=true
 ```
 
@@ -105,7 +105,7 @@ node .harness/scripts/dev-context.js set-field \
 PR 생성은 `/flow-docs → /flow-pr → /flow-done` 순서로 진행한다:
 
 1. **`/flow-docs`** — 구현 완료 후 참조 문서(`docs/specs/<name>.md`) 생성 + commit
-2. **`/flow-pr`** — push + PR 제목·body 작성(`.harness/templates/pr-body.md` 기반) + `gh pr create` 실행
+2. **`/flow-pr`** — push + PR 제목·body 작성(`.tack/templates/pr-body.md` 기반) + `gh pr create` 실행
 3. **`/flow-done`** — PR 생성 완료 후 artifact archive + topic 제거
 
 **`/flow-pr` 실행 전 체크리스트:**
@@ -125,7 +125,7 @@ PR 생성은 `/flow-docs → /flow-pr → /flow-done` 순서로 진행한다:
 
 **Private Fork 설정 예시:**
 ```bash
-node .harness/scripts/dev-context.js set-field --field=config.git.pullRemote --value=upstream
+node .tack/scripts/dev-context.js set-field --field=config.git.pullRemote --value=upstream
 ```
 
 ## Feature Implementation Workflow
