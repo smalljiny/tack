@@ -20,8 +20,12 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from state_machine import (  # noqa: F401 — Story 2·6·8에서 소비, Story 1은 배선만
-    VALID_TRANSITIONS,
+# 전환 모델의 정본은 state_machine이 소유한다 — dev_context.py는 재정의하지 않고 소비만 한다.
+# 런타임 검증은 is_valid_transition/allowed_transitions(update-state)와
+# STATE_ORDER/is_known_state/is_forward_jump(force-state)로 라우팅한다.
+# VALID_TRANSITIONS는 seam 배선(plan T1.3의 6-심볼 요구)으로 import하되 직접 참조는 없다.
+from state_machine import (
+    VALID_TRANSITIONS,  # noqa: F401 — seam 배선용, 직접 참조 없음(위 주석 참조)
     STATE_ORDER,
     is_valid_transition,
     allowed_transitions,
