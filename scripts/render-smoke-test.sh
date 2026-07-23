@@ -13,7 +13,8 @@
 #   (a)  copier가 seed한 dev-context.json 존재 + 첫 dev-context read(Python 엔진) exit 0
 #   (a2) Python 엔진 쓰기 서브커맨드(set-field) exit 0
 #   (a3) 렌더 dest에 dev-context.js 엔진 파리티 잔존 (G5)
-#   (a4) 스킬층(.claude/skills · .claude/scripts)에 stale node dev-context.js 실행 호출 0건
+#   (a4) 스킬층(.claude/skills · .claude/scripts)에 stale inline node dev-context.js 실행 호출 0건
+#        (훅층 split-line 콜러 detect-and-cache.js는 의도적 스코프 밖 — E7-S1까지 Node 유지)
 #   (b)  렌더 dest에 stale 경로 토큰(.harness · docs/_local/) 0건
 #   (c)  git repo 안에서 .tack/local/ 이 gitignore로 무시됨
 #
@@ -82,18 +83,23 @@ if [ ! -f "$DEST/.tack/scripts/dev-context.js" ]; then
 fi
 echo "[PASS] (a3) dev-context.js 엔진 파리티 잔존"
 
-# --- stale node dev-context caller guard (스킬층 한정) ---
+# --- stale inline node dev-context caller guard (스킬층 한정) ---
 # 스코프를 .claude/skills · .claude/scripts 두 디렉토리로 한정한다:
 #   - .codex/ 는 out-of-scope(Codex 스킬은 Node 엔진 유지)이므로 배제.
 #   - .tack/scripts/ 는 엔진 self-ref(dev-context.js 주석)이므로 배제.
-#   - 훅·detect-and-cache.js는 join(cwd, ...) 형태라 'node ' 토큰이 없어 미매치.
+# 이 guard는 단일 라인 `node ... dev-context.js` 실행 호출만 탐지한다. 훅층의
+# split-line 콜러(detect-and-cache.js의 `spawnSync('node', [devContextScript])`,
+# devContextScript=join(cwd,'.tack/scripts/dev-context.js'))는 의도적으로 스코프
+# 밖이다 — 훅층은 E7-S1까지 Node 유지(plan Out-of-scope), G5로 dev-context.js가
+# 잔존하므로 그 콜러는 정상 동작한다. PASS 메시지는 "inline" 한정으로 명시해 이
+# guard가 모든 node 콜러 부재가 아니라 인라인 콜러 부재만 증명함을 정직하게 표기한다.
 # 기존 Check (b) 관용구(2>/dev/null || true + [ -n ])를 미러해 디렉토리 부재에도 안전.
 STALE_NODE="$(grep -rnE 'node .*dev-context\.js' "$DEST/.claude/skills" "$DEST/.claude/scripts" 2>/dev/null || true)"
 if [ -n "$STALE_NODE" ]; then
   echo "$STALE_NODE"
-  fail "(a4) 스킬층에 stale node dev-context.js 실행 호출 잔존"
+  fail "(a4) 스킬층에 stale inline node dev-context.js 실행 호출 잔존"
 fi
-echo "[PASS] (a4) 스킬층 stale node dev-context.js 실행 호출 0건"
+echo "[PASS] (a4) 스킬층 stale inline node dev-context.js 실행 호출 0건"
 
 # --- Check (b): 렌더 dest에 stale 토큰 0건 (T5.4) ---
 # git init(c) 이전에 실행해 .git 메타데이터를 스캔에서 배제한다.
