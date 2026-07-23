@@ -330,3 +330,63 @@ class TestSetFieldNonConfig:
         err = run_raw(sf, "set-field", "--topic=sf-test", "--field=specReview")
         assert err.returncode != 0
         assert "--value 필요" in err.stderr
+
+
+# --- currentTask → currentStory 마이그레이션 (레퍼런스 dev-context.test.js L259-321) ---
+
+
+class TestCurrentTaskMigration:
+    def test_currenttask_only_promoted_and_removed(self, ctx_path):
+        Path(ctx_path).write_text(json.dumps({
+            "current_topic": "legacy",
+            "topics": {
+                "legacy": {
+                    "phase": "impl", "status": "in-progress",
+                    "spec": ".tack/local/active/legacy/spec.md",
+                    "specReview": None,
+                    "plan": ".tack/local/active/legacy/implementation-plan.md",
+                    "planReview": None,
+                    "currentTask": "Task5",
+                    "createdAt": "2026-01-01T00:00:00.000Z",
+                    "updatedAt": "2026-01-01T00:00:00.000Z",
+                },
+            },
+            "updatedAt": "2026-01-01T00:00:00.000Z",
+        }), encoding="utf-8")
+        # read→write 경로를 통과하는 어떤 쓰기든 마이그레이션을 영속화한다
+        run(ctx_path, "set-field", "--topic=legacy", "--field=planReview",
+            "--value=.tack/local/active/legacy/plan-review-001.md")
+        ctx = read_ctx(ctx_path)
+        assert ctx["topics"]["legacy"]["currentStory"] == "Task5"
+        assert "currentTask" not in ctx["topics"]["legacy"]
+
+    def test_both_fields_present_is_noop(self, ctx_path):
+        Path(ctx_path).write_text(json.dumps({
+            "current_topic": "both",
+            "topics": {
+                "both": {
+                    "phase": "impl", "status": "in-progress",
+                    "spec": ".tack/local/active/both/spec.md",
+                    "specReview": None,
+                    "plan": ".tack/local/active/both/implementation-plan.md",
+                    "planReview": None,
+                    "currentTask": "OldT",
+                    "currentStory": "NewS",
+                    "createdAt": "2026-01-01T00:00:00.000Z",
+                    "updatedAt": "2026-01-01T00:00:00.000Z",
+                },
+            },
+            "updatedAt": "2026-01-01T00:00:00.000Z",
+        }), encoding="utf-8")
+        run(ctx_path, "set-field", "--topic=both", "--field=planReview",
+            "--value=.tack/local/active/both/plan-review-001.md")
+        ctx = read_ctx(ctx_path)
+        assert ctx["topics"]["both"]["currentStory"] == "NewS"
+        assert ctx["topics"]["both"]["currentTask"] == "OldT"
+
+    def test_register_topic_creates_currentstory_null_no_currenttask(self, ctx_path):
+        run(ctx_path, "register-topic", "--topic=fresh",
+            "--spec=.tack/local/backlog/fresh/spec.md")
+        ctx = read_ctx(ctx_path)
+        assert ctx["topics"]["fresh"]["currentStory"] is None
+        assert "currentTask" not in ctx["topics"]["fresh"]

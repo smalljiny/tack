@@ -65,8 +65,14 @@ def read_context():
         ctx["current_topic"] = None
     if not isinstance(ctx.get("config"), dict):
         ctx["config"] = {}
-    # 자동 마이그레이션(currentTask → currentStory)은 Story 4(T4.2)에서 이식한다.
-    # 여기서는 배선만 두고 지연한다 (import noqa 마커와 동일 규약).
+    # 자동 마이그레이션: 기존 currentTask 필드 → currentStory.
+    # 두 필드 동시 존재 시 no-op으로 currentTask를 보존(수동 정리 대상으로 남긴다).
+    for topic_name in list(ctx["topics"].keys()):
+        t = ctx["topics"][topic_name]
+        if not isinstance(t, dict):
+            continue
+        if "currentTask" in t and "currentStory" not in t:
+            t["currentStory"] = t.pop("currentTask")
     return ctx
 
 
