@@ -222,6 +222,45 @@ def cmd_set_field(args):
     write_context(ctx)
 
 
+def _emit_scalar(val):
+    """레퍼런스 process.stdout.write((val==null? '' : String(val)) + '\\n')와 동일."""
+    sys.stdout.write(("" if val is None else str(val)) + "\n")
+
+
+def cmd_read(args):
+    field = args.get("field")
+    topic = args.get("topic")
+    if not field:
+        die(
+            "read: --field 필요\n"
+            "\n"
+            "사용 가능한 호출 형태:\n"
+            "  read --field=current_topic\n"
+            "  read --field=config.<namespace>.<key>\n"
+            "  read --topic=<topic> "
+            "--field=<phase|status|spec|specReview|plan|planReview|currentStory>"
+        )
+
+    ctx = read_context()
+
+    if field == "current_topic":
+        if topic:
+            die("read: current_topic은 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
+        _emit_scalar(ctx.get("current_topic"))
+        return
+
+    # 글로벌 config 점 경로(config.<ns>.<key>)는 Story 6(T6.3)에서 배선한다.
+
+    if not topic:
+        die("read: --topic 필요 (current_topic 제외)")
+
+    t = ctx["topics"].get(topic)
+    if t is None:
+        die(f"read: 토픽 '{topic}' 미존재")
+
+    _emit_scalar(t.get(field))
+
+
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
@@ -232,6 +271,8 @@ def main(argv):
         cmd_update_state(args)
     elif subcommand == "set-field":
         cmd_set_field(args)
+    elif subcommand == "read":
+        cmd_read(args)
     else:
         die(
             f"알 수 없는 서브커맨드: {subcommand}\n"
