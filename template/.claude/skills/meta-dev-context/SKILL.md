@@ -1,7 +1,7 @@
 ---
-version: 5
+version: 6
 name: meta-dev-context
-description: Shared contract for reading and writing dev-context.json via the dev-context.js CLI. Load this skill whenever a command needs to inspect or mutate topic lifecycle state.
+description: Shared contract for reading and writing dev-context.json via the dev_context.py CLI. Load this skill whenever a command needs to inspect or mutate topic lifecycle state.
 origin: harness
 ---
 
@@ -9,12 +9,12 @@ origin: harness
 
 ## Overview
 
-All dev-context.json access goes through `.tack/scripts/dev-context.js`. Never read or write the file directly. This skill defines the canonical invocation patterns for each workflow command.
+All dev-context.json access goes through `.tack/scripts/dev_context.py`. Never read or write the file directly. This skill defines the canonical invocation patterns for each workflow command.
 
 ## CLI Reference
 
 ```
-node .tack/scripts/dev-context.js <subcommand> [--option=value ...]
+python3 .tack/scripts/dev_context.py <subcommand> [--option=value ...]
 ```
 
 ### `register-topic`
@@ -22,7 +22,7 @@ node .tack/scripts/dev-context.js <subcommand> [--option=value ...]
 Register a new topic at `spec:drafting`. Sets `current_topic`. Fails if the topic already exists.
 
 ```bash
-node .tack/scripts/dev-context.js register-topic \
+python3 .tack/scripts/dev_context.py register-topic \
   --topic=<name> \
   --spec=<spec-path>
 ```
@@ -32,7 +32,7 @@ node .tack/scripts/dev-context.js register-topic \
 Transition a topic to a new `phase:status`. Validates against the allowed transition table. Fails with non-zero exit on invalid transitions.
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<name> \
   --phase=<phase> \
   --status=<status>
@@ -43,7 +43,7 @@ node .tack/scripts/dev-context.js update-state \
 Update a single data field on a topic. `phase` and `status` are protected — use `update-state` for those.
 
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --topic=<name> \
   --field=<field> \
   --value=<value>        # use "null" to set null
@@ -54,7 +54,7 @@ node .tack/scripts/dev-context.js set-field \
 Remove a topic from dev-context.json. Switches `current_topic` to another remaining topic, or null if none remain. No state validation — the caller (`/flow-done`) is responsible for pre-validation.
 
 ```bash
-node .tack/scripts/dev-context.js remove-topic --topic=<name>
+python3 .tack/scripts/dev_context.py remove-topic --topic=<name>
 ```
 
 ### `read`
@@ -63,10 +63,10 @@ Print a single field value to stdout.
 
 ```bash
 # Topic-level field
-node .tack/scripts/dev-context.js read --topic=<name> --field=<field>
+python3 .tack/scripts/dev_context.py read --topic=<name> --field=<field>
 
 # Global field (current_topic only — no --topic)
-node .tack/scripts/dev-context.js read --field=current_topic
+python3 .tack/scripts/dev_context.py read --field=current_topic
 ```
 
 > `--field=current_topic` must NOT be combined with `--topic`.
@@ -77,11 +77,11 @@ node .tack/scripts/dev-context.js read --field=current_topic
 
 ```bash
 # Update current_topic globally
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=current_topic --value=<topic>
 
 # Clear current_topic
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=current_topic --value=null
 ```
 
@@ -94,8 +94,8 @@ node .tack/scripts/dev-context.js set-field \
 Before proceeding in a command, verify the topic is in the expected state using **both fields as a pair**:
 
 ```bash
-PHASE=$(node .tack/scripts/dev-context.js read --topic=<name> --field=phase)
-STATUS=$(node .tack/scripts/dev-context.js read --topic=<name> --field=status)
+PHASE=$(python3 .tack/scripts/dev_context.py read --topic=<name> --field=phase)
+STATUS=$(python3 .tack/scripts/dev_context.py read --topic=<name> --field=status)
 ```
 
 Then check `$PHASE:$STATUS` against the required state. If it does not match, halt and show:
@@ -154,16 +154,32 @@ Then check `$PHASE:$STATUS` against the required state. If it does not match, ha
 
 No `dev-context.json` calls. This command runs quality gates (build, type-check, lint, test, security) without mutating lifecycle state.
 
-### `/flow-done`
+### `/flow-docs`
 
 | Step | Call |
 |------|------|
 | Gate check | `read --topic=<name> --field=phase` + `read --topic=<name> --field=status` → must be `review:in-progress` |
+| After committing reference docs | `update-state --topic=<name> --phase=docs --status=generated` |
+
+### `/flow-pr`
+
+| Step | Call |
+|------|------|
+| Gate check | `read --topic=<name> --field=phase` + `read --topic=<name> --field=status` → must be `docs:generated` |
+| After creating the PR | `update-state --topic=<name> --phase=pr --status=created` |
+
+### `/flow-done`
+
+| Step | Call |
+|------|------|
+| Gate check | `read --topic=<name> --field=phase` + `read --topic=<name> --field=status` → must be `pr:created` |
 | After archiving files | `remove-topic --topic=<name>` |
 
 ---
 
 ## State Transition Table
+
+This table mirrors `VALID_TRANSITIONS` in `.tack/scripts/state_machine.py` (14 directed edges, 10 From-states). `state_machine.py` is the single source of truth — do not redefine or extend here.
 
 | From | Allowed Next States |
 |------|---------------------|
@@ -174,6 +190,8 @@ No `dev-context.json` calls. This command runs quality gates (build, type-check,
 | `plan:reviewing` | `plan:confirmed`, `plan:ready` |
 | `plan:confirmed` | `impl:in-progress` |
 | `impl:in-progress` | `review:in-progress` |
-| `review:in-progress` | `impl:in-progress` (review failure → re-impl) |
+| `review:in-progress` | `impl:in-progress`, `docs:generated` |
+| `docs:generated` | `pr:created`, `review:in-progress` |
+| `pr:created` | `docs:generated` |
 
 Any transition not listed above will exit non-zero with an error message.

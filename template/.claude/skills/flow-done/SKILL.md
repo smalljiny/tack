@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: flow-done
 description: Archive planning artifacts and remove the topic from dev-context.json. Run after /flow-pr (pr:created state). Reference document generation is handled by /flow-docs.
 origin: harness
@@ -23,7 +23,7 @@ Always operates on `current_topic`. To complete a different topic, run `/flow-to
 ### 1. Read current topic
 
 ```bash
-node .tack/scripts/dev-context.js read --field=current_topic
+python3 .tack/scripts/dev_context.py read --field=current_topic
 ```
 
 - If `current_topic` is empty or missing, stop:
@@ -40,8 +40,8 @@ node .tack/scripts/dev-context.js read --field=current_topic
 ### 2. Gate: verify pr:created
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `pr:created`, stop immediately:
@@ -82,7 +82,7 @@ Move all planning artifacts to `done/` — **no files are deleted**:
 ### 4. Remove topic from dev-context.json
 
 ```bash
-node .tack/scripts/dev-context.js remove-topic --topic=<topic>
+python3 .tack/scripts/dev_context.py remove-topic --topic=<topic>
 ```
 
 `remove-topic` automatically sets `current_topic` to another remaining active topic, or `null` if none remain.

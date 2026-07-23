@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: wf-worktree-context
 description: Provision an isolated sibling git worktree for a confirmed topic and inject the git-untracked harness context (shared tooling symlinks, .tack copy, per-worktree .tack/local, spec/plan handoff copy, env, dev-context isolation), then tear it down with a .tack/local/done sync-back. Use when a topic moves to worktree-rooted implementation so /flow-* runs isolated from the main hub's dev-context, or when removing such a worktree. Not for browser/cmux control — pane targeting stays with the caller.
 origin: harness
@@ -43,8 +43,8 @@ Boundary: 이 스킬은 worktree 프로비저닝·teardown 만 한다. `git work
 토픽이 dev-context 에 등록되고 확정 단계인지 확인한다. `phase:status` 가 `spec:confirmed` 이상이면 진행한다.
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 ### Step 2 — 프로비저닝 실행

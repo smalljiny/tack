@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 ---
 # Git Workflow
 
@@ -74,7 +74,7 @@ planner는 변경된 파일(`.claude/agents/planner.md`)이므로 메시지에 �
 
 ```bash
 # auto_commit 활성화
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.dev_impl.auto_commit --value=true
 ```
 
@@ -125,7 +125,7 @@ PR 생성은 `/flow-docs → /flow-pr → /flow-done` 순서로 진행한다:
 
 **Private Fork 설정 예시:**
 ```bash
-node .tack/scripts/dev-context.js set-field --field=config.git.pullRemote --value=upstream
+python3 .tack/scripts/dev_context.py set-field --field=config.git.pullRemote --value=upstream
 ```
 
 ## Feature Implementation Workflow

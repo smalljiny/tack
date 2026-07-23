@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: flow-review
 description: Perform a final full code review. Runs code-reviewer and security-reviewer in parallel, then adversarial-review sequentially (opt-in).
 origin: harness
@@ -17,9 +17,9 @@ After all Stories are complete, perform a comprehensive review of the entire cha
 Read `phase` and `status`:
 
 ```bash
-node .tack/scripts/dev-context.js read --field=current_topic
-node .tack/scripts/dev-context.js read --topic=<topic> --field=phase
-node .tack/scripts/dev-context.js read --topic=<topic> --field=status
+python3 .tack/scripts/dev_context.py read --field=current_topic
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=phase
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=status
 ```
 
 If `phase:status` is not `impl:in-progress`, stop immediately:
@@ -37,8 +37,8 @@ Do not warn and continue — stop entirely.
 Read `currentStory` and the plan file:
 
 ```bash
-node .tack/scripts/dev-context.js read --topic=<topic> --field=currentStory
-node .tack/scripts/dev-context.js read --topic=<topic> --field=plan
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=currentStory
+python3 .tack/scripts/dev_context.py read --topic=<topic> --field=plan
 ```
 
 Block if any condition is true:
@@ -63,7 +63,7 @@ grep -nE "^### \[ \]|^- \[ \] T" .tack/local/active/<topic>/implementation-plan.
 ### 3. Transition to `review:in-progress`
 
 ```bash
-node .tack/scripts/dev-context.js update-state \
+python3 .tack/scripts/dev_context.py update-state \
   --topic=<topic> --phase=review --status=in-progress
 ```
 
@@ -77,8 +77,8 @@ SAVED_SHA=$(git rev-parse HEAD)
 
 Read the base branch from config (default: `main`):
 ```bash
-node .tack/scripts/dev-context.js read --field=config.git.baseBranch
-node .tack/scripts/dev-context.js read --field=config.git.pullRemote
+python3 .tack/scripts/dev_context.py read --field=config.git.baseBranch
+python3 .tack/scripts/dev_context.py read --field=config.git.pullRemote
 ```
 
 ```bash
@@ -131,9 +131,9 @@ CRITICAL·HIGH 수정이 완료된 후 실행한다 (정제된 상태를 대상�
 **활성화 조건** — 아래 순서로 평가하고 첫 매치만 적용 (미정의/빈값은 false로 취급):
 
 ```bash
-node .tack/scripts/dev-context.js read --field=config.review.adversarial_enabled
-node .tack/scripts/dev-context.js read --field=config.codex.available
-node .tack/scripts/dev-context.js read --field=config.codex.authenticated
+python3 .tack/scripts/dev_context.py read --field=config.review.adversarial_enabled
+python3 .tack/scripts/dev_context.py read --field=config.codex.available
+python3 .tack/scripts/dev_context.py read --field=config.codex.authenticated
 ```
 
 1. `adversarial_enabled`이 false이거나 미정의 → `skipReason="disabled"` (조용히 skip, 경고 없음)
@@ -143,7 +143,7 @@ node .tack/scripts/dev-context.js read --field=config.codex.authenticated
 
 활성화 방법 (기본값 false, 명시적 opt-in 필요):
 ```bash
-node .tack/scripts/dev-context.js set-field \
+python3 .tack/scripts/dev_context.py set-field \
   --field=config.review.adversarial_enabled --value=true
 ```
 

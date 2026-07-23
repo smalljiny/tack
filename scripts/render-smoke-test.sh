@@ -10,9 +10,13 @@
 #   3. repo 루트 `scripts/`는 tack 자체 tooling이며 이미 graphify target이다.
 #
 # 검증 항목 (uvx 존재 시):
-#   (a) copier가 seed한 dev-context.json 존재 + 첫 dev-context 명령 exit 0
-#   (b) 렌더 dest에 stale 경로 토큰(.harness · docs/_local/) 0건
-#   (c) git repo 안에서 .tack/local/ 이 gitignore로 무시됨
+#   (a)  copier가 seed한 dev-context.json 존재 + 첫 dev-context read(Python 엔진) exit 0
+#   (a2) Python 엔진 쓰기 서브커맨드(set-field) exit 0
+#   (a3) 렌더 dest에 dev-context.js 엔진 파리티 잔존 (G5)
+#   (a4) 스킬층(.claude/skills · .claude/scripts)에 stale inline node dev-context.js 실행 호출 0건
+#        (훅층 split-line 콜러 detect-and-cache.js는 의도적 스코프 밖 — E7-S1까지 Node 유지)
+#   (b)  렌더 dest에 stale 경로 토큰(.harness · docs/_local/) 0건
+#   (c)  git repo 안에서 .tack/local/ 이 gitignore로 무시됨
 #
 # uvx 부재 시: clean skip + exit 0 (가용성 게이트).
 # 종료 코드: 전부 통과 0 / 하나라도 실패 nonzero / uvx 부재 clean skip 0.
@@ -59,10 +63,43 @@ fi
 if [ ! -f "$DEST/.tack/local/dev-context.json" ]; then
   fail "(a) seed 파일 부재: .tack/local/dev-context.json (--trust _tasks 미실행)"
 fi
-if ! node "$DEST/.tack/scripts/dev-context.js" read --field=current_topic >/dev/null 2>&1; then
-  fail "(a) 첫 dev-context read가 nonzero exit로 종료됨"
+if ! python3 "$DEST/.tack/scripts/dev_context.py" read --field=current_topic >/dev/null 2>&1; then
+  fail "(a) 첫 dev-context read(Python 엔진)가 nonzero exit로 종료됨"
 fi
-echo "[PASS] (a) seed 존재 + 첫 read exit 0"
+echo "[PASS] (a) seed 존재 + 첫 read(Python) exit 0"
+
+# --- Python engine write-path check (set-field exit 0) ---
+# temp dest이므로 실제 쓰기가 무해하다. update-state는 seeded 상태에서 거부될 수
+# 있어 피하고, config 필드 set-field로 Python 엔진의 쓰기 경로가 동작함을 확인한다.
+if ! python3 "$DEST/.tack/scripts/dev_context.py" set-field --field=config.dev_impl.auto_commit --value=true >/dev/null 2>&1; then
+  fail "(a2) Python 엔진 쓰기 서브커맨드(set-field)가 nonzero exit로 종료됨"
+fi
+echo "[PASS] (a2) Python 쓰기 서브커맨드 exit 0"
+
+# --- engine parity: dev-context.js 잔존 (G5) ---
+# Python 전환 후에도 레퍼런스 Node 엔진을 파리티로 유지한다 (Codex-on-Node 등).
+if [ ! -f "$DEST/.tack/scripts/dev-context.js" ]; then
+  fail "(a3) dev-context.js 엔진 파리티 파일 부재 (G5 위반)"
+fi
+echo "[PASS] (a3) dev-context.js 엔진 파리티 잔존"
+
+# --- stale inline node dev-context caller guard (스킬층 한정) ---
+# 스코프를 .claude/skills · .claude/scripts 두 디렉토리로 한정한다:
+#   - .codex/ 는 out-of-scope(Codex 스킬은 Node 엔진 유지)이므로 배제.
+#   - .tack/scripts/ 는 엔진 self-ref(dev-context.js 주석)이므로 배제.
+# 이 guard는 단일 라인 `node ... dev-context.js` 실행 호출만 탐지한다. 훅층의
+# split-line 콜러(detect-and-cache.js의 `spawnSync('node', [devContextScript])`,
+# devContextScript=join(cwd,'.tack/scripts/dev-context.js'))는 의도적으로 스코프
+# 밖이다 — 훅층은 E7-S1까지 Node 유지(plan Out-of-scope), G5로 dev-context.js가
+# 잔존하므로 그 콜러는 정상 동작한다. PASS 메시지는 "inline" 한정으로 명시해 이
+# guard가 모든 node 콜러 부재가 아니라 인라인 콜러 부재만 증명함을 정직하게 표기한다.
+# 기존 Check (b) 관용구(2>/dev/null || true + [ -n ])를 미러해 디렉토리 부재에도 안전.
+STALE_NODE="$(grep -rnE 'node .*dev-context\.js' "$DEST/.claude/skills" "$DEST/.claude/scripts" 2>/dev/null || true)"
+if [ -n "$STALE_NODE" ]; then
+  echo "$STALE_NODE"
+  fail "(a4) 스킬층에 stale inline node dev-context.js 실행 호출 잔존"
+fi
+echo "[PASS] (a4) 스킬층 stale inline node dev-context.js 실행 호출 0건"
 
 # --- Check (b): 렌더 dest에 stale 토큰 0건 (T5.4) ---
 # git init(c) 이전에 실행해 .git 메타데이터를 스캔에서 배제한다.
@@ -85,6 +122,6 @@ if ! git -C "$DEST" check-ignore .tack/local/dev-context.json >/dev/null 2>&1; t
 fi
 echo "[PASS] (c) .tack/local/ gitignore 무시 확인"
 
-# --- 전부 통과 (T5.6) ---
-echo "[OK] 렌더 스모크 테스트 3검증 모두 통과."
+# --- 전부 통과 ---
+echo "[OK] 렌더 스모크 테스트 모든 검증 통과 (a·a2·a3·a4·b·c)."
 exit 0
