@@ -1,10 +1,12 @@
 ---
-version: 3
-description: Scaffold language-specific rule files (coding-style/security/testing) under .tack/rules/<language>/. Generative, not template copy.
-category: harness-management
+version: 1
+name: meta-add-language-rules
+description: Scaffold language-specific rule files (coding-style/security/testing) under .tack/rules/<language>/. Generative, not template copy. User-invocable via /meta-add-language-rules.
+origin: harness
+user-invocable: true
 ---
 
-# /add-language-rules
+# /meta-add-language-rules
 
 Add new language or framework rules to the harness by generating three rule files under `.tack/rules/<language>/`. Claude writes the files based on the language's idioms, security conventions, and testing practices — not from a fixed template.
 
@@ -13,15 +15,15 @@ Add new language or framework rules to the harness by generating three rule file
 ## Usage
 
 ```
-/add-language-rules <language>
+/meta-add-language-rules <language>
 ```
 
 **Examples:**
 ```
-/add-language-rules rust
-/add-language-rules react
-/add-language-rules go
-/add-language-rules python
+/meta-add-language-rules rust
+/meta-add-language-rules react
+/meta-add-language-rules go
+/meta-add-language-rules python
 ```
 
 If `$ARGUMENTS` is empty, use `AskUserQuestion` to ask "어떤 언어 또는 프레임워크의 규칙을 추가할까요?" with options such as:
@@ -105,7 +107,7 @@ SKILL.md를 참조하면 더 상세한 패턴을 확인할 수 있습니다.
 
 ### 6. Output Reload Guidance
 
-After Step 5 (regardless of whether a related skill was found), print the following final line as the last output of this command:
+After Step 5 (regardless of whether a related skill was found), print the following final line as the last output of this skill:
 
 ```
 CLAUDE.md에 자동 로드 적용은 /flow-init 재실행
