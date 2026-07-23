@@ -38,3 +38,54 @@ origin: harness
 - **기존 수동 이슈 마이그레이션·정리**: ad-hoc 생성된 기존 이슈의 재작성·정합화는 범위 밖이다.
 
 > **Deferred to E3 (OQ4 — epic umbrella 트리거)**: umbrella 이슈를 언제·누가 mint하는가(hub가 신규 epic 감지 시 자동 vs 명시 호출)는 E3-S2 배선 시점에 확정한다. 본 컴포넌트는 mint **연산**만 제공하고 트리거 배선은 소비자 소관이다. (기록만 — S1 범위 밖)
+
+## Operational Contract
+
+모든 mint 연산(라벨 부트스트랩·story 이슈·epic umbrella)이 공유하는 실행 계약이다. 이후 연산 섹션은 이 계약을 재정의하지 않고 "Operational Contract를 따른다"로 참조한다.
+
+### Availability Gate
+
+`gh` 명령을 실행하기 전에 두 조건을 확인한다:
+
+1. `gh` CLI가 설치돼 있는가 — `command -v gh`.
+2. 대상 repo owner가 인증됐는가 — `gh auth status`가 해당 owner를 커버하는가.
+
+둘 중 하나라도 실패하면 mint를 **skip**하고 수동 명령을 안내한다. 하드 실패(비-0 exit)하지 않는다.
+
+```
+gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행하세요:
+  gh label create type:story --repo <owner>/<name>
+  gh issue create --repo <owner>/<name> --label type:story --title "<title>" --body-file -
+```
+
+### Account Routing (owner별 타입 분기 없음)
+
+라벨(`type:epic`·`type:story`)은 개인·조직 repo에서 균일하게 동작하므로 타입 표현에 owner별 분기가 **없다**.
+
+- **owner 감지**: `gh repo view --json owner` — 배포된 repo의 실제 owner를 그대로 사용한다 (개인 계정이든 조직 계정이든 무관). 컴포넌트는 특정 계정 핸들을 하드코딩하지 않는다.
+- **인증 커버 확인**: `gh auth status`로 감지된 owner가 현재 인증에 포함되는지 확인한다.
+- **대상 지정**: 모든 연산은 `--repo <owner>/<name>`를 명시하거나 현재 repo 컨텍스트로 해석한다.
+
+### Shell-Injection Defense
+
+이슈 제목·본문 등 동적 문자열은 셸 인자로 보간하지 않는다 (`.tack/rules/security.md` Shell Injection Defense 준수).
+
+- **본문**: `--body-file -`로 stdin 전달한다. 여러 줄 본문은 단일따옴표 HEREDOC(`<<'BODY' ... BODY`)으로 파이프한다 — 변수 확장·명령 치환이 비활성화된다.
+- **제목**: `--title "$TITLE"` 단일 인자로 전달한다. 큰따옴표로 감싼 변수 확장은 값 **내부**의 백틱·`$()`를 재평가하지 않으므로 안전하다. 문자열 연결로 명령을 조립하지 않는다.
+- **금지**: `-m "$VAR"` 또는 `-m "$(...)"` 패턴. 위험한 것은 플래그 자체가 아니라 AI가 생성한 리터럴 메시지를 명령에 인라인 조립하는 경우다 — 백틱·`$()`·따옴표 escape 실패로 임의 명령이 실행될 수 있다. 동적 메시지는 항상 stdin(`--body-file -`)으로 우회한다.
+
+### Dry-run Contract (echo-not-execute)
+
+환경변수 `GH_ISSUE_DRY_RUN=1`이 설정되면 모든 연산은 **echo-not-execute** 모드로 동작한다:
+
+- 조합된 `gh` 명령을 stdout에 출력한다.
+- `gh`를 **전혀 호출하지 않는다** (zero gh calls) — 실 이슈·라벨을 생성하지 않는다.
+- exit 0으로 종료한다.
+
+dry-run은 Availability Gate에 우선한다 — `gh`를 호출하지 않으므로 `gh` 미설치·미인증 환경에서도 조합 명령 출력이 동작한다. 따라서 dry-run 점검은 `gh` 없이 성립한다.
+
+이 계약에 따라 dry-run 모드는 대상 repo를 오염시키지 않는다 (gh 미호출이 구조적으로 무오염을 보장한다). standalone 검증(§Standalone Verification)은 이 성질을 정적 점검으로 확인한다.
+
+### stdout Return Convention
+
+생성 연산(story 이슈·epic umbrella)은 성공 시 생성된 이슈 **번호**와 **URL**을 stdout으로 반환한다. 호출자는 stdout을 파싱해 후속 배선에 사용한다. dry-run 모드에서는 실 번호·URL 대신 조합된 gh 명령만 출력한다.
