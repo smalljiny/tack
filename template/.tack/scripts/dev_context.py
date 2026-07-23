@@ -108,6 +108,52 @@ def die(msg):
     sys.exit(1)
 
 
+def parse_config_path(field):
+    """config 점 경로 파싱: 'config.<ns>.<key>'(깊이 2 고정). {ok, ns, key} 또는 {ok:False, reason}."""
+    segments = field.split(".")
+    if len(segments) != 3 or segments[0] != "config" or not segments[1] or not segments[2]:
+        return {
+            "ok": False,
+            "reason": f"config 경로는 정확히 'config.<namespace>.<key>' 형태여야 합니다 (입력: {field})",
+        }
+    if segments[1] in FORBIDDEN_CONFIG_SEGMENTS or segments[2] in FORBIDDEN_CONFIG_SEGMENTS:
+        return {
+            "ok": False,
+            "reason": f"config 경로에 예약된 키를 사용할 수 없습니다 (입력: {field})",
+        }
+    return {"ok": True, "ns": segments[1], "key": segments[2]}
+
+
+def coerce_config_value(value):
+    """config 전용 타입 추론: 'true'/'false'→bool, 정수 리터럴→int, JSON 배열→list, 그 외→str.
+
+    배열은 '[' 시작 + ']' 끝 패턴만. '[A-Z].*' 같은 정규식 스칼라는 ']' 뒤에 문자가 있어 미매치.
+    JS \\d는 ASCII이므로 [0-9]를 사용하고, JS /…/s(dotAll)는 re.DOTALL로 재현한다.
+    """
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    if re.fullmatch(r"-?[0-9]+", value):
+        # 2^53 초과 정수는 JS Number()가 float로 반올림하지만 Python int는 정확값을 유지한다
+        # (의도된 비-parity, config 값은 소형 정수라 실사용에서 도달 불가).
+        return int(value)
+    if re.fullmatch(r"\s*\[.*\]\s*", value, re.DOTALL):
+        try:
+            parsed = json.loads(value)
+        except ValueError as e:
+            die(f"config 값 파싱 오류: JSON 배열 파싱 실패 — {e} (입력: {value})")
+        if not isinstance(parsed, list) or not all(
+            isinstance(el, str) and not re.search(r"[\r\n]", el) for el in parsed
+        ):
+            die(
+                "config 배열 값은 문자열 원소만 허용합니다 — 줄바꿈 포함 및 "
+                '비문자열 불가 (예: [".claude/", ".tack/"])'
+            )
+        return parsed
+    return value
+
+
 def cmd_register_topic(args):
     topic = args.get("topic")
     spec = args.get("spec")
@@ -199,7 +245,20 @@ def cmd_set_field(args):
         write_context(ctx)
         return
 
-    # 글로벌 config 점 경로(config.<ns>.<key>)는 Story 6(T6.3)에서 배선한다.
+    # 글로벌 config 점 경로 (config.<ns>.<key>)
+    if field == "config" or field.startswith("config."):
+        if topic:
+            die("set-field: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
+        parsed = parse_config_path(field)
+        if not parsed["ok"]:
+            die(f"set-field: {parsed['reason']}")
+        ctx = read_context()
+        ns = parsed["ns"]
+        if not isinstance(ctx["config"].get(ns), dict):
+            ctx["config"][ns] = {}
+        ctx["config"][ns][parsed["key"]] = coerce_config_value(value)
+        write_context(ctx)
+        return
 
     if not topic:
         die("set-field: --topic 필요 (current_topic 제외)")
@@ -222,9 +281,24 @@ def cmd_set_field(args):
     write_context(ctx)
 
 
+def _js_string(val):
+    """레퍼런스 String(val) 재현: None→'', bool→'true'/'false', 그 외→str(val).
+
+    Python str(True)='True'이지만 JS String(true)='true'이므로 bool을 명시 변환한다
+    (config boolean read의 byte-parity에 필요).
+    """
+    if val is None:
+        return ""
+    if val is True:
+        return "true"
+    if val is False:
+        return "false"
+    return str(val)
+
+
 def _emit_scalar(val):
     """레퍼런스 process.stdout.write((val==null? '' : String(val)) + '\\n')와 동일."""
-    sys.stdout.write(("" if val is None else str(val)) + "\n")
+    sys.stdout.write(_js_string(val) + "\n")
 
 
 def cmd_read(args):
@@ -249,7 +323,23 @@ def cmd_read(args):
         _emit_scalar(ctx.get("current_topic"))
         return
 
-    # 글로벌 config 점 경로(config.<ns>.<key>)는 Story 6(T6.3)에서 배선한다.
+    # 글로벌 config 점 경로 (config.<ns>.<key>)
+    if field == "config" or field.startswith("config."):
+        if topic:
+            die("read: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
+        parsed = parse_config_path(field)
+        if not parsed["ok"]:
+            die(f"read: {parsed['reason']}")
+        # Python dict는 상속 데이터 키가 없어 `in`이 곧 hasOwn 가드다.
+        config = ctx.get("config")
+        ns_obj = config.get(parsed["ns"]) if isinstance(config, dict) else None
+        val = ns_obj.get(parsed["key"]) if isinstance(ns_obj, dict) else None
+        if isinstance(val, list):
+            # 빈 배열과 미설정은 모두 빈 출력(빈 줄)을 낸다.
+            sys.stdout.write(("\n".join(val) + "\n") if len(val) > 0 else "\n")
+        else:
+            _emit_scalar(val)
+        return
 
     if not topic:
         die("read: --topic 필요 (current_topic 제외)")
