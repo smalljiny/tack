@@ -29,6 +29,8 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 | `/flow-pr` | 브랜치 push + PR 생성 | — |
 | `/flow-done` | 산출물 아카이브·토픽 정리 | — |
 
+스펙 작성은 대상 도메인의 현재 동작을 탐색(explore)한 뒤 변경분을 delta(ADDED/MODIFIED/REMOVED)와 EARS requirement로 명시하고, planner가 이 delta로 Story를 분해하며 위험 tier를 산정한다 (→ [delta-spec-authoring](docs/specs/delta-spec-authoring.md)).
+
 보조 커맨드: `/flow-topic`(토픽 전환), `/flow-worktree`(격리 워크트리), `/flow-setup`·`/flow-init`(초기 설정).
 
 모든 슬래시 커맨드와 하네스 관리 진입점은 별도 커맨드 파일 없이 스킬로 노출된다 — prefix로 tier를 구분하고(`flow-`/`wf-`/`adapter-`/`stack-`/`meta-`) `user-invocable` 플래그로 노출을 결정하는 skills-only 모델이다 (→ [skill-taxonomy](docs/specs/skill-taxonomy.md)).
