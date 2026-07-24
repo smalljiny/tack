@@ -6,7 +6,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-start.js\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-start.py\""
       }
     ]
   },
@@ -17,7 +17,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.js\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.py\""
       }
     ]
   },
@@ -28,7 +28,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.js\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/suggest-compact.py\""
       }
     ]
   },
@@ -39,7 +39,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/type-check.js\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/type-check.py\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
       }
     ]
   },
@@ -50,7 +50,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/prettier-format.js\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/prettier-format.py\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\""
       }
     ]
   },
@@ -61,7 +61,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-logger.js\" \"${CLAUDE_TOOL_NAME}\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\"",
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/session-logger.py\" \"${CLAUDE_TOOL_NAME}\" \"${CLAUDE_TOOL_INPUT_FILE_PATH}\"",
         "timeout": 10000,
         "async": true
       }
@@ -74,7 +74,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/git-push-review.js\" \"${CLAUDE_TOOL_INPUT_COMMAND}\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/git-push-review.py\" \"${CLAUDE_TOOL_INPUT_COMMAND}\""
       }
     ]
   },
@@ -85,7 +85,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/console-log-audit.js\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/console-log-audit.py\""
       }
     ]
   },
@@ -96,7 +96,7 @@
     "hooks": [
       {
         "type": "command",
-        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/memory-persist.js\""
+        "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hooks/memory-persist.py\""
       }
     ]
   }
