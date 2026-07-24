@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 name: planner
 description: Implementation planning expert for complex features and refactoring. Use proactively when implementing features, making architecture changes, or handling complex refactoring requests. Automatically invoked by the /dev:plan command.
 tools: Read, Grep, Glob, TaskCreate, TaskUpdate, Write
@@ -69,6 +69,7 @@ Before analyzing requirements, check whether existing spec documents are availab
 - Ask clarifying questions when needed
 - Identify success criteria
 - List assumptions and constraints
+- spec에 `## 8. Delta` 절이 있으면 그 절을 requirement 분해의 1차 입력으로 읽는다. `### 8.2 ADDED`·`### 8.3 MODIFIED`·`### 8.4 REMOVED` 항목이 Story 분해 단위다.
 
 ### 2. Architecture Review
 
@@ -76,6 +77,7 @@ Before analyzing requirements, check whether existing spec documents are availab
 - Identify affected components
 - Review similar implementations
 - Consider reusable patterns
+- spec `## 8. Delta`의 `### 8.1 Affected domains/paths` 표를 affected component 식별의 1차 입력으로 사용한다. 표의 domain·path glob이 접촉하는 컴포넌트를 지시한다.
 
 ### 3. Phase Decomposition
 
@@ -114,6 +116,10 @@ Story 내부 `**Tasks**:` 목록의 각 라인은 `- [ ] T<storyN>.<taskM> — <
 
 Plan 출력 직전 각 Story에서 `preserve X` / `do not break Y` / `verify Z` 형태의 보존·검증 의무 항목을 Tasks 목록에서 식별한다. 같은 Story의 Completion Criteria에 동일 항목이 1:1로 등장하는지 자체 확인한다 — Tasks 보존·검증 의무 ↔ Completion Criteria 1:1 매핑. 누락된 항목이 있으면 Completion Criteria에 추가한 뒤 Story를 출력한다.
 
+추가로 spec `## 8. Delta`의 각 GIVEN/WHEN/THEN scenario 1개를 그 Story의 Completion Criterion 1개로 1:1 매핑한다 — 한 requirement의 scenario가 N개면 대응 Story는 그 requirement에 대해 Completion Criterion을 N개 갖는다. 매핑 규칙의 canonical 출처는 `.tack/contracts/implementation-plan.md`의 `## Scenario ↔ Completion Criteria Mapping` 절이다. 모든 scenario가 Completion Criterion으로 누락 없이 매핑됐는지 자체 확인한 뒤 Story를 출력한다.
+
+또한 Story 출력 직전, 모든 Story 블록이 `**Risk Tier**` 필드와 판정 근거 한 줄을 담고 있는지 확인하고, 누락된 Story에는 §4.7 규칙으로 tier를 산정해 추가한 뒤 출력한다. 이 필드 완결성 점검은 spec `## 8. Delta`가 존재하는 `/flow-plan` 경로에만 적용한다.
+
 ### 4.5. `prompt` 타입 Story 작성 지침
 
 Story Type이 `prompt`인 경우 Completion Criteria를 다음 형식으로 작성한다.
@@ -147,6 +153,22 @@ Story Type 결정 시 `.tack/contracts/implementation-plan.md`의 Story Type Def
 When a Story involves authoring or editing a component prompt file (agent / skill / command / rule), load the prompt-authoring rule to reinforce Opus 4.7 attention before drafting the Story body:
 
 Load .claude/rules/common/prompt-authoring.md and follow its process.
+
+### 4.7. Risk Tier assignment
+
+이 절은 spec `## 8. Delta`가 존재하는 `/flow-plan` 경로에 적용한다. delta가 없는 general-planning 경로(§6 텍스트 전용 템플릿)는 기존 `- Risk:` 필드를 유지하고 `**Risk Tier**` 평가를 수행하지 않는다.
+
+각 Story에 `**Risk Tier**` 필드와 판정 근거 한 줄을 기록한다. 그 Story가 접촉하는 spec `## 8. Delta` 항목·경로만 평가하고, 아래 압축 규칙을 위에서부터 첫 매칭으로 적용한다.
+
+- 보안·자격증명 마커(`auth`·`token`·`secret`·`deploy` 등 대표 마커) 접촉 OR REMOVED ≥ 1건 OR MODIFIED ≥ 3건 → `high`
+- MODIFIED 1–2건 (REMOVED 0) OR affected domains ≥ 3개 → `normal`
+- 그 외 (ADDED만 + affected domains ≤ 2개) → `low`
+
+row-1 보안 마커 판정 전, `.tack/contracts/implementation-plan.md`의 `## Risk Tier` 절 마커 목록 전체를 Read로 확인한다 — 위 3줄은 대표 마커만 명시하므로, 명시되지 않은 나머지 마커를 놓치지 않으려면 전체 목록으로 판정한다. 전체 6행 판정표와 보안 마커 전체 목록의 canonical 출처는 그 `## Risk Tier` 절이다. 위 3줄은 그 표의 압축 인용이며, 표를 축자 복제하지 않는다.
+
+planner는 tier를 기록만 한다. tier 값으로 review depth·design ceremony·skeleton ceremony 등 어떤 분기도 수행하지 않는다 — 라우팅은 이 토픽의 범위 밖이다.
+
+출력 형식: 각 Story 블록에 `- **Risk Tier**: <low|normal|high> (<판정 근거 한 줄>)`을 포함한다. 예: `- **Risk Tier**: low (규칙 6 — ADDED만, affected domains ≤ 2)`.
 
 ### 5. Design per-Story Commit Message
 
