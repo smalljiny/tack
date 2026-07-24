@@ -24,6 +24,7 @@
 
 ### [ ] Story 1: <title>
 - **Type**: tdd | config | infra | refactor | prompt
+- **Risk Tier**: low | normal | high  (판정 근거를 괄호로 한 줄 병기 — 예: `normal (규칙 4 — MODIFIED 1건, affected domains 1개)`)
 - **Goal**: [What this Story achieves — one sentence]
 - **Tasks**:
   - [ ] T1.1 — <imperative subject for first task>
@@ -120,6 +121,7 @@
 ```markdown
 ### [ ] Story N: <프롬프트 파일 개선>
 - **Type**: prompt
+- **Risk Tier**: low (규칙 6 — ADDED만, affected domains ≤ 2)
 - **Goal**: ...
 - **Tasks**:
   - [ ] TN.1 — <imperative subject>
@@ -165,6 +167,33 @@ Optional multi-line body (indented under the backtick line):
 - Scope parser regex: `^\|\s*([a-z0-9_-]+)\s*\|` (first column of the Markdown table, excluding `scope` header and separator rows)
 
 **Backward compatibility**: Plans written before the `pr-driven-commit-workflow` topic's Task 4 do not require a `**Commit**` field. `plan-review` skips Commit validation when the field is absent — it is treated as a warning, not a failure.
+
+## Risk Tier
+
+각 Story는 접촉하는 spec `## 8. Delta` 항목·경로의 형태로 위험 tier를 산정한다. 이 절이 tier 판정표의 단일 canonical 출처다 — planner·다른 스킬은 이 표를 축자 복제하지 않고 이 절을 인용한다.
+
+first-match 순서 규칙. Story 단위로 그 Story가 접촉하는 delta 항목·경로만 평가한다. 위에서부터 첫 매칭에서 tier가 결정된다.
+
+| 우선순위 | 조건 (위에서부터 첫 매칭) | Tier |
+|---|---|---|
+| 1 | Affected domains/paths가 보안·자격증명 마커를 포함 (`auth`, `login`, `session`, `token`, `secret`, `credential`, `permission`, `role`, `crypto`, `payment`, `deploy`) | high |
+| 2 | REMOVED requirement ≥ 1 | high |
+| 3 | MODIFIED requirement ≥ 3 | high |
+| 4 | MODIFIED requirement 1–2 (REMOVED 0) | normal |
+| 5 | Affected domains ≥ 3 (ADDED만이어도) | normal |
+| 6 | 그 외 (ADDED만 + affected domains ≤ 2) | low |
+
+tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다. 이 계약은 tier 값에 따른 어떤 분기도 정의하지 않는다 — 리뷰 깊이·design ceremony·골격 의례 라우팅은 이 계약의 범위 밖이다.
+
+**Backward compatibility**: `**Risk Tier**` 필드가 없는 plan은 실패로 처리하지 않는다. `plan-review`는 필드 부재를 warning 없이 통과시킨다 — 필드는 기대값이며 강제 대상이 아니다.
+
+## Scenario ↔ Completion Criteria Mapping
+
+spec `## 8. Delta`의 각 GIVEN/WHEN/THEN scenario 1개는 그 Story의 Completion Criterion 1개로 1:1 매핑된다. 이 절이 매핑 규칙의 canonical 출처다.
+
+- delta requirement의 scenario가 N개면 대응 Story는 그 requirement에 대해 Completion Criterion을 N개 갖는다.
+- EARS Unwanted 패턴(`IF … THEN`) requirement는 정상 경로·unwanted 경로 scenario 2개를 가지므로 Completion Criterion도 2개로 매핑된다.
+- scenario 형식과 최소 개수 규칙은 `.tack/contracts/spec.md`가 소유한다 — 이 절은 매핑 관계만 정의한다.
 
 ## Key Constraints
 
