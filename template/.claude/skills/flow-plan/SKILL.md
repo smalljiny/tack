@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 name: flow-plan
 description: Create an implementation plan from a confirmed spec. Moves topic from backlog to active, updates paths in dev-context.json, and generates implementation-plan.md.
 origin: harness
@@ -124,6 +124,9 @@ Pass the following to the planner agent:
 - Confirmed spec path: `.tack/local/active/<topic>/spec.md`
 - Dependency analysis result (JS/TS projects only): `<DEPENDENCY_ANALYSIS>` — empty string if skipped
 - Instruction: **use `.tack/contracts/implementation-plan.md` as the output format** and include a `**Commit**` field in every Story block (type/scope from `.tack/commit-scopes.md`, subject ≤ 72 chars)
+- Instruction: use spec `## 8. Delta` (Affected domains/paths + ADDED/MODIFIED/REMOVED requirements) as the Story decomposition input
+- Instruction: map each delta scenario (GIVEN/WHEN/THEN) to one Completion Criterion 1:1 in the Story that covers it, per the plan contract's `## Scenario ↔ Completion Criteria Mapping` section
+- Instruction: record a `**Risk Tier**` field on every Story, assigned per the plan contract's `## Risk Tier` section in `.tack/contracts/implementation-plan.md` — cite that section; do not reproduce its table, thresholds, or security-marker list here
 
 The planner agent produces **only**:
 - `.tack/local/active/<topic>/implementation-plan.md`
@@ -270,6 +273,7 @@ See `.tack/contracts/implementation-plan.md` for the canonical format.
 
 ### [ ] Story 1: <title>
 - **Type**: tdd | config | infra | refactor | prompt
+- **Risk Tier**: low | normal | high  (판정 근거 한 줄)
 - **Goal**: [What this Story achieves]
 - **Tasks**:
   - [ ] T1.1 — <imperative subject>
@@ -286,6 +290,7 @@ See `.tack/contracts/implementation-plan.md` for the canonical format.
 - **backlog → active is atomic** — directory move happens before planner invocation; if planner fails, the directory stays in `active/`
 - **Plans are stored in `.tack/local/active/`** (git-ignored)
 - **plan:confirmed is set by Codex plan-review** — `/flow-plan` does not set `plan:confirmed`; that is owned by the Codex plan-review skill
+- **Risk Tier is recorded, not routed** — each Story carries a `**Risk Tier**` per the plan contract's `## Risk Tier` section; `/flow-plan` routes nothing on the tier value (no review-depth or design-ceremony branching)
 - After plan-review passes: run Stories with `/flow-impl`
 
 ## Next Steps
