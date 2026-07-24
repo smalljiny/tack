@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 name: planner
 description: Implementation planning expert for complex features and refactoring. Use proactively when implementing features, making architecture changes, or handling complex refactoring requests. Automatically invoked by the /dev:plan command.
 tools: Read, Grep, Glob, TaskCreate, TaskUpdate, Write
@@ -164,7 +164,7 @@ Load .claude/rules/common/prompt-authoring.md and follow its process.
 - MODIFIED 1–2건 (REMOVED 0) OR affected domains ≥ 3개 → `normal`
 - 그 외 (ADDED만 + affected domains ≤ 2개) → `low`
 
-row-1 보안 마커 판정 전, `.tack/contracts/implementation-plan.md`의 `## Risk Tier` 절 마커 목록 전체를 Read로 확인한다 — 위 3줄은 대표 마커만 명시하므로, 명시되지 않은 나머지 마커를 놓치지 않으려면 전체 목록으로 판정한다. 전체 6행 판정표와 보안 마커 전체 목록의 canonical 출처는 그 `## Risk Tier` 절이다. 위 3줄은 그 표의 압축 인용이며, 표를 축자 복제하지 않는다.
+row-1 보안 마커 판정 전, `.tack/contracts/implementation-plan.md`의 `## Risk Tier` 절 마커 목록 전체를 Read로 확인한다 — 위 3줄은 대표 마커만 명시하므로, 명시되지 않은 나머지 마커를 놓치지 않으려면 전체 목록으로 판정한다. 마커 목록뿐 아니라 위 3줄의 임계값(`REMOVED ≥ 1`·`MODIFIED ≥ 3`·`affected domains ≥ 3` 등)도 그 `## Risk Tier` 절의 6행 판정표를 canonical로 따른다 — 위 3줄과 표가 어긋나면 표가 우선한다. 전체 6행 판정표와 보안 마커 전체 목록의 canonical 출처는 그 `## Risk Tier` 절이다. 위 3줄은 그 표의 압축 인용이며, 표를 축자 복제하지 않는다.
 
 planner는 tier를 기록만 한다. tier 값으로 review depth·design ceremony·skeleton ceremony 등 어떤 분기도 수행하지 않는다 — 라우팅은 이 토픽의 범위 밖이다.
 

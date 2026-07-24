@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: flow-spec
 description: Write a spec for a new topic. Registers the topic in dev-context.json, writes a spec draft using the brainstorming skill, runs the Codex review loop, and confirms the spec before planning.
 origin: harness
@@ -57,7 +57,7 @@ If no argument:
 
 > **Step 2.5 re-entry (v1)**: Step 2.5 is not idempotent — every re-entry re-runs the full question sequence from scratch, regardless of any prior `docs/research/research-<topic>-*.md` file. Reuse of an existing report is out of scope for v1 (see spec Open Question #2).
 
-> **Step 2.7 re-entry**: Step 2.7은 idempotent하다 — `explore.md` 재사용 판정을 `wf-delta-spec` Step 1.0이 소유하므로, 기존 파일이 있으면 탐색이 다시 실행되지 않는다. `explore.md`는 `register-topic`보다 앞선 Step 2.7에서 작성되므로 위 `phase:status` 표의 라우팅 대상이 아니다 — 토픽 미등록 + `explore.md` 존재 상태의 재진입은 표 마지막 행에 따라 Step 2 → Step 2.7로 진행하고, Step 2.7이 기존 파일을 그대로 재사용한다.
+> **Step 2.7 re-entry**: Step 2.7은 idempotent하다 — `explore.md` 재사용 판정을 `wf-delta-spec` Step 1.0이 소유하므로, 기존 파일이 있고 4개 섹션이 온전하면 탐색이 다시 실행되지 않는다 (섹션이 하나라도 없으면 Step 1.0이 재탐색·덮어쓰기한다). `explore.md`는 `register-topic`보다 앞선 Step 2.7에서 작성되므로 위 `phase:status` 표의 라우팅 대상이 아니다 — 토픽 미등록 + `explore.md` 존재 상태의 재진입은 표 마지막 행에 따라 Step 2 → Step 2.7로 진행하고, Step 2.7이 기존 파일을 그대로 재사용한다.
 
 ### 2. Prepare working directory
 
@@ -128,7 +128,7 @@ Load `.claude/skills/wf-delta-spec/SKILL.md` and follow its process.
 
 Step 1이 끝나면 `.tack/local/backlog/<topic>/explore.md`가 존재한다. 이 경로를 `EXPLORE_CONTEXT`에 보관해 Step 3에 넘긴다.
 
-`explore.md`가 이미 있으면 탐색을 다시 실행하지 않고 기존 파일을 재사용한다. 재사용 판정 게이트는 `wf-delta-spec` Step 1.0이 소유하며, 이 단계는 그 판정을 다시 정의하지 않는다.
+`explore.md`가 이미 있고 4개 섹션이 온전하면 탐색을 다시 실행하지 않고 기존 파일을 재사용한다. 재사용 판정 게이트는 `wf-delta-spec` Step 1.0이 소유하며, 이 단계는 그 판정을 다시 정의하지 않는다.
 
 스킬이 대상 도메인 미확정을 보고하면 `explore.md`의 `## Open points for brainstorming` 항목을 Step 3 브레인스토밍의 논의 대상으로 넘긴다. 이 보고는 스펙 작성 흐름을 중단시키지 않는다.
 
