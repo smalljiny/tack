@@ -141,7 +141,7 @@ source가 destination으로 렌더되는 방식은 네 가지다.
 | **E1-S3** (dogfood) | §4 destination 트리 + §6 스캐폴딩 규약 | `copier copy`/`update`로 source를 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행 |
 | **E1-S4** (tracked 확정) | §7 tracked 경계 | 배포된 instance 파일을 git tracked 커밋 (3-way merge 전제) |
 | **E2** (dev-context) | §6 `.tack/local/dev-context.json` 위치·seed | dev-context 엔진을 Python으로 구현 (E1-S2는 위치·스캐폴드 규약만 확정) |
-| **E7-S1** (훅) | §6 `.tack/local/sessions/` 위치 | session-logger 등 훅의 세션 로그 경로 배선 (E1-S2는 위치만 확정) |
+| **E7-S1** (훅) | §6 `.tack/local/sessions/` 위치 | 훅을 Python으로 패리티 포트 — session-logger는 레퍼런스와 동일하게 `.claude/sessions/`에 기록한다. `.tack/local/sessions/`로의 세션 로그 경로 이관은 E7-S1이 수행하지 않고 후속으로 이연한다. |
 
 > 이 표의 하류 story는 모두 이 레이아웃을 **앞으로 소비**한다. source 트리 실제 구축·물리적 `.tack/` 배포·tracked 커밋·`.tack/local/` 스캐폴딩 실행은 하류가 self-host 전환점에서 수행한다.
 
@@ -149,7 +149,7 @@ source가 destination으로 렌더되는 방식은 네 가지다.
 
 | Open Question | 소유/처리 | 비고 |
 |---------------|-----------|------|
-| **세션 로그 이관** — 기존 도구별 세션 로그를 `.tack/local/sessions/`로 옮길지 | **E7-S1** (훅) | 위치는 이 문서에서 `.tack/local/sessions/`로 확정. 훅 경로 배선·이관은 E7-S1. |
+| **세션 로그 이관** — 기존 도구별 세션 로그를 `.tack/local/sessions/`로 옮길지 | **후속 이연** (E7-S1 미이행) | 위치는 이 문서에서 `.tack/local/sessions/`로 확정. E7-S1은 훅을 패리티 포트하며 session-logger를 `.claude/sessions/`로 유지했다 — 경로 이관은 별도 후속 토픽 소관. |
 | **`.tack/local/` 내부구조 진화** — 라이프사이클 내부 조직을 E2가 재편할지 | **E2** (dev-context) | init 스캐폴드 집합(`dev-context.json` + 빈 `backlog/active/done/sessions`)·gitignore 대상은 §6에서 확정. 내부 조직 진화만 E2. |
 | **제품 정체성 규약 역반영** — `.tack/` override를 상위 규약 문서에 반영할지 | **지금 닫지 않음** | override 결정은 §9에 권위 있게 기록됨. 상위 규약 역반영 여부는 배포 정책 문서화 시 재검토. |
 | **target 배포 시 `.tack/` 이름 충돌** — target에도 `.tack/`이 생김(정상, `.git`처럼) | **E1-S1** (배포 정책) | 조직 표준과의 충돌 여부는 배포 정책에서 재확인. |

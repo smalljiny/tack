@@ -18,7 +18,7 @@ tack은 Claude Code + Codex 이중-도구 개발 하네스를 **Copier로 배포
 template/                              → (copier 렌더) → instance 루트
 ├── .claude/                           → 루트 .claude/     [매-update 동기화]
 │   ├── agents/ commands/ evals/ hooks/ rules/ skills/
-│   ├── scripts/                       실행 훅·CLI (hooks/ codex/ *.js *.sh)
+│   ├── scripts/                       실행 훅·CLI (hooks/ *.py, codex/ dev-context.js *.js *.sh)
 │   └── settings.json
 ├── .codex/                            → 루트 .codex/      [매-update 동기화]
 │   └── skills/                        spec-review · plan-review · eval-harness

@@ -25,11 +25,11 @@ template/.tack/scripts/
 ├── test_config.py         # config 점경로
 ├── test_remove_topic.py
 ├── test_force_state.py
-├── dev-context.js         # 레퍼런스 (승계 원천, 미삭제 — Node 훅층이 사용)
+├── dev-context.js         # 레퍼런스 (승계 원천, 미삭제 — .codex/skills 3파일이 CLI로 호출)
 └── dev-context.test.js    # 레퍼런스 89-test (이식 spec)
 ```
 
-`template/.tack/scripts/`는 authoring source 경로이고 `.tack/scripts/`는 deploy destination이다. 엔진은 `dev-context.js`·`state_machine.py`와 sibling으로 co-locate돼 import seam이 성립한다. 레퍼런스 `.js`는 삭제하지 않고 공존한다 — 배포 스킬층 콜러는 Python 엔진으로 전환됐으나(E2-S4) Node 훅층이 E7-S1 전까지 계속 `.js`를 호출하며, 두 엔진은 패리티 대조 근거로도 함께 유지된다.
+`template/.tack/scripts/`는 authoring source 경로이고 `.tack/scripts/`는 deploy destination이다. 엔진은 `dev-context.js`·`state_machine.py`와 sibling으로 co-locate돼 import seam이 성립한다. 레퍼런스 `.js`는 삭제하지 않고 공존한다 — 배포 스킬층 콜러(E2-S4)와 훅층(E7-S1)은 Python으로 전환됐으나, `.codex/skills` 3파일이 `node dev-context.js`를 CLI로 계속 호출하므로(Codex cutover 이연) 유지되며, 두 엔진은 패리티 대조 근거로도 함께 유지된다.
 
 ### 상태 파일 경로 해석
 
@@ -109,6 +109,6 @@ template/.tack/scripts/
 - **패리티 포트** — 레퍼런스 6 서브커맨드의 동작·외부 계약만 재구현한다. 신규 서브커맨드·동작 확장은 범위 밖이다.
 - **전환표 미소유** — 전환표·`STATE_ORDER`를 엔진에 재정의하지 않는다. `state_machine.py`(E2-S1)가 정본을 소유하며 엔진은 import로만 소비한다.
 - **config 스키마 미검증** — plumbing(파싱·타입 추론·읽기/쓰기)만 제공한다. 유효 네임스페이스·위험 tier 필드 검증은 config 스키마의 소관이다.
-- **라이브 콜러 부분 전환** — 배포 스킬층 콜러(14 스킬 `.md` + 2 셸)는 Python 엔진 호출로 전환됐다(E2-S4). Node 훅층(`session-start.js` 등)은 `.tack/scripts/dev-context.js`를 계속 호출하며 그 재배선은 E7-S1(훅 Python port) 소관이고, dogfood 허브 SoT(`.harness/scripts/`)는 M1 별건이다. 엔진은 byte-identical 외부 계약을 보존해 콜러가 프리픽스 교체만으로 무전환 대체되도록 한다.
-- **레퍼런스 `.js` 공존** — Node 훅층이 E7-S1 전까지 사용하므로 삭제하지 않는다(패리티 유지).
+- **라이브 콜러 부분 전환** — 배포 스킬층 콜러(14 스킬 `.md` + 2 셸)는 Python 엔진 호출로 전환됐다(E2-S4). 훅층은 `dev-context.json`을 직접 읽어 dev-context.js CLI를 경유하지 않으며 E7-S1에서 Python으로 포트됐다. dev-context.js를 CLI로 호출하는 잔존 콜러는 `.codex/skills` 3파일(spec-review·plan-review·rules-and-inputs)이며 그 cutover는 E2-S4 이연 별건, dogfood 허브 SoT(`.harness/scripts/`)는 M1 별건이다. 엔진은 byte-identical 외부 계약을 보존해 콜러가 프리픽스 교체만으로 무전환 대체되도록 한다.
+- **레퍼런스 `.js` 공존** — `.codex/skills` 3파일이 CLI로 사용하므로 삭제하지 않는다(Codex cutover 선행 필요, 패리티 유지).
 - **서브프로세스 테스트** — pytest는 CLI 계약(exit code·stdout·stderr) 검증을 위해 엔진을 `subprocess.run([sys.executable, SCRIPT, ...])`로 실행한다. `conftest.py`는 `--cov` 활성 시에만 `COVERAGE_PROCESS_START` + `sitecustomize`로 서브프로세스 커버리지를 배선한다. 실행은 `uv run --with pytest --with pytest-cov python -m pytest`.
