@@ -8,7 +8,7 @@ tack은 Claude Code + Codex 이중-도구 개발 하네스를 **Copier로 배포
 
 이 문서는 그 배포 substrate를 확정한다 — `template/` 미러 트리의 구체 레이아웃, `copier.yml`의 4가지 배포 방식 배선, AGENTS.md managed 블록(Jinja include)과 CLAUDE.md @import 골격, `.tack/.gitignore` 선행 배선, uvx 실행·git-tag 버전 규약. base-layout이 §3에서 추상적으로 남긴 `template/` 내부 경로·copier.yml 형태를 이 문서가 구체화한다.
 
-**Copier와 flow-init의 경계**: Copier는 **기계적** 스캐폴딩(template 렌더·`_skip_if_exists`·Jinja include·`_tasks`)만 하고, **LLM 판단이 필요한 초기화**(프로젝트 개요·기술 스택 추론, 마커 마이그레이션, graphify targets 추천)는 flow-init이 담당한다. `copier.yml`은 기계적 골격만 만들고 지능적 프로젝트 섹션 채우기는 flow-init에 남긴다. Copier가 flow-init을 흡수하지 않는다.
+**Copier와 flow-init의 경계**: Copier는 **기계적** 스캐폴딩(template 렌더·`_skip_if_exists`·Jinja include·`_tasks`)만 하고, **LLM 판단이 필요한 초기화**(프로젝트 개요·기술 스택 추론, 마커 마이그레이션, graphify targets 추천)와 **환경 전제조건 검사**(gh ≥ 2.94.0 게이트 → `config.gh.*` 기록, 미충족 시 부트스트랩 차단)는 flow-init이 담당한다. `copier.yml`은 기계적 골격만 만들고 지능적 프로젝트 섹션 채우기와 전제조건 판정은 flow-init에 남긴다. Copier가 flow-init을 흡수하지 않는다.
 
 ## 구조: `template/` 미러 트리
 
