@@ -159,7 +159,7 @@ dossier가 **의도적으로 열어둔** 항목(D1~D7) + 로드맵 작성 중 �
 | E7-S1 | 훅 세트 **Python port**(D8) — session-start(컨텍스트 복원+codex 감지), type-check/prettier(PostToolUse), session-logger, git-push-review, suggest-compact, memory-persist, console-log-audit | `.claude/scripts/hooks/*`의 동작을 Python(.venv)으로 재구현 + hooks.json + settings |
 | E7-S2 | 에이전트 로스터 — architect/planner/tdd-specialist/code-reviewer/security-reviewer/refactor-cleaner/build-error-resolver/doc-updater/database-reviewer/prompt-engineer/harness-optimizer + opus/sonnet 모델 배분. **architect=flow-review, code-reviewer=unit-review**(B6 2단) | 11 에이전트 + `performance.md` rationale |
 | E7-S3 | 컴포넌트 작성 표준 — prompt-authoring 규칙(모델 버전 리터럴 대응), 모델 버전 갱신(Opus 4.7→현행), meta-skill-creator | prompt-authoring rules + meta-skill-creator |
-| E7-S4 | stack-* 유지 정합 — 배포 대상(TS 주력 모노레포) 정합이므로 **삭제 대상 없음**. 현 16개 전량 유지, registry 노출 15개 frontmatter·capabilities 점검(`stack-prompt`은 direct-load 예외), commit-scopes 환경별 설정 명시 | stack-* 16개 전량 유지 / commit-scopes(환경별 설정) |
+| E7-S4 | stack-* 유지 정합 — 배포 대상(TS 주력 모노레포) 정합이므로 **삭제 대상 없음**. 현 16개 전량 유지, registry 노출 15개 frontmatter·capabilities 점검(`stack-prompt`는 direct-load 예외), commit-scopes 환경별 설정 명시 | stack-* 16개 전량 유지 / commit-scopes(환경별 설정) |
 
 **선결**: E1, E2. **성격**: 대부분 병렬 가능(파이프라인 뼈대와 독립적으로 이식).
 
