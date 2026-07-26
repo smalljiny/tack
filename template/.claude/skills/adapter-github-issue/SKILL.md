@@ -15,7 +15,7 @@ origin: harness
 
 **소비자**: 소비자 스킬(`flow-spec`·`flow-pr`)이 이름으로 직접 Load하도록 설계된다 — skill-registry 발견 대상이 아니다. 실제 호출 배선은 E3-S2·E3-S5 소관이다. 본 스킬은 이슈·라벨 mint 연산, sub-issue 계층 링크 연산, PR-story 링크 연산을 제공하며, 트리거 배선은 소비자 소관이다.
 
-**제약**: 이슈는 딜리버러블 앵커일 뿐 워크플로우 상태(phase:status 등)를 담지 않는다 — 상태 저장소는 MongoDB(E4) 소유다. `gh` 미설치 또는 대상 owner 미인증 시 연산을 skip하고 수동 명령을 안내한다 (하드 실패 아님). 예외는 링크 검증 실패 한 가지다 — §Sub-Issue Link·§PR-Story Link가 링크를 시도한 뒤 형성을 확인하지 못하면 **비-0 exit**으로 호출자에게 보고한다. 제목·본문 동적 문자열은 stdin(`--body-file -`)으로 전달하며 `-m "$VAR"` 보간을 금지한다 (`.tack/rules/security.md` Shell Injection Defense).
+**제약**: 이슈는 딜리버러블 앵커일 뿐 워크플로우 상태(phase:status 등)를 담지 않는다 — 상태 저장소는 MongoDB(E4) 소유다. `gh` 미설치 또는 대상 owner 미인증 시 연산을 skip하고 수동 명령을 안내한다 (하드 실패 아님). 예외는 두 가지다 — (a) **링크 검증 실패**: §Sub-Issue Link·§PR-Story Link가 링크를 시도한 뒤 형성을 확인하지 못한 경우, (b) **의존 조회 실패로 인한 중단**: §PR-Story Link 기존 PR 경로에서 본문·base 조회가 실패해 본문을 수정하지 않고 중단한 경우. 둘 다 **비-0 exit**으로 호출자에게 보고하며, (a)는 링크를 시도했고 (b)는 시도조차 하지 않았다는 점에서 구별된다. 제목·본문 동적 문자열은 stdin(`--body-file -`)으로 전달하며 `-m "$VAR"` 보간을 금지한다 (`.tack/rules/security.md` Shell Injection Defense).
 
 ## Tier Rationale
 
@@ -395,6 +395,8 @@ gh pr edit <pr-number> --repo <owner>/<name> --body-file "$TMP_BODY"
 
   **2차 가드 (base != default 전용)**: base가 default branch가 아니면 `closingIssuesReferences`가 항상 빈 배열이라 위 선체크가 no-op을 판정하지 못한다. 이 상태에서 1차 선체크만 두면 재실행마다 `Closes #N`이 본문에 누적되고 매번 exit 0으로 끝나므로 멱등이 깨진다. 1차 선체크가 비었고 base != default일 때만 조회한 본문에 대해 **앵커 매칭**으로 2차 가드를 적용한다.
 
+  **실행 시점**: 이 가드는 본문을 입력으로 받으므로 §연산 1단계(본문 조회) **뒤**, 4단계(`gh pr edit`) **앞**에 둔다. 1·2단계는 읽기 전용이므로 가드는 여전히 변경 이전(pre-mutation)에 성립한다. 1차 선체크(`closingIssuesReferences`)는 본문에 의존하지 않으므로 §연산보다 먼저 단독 실행한다.
+
   ```bash
   grep -Eiq '^[[:space:]]*(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#<story-issue-number>[[:space:]]*$' "$TMP_BODY"
   ```
@@ -445,7 +447,16 @@ gh pr view <pr-number> --repo <owner>/<name> --json closingIssuesReferences \
 
 4행(`base != default` + 정확 일치)은 도달 가능하다 — PR 사이드바 "Development"에서 수동 연결한 이슈는 base와 무관하게 `closingIssuesReferences`에 나타난다. closing keyword가 non-default base에서 동작한다는 뜻이 아니며, 본문 keyword 외 경로로 링크가 이미 형성된 상태다.
 
-`base != default`에서 빈 배열은 **정상 상태**다 — GitHub이 keyword를 무시한 예상된 결과이므로 하드 실패하지 않는다. 하드 실패는 `base == default`인데 링크가 형성되지 않은 경우 한 가지뿐이며, 입력 검증 skip·base 불일치 경고는 모두 exit 0으로 이와 구별된다 (§Sub-Issue Link의 skip/실패 구별과 같은 규율).
+`base != default`에서 빈 배열은 **정상 상태**다 — GitHub이 keyword를 무시한 예상된 결과이므로 하드 실패하지 않는다. 입력 검증 skip·멱등 no-op·base 불일치 경고는 모두 exit 0이다.
+
+G5의 비-0 exit은 두 가지뿐이다:
+
+| 비-0 exit | 시점 | 본문 상태 |
+|-----------|------|-----------|
+| 링크 검증 실패 (`base == default` + 번호 부재) | 본문 전달 **후** | 수정됨 — `Closes #N`이 들어갔으나 링크가 형성되지 않음 |
+| 의존 조회 실패 중단 (§연산 1·2단계) | 본문 전달 **전** | 미수정 — `gh pr edit`에 도달하지 않음 |
+
+호출자는 이 둘을 stdout 라인으로 구별한다 (`PR-story 링크 검증 실패:` vs `PR-story 링크 중단:`). §Sub-Issue Link는 링크 검증 실패 한 가지만 비-0 exit이며, 나머지 skip 경로는 모두 exit 0이다.
 
 ### dry-run
 
@@ -458,7 +469,7 @@ gh pr view <pr-number> --repo <owner>/<name> --json closingIssuesReferences \
 
 임시 파일 생성(`mktemp`)·append·삭제도 수행하지 않는다 — 본문 전달 자체가 일어나지 않기 때문이다.
 
-따라서 dry-run에서는 멱등 선체크·base 비교·링크 검증이 모두 평가되지 않는다 — 불일치 경고와 위 §링크 검증 판정 표는 dry-run에서 도달하지 않는다. dry-run 출력은 조합 명령과 `Closes #N` 라인에 한정된다.
+따라서 dry-run에서는 멱등 선체크(1차·2차)·base 비교·링크 검증이 모두 평가되지 않는다 — 불일치 경고와 위 §링크 검증 판정 표는 dry-run에서 도달하지 않는다. 의존 조회를 하지 않으므로 §연산의 조회 실패 중단(비-0 exit)도 도달하지 않는다. dry-run은 §Dry-run Contract대로 항상 exit 0이며, 출력은 조합 명령과 `Closes #N` 라인에 한정된다.
 
 ## Standalone Verification (G6 — 무오염 dry-run)
 
