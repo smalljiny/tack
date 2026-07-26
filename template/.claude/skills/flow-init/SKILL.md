@@ -1,7 +1,7 @@
 ---
-version: 12
+version: 13
 name: flow-init
-description: Initialize or update project section of CLAUDE.md and AGENTS.md.
+description: Initialize or update project section of CLAUDE.md and AGENTS.md. Detects the gh CLI version, records config.gh.*, and blocks the harness bootstrap when native sub-issue support (gh >= 2.94.0) is unavailable.
 origin: harness
 user-invocable: true
 ---
@@ -131,7 +131,7 @@ Claude Code가 이 저장소에서 작업할 때의 안내 파일.
 **`.tack/rules/` 부재 시**:
 
 - `.tack/rules/` 디렉토리가 없거나 glob 결과가 0건이면 begin/end 마커 사이를 **빈 상태**로 둔다 (마커 자체는 유지 — 차후 실행이 marker 기반 업데이트 모드로 진입하도록 idempotency 보장).
-- Step 7 결과 안내에 `[정보] .tack/rules/ 부재로 마커 사이 비움` 1줄을 추가한다.
+- Step 8 결과 안내에 `[정보] .tack/rules/ 부재로 마커 사이 비움` 1줄을 추가한다.
 
 **Step 3 작성 흐름**:
 
@@ -192,7 +192,7 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 
 `scripts/deploy-harness.sh` 파일 존재 여부로 저장소 유형을 감지하고 `config.docs.sourceFilter`를 설정한다.
 
-**보존 정책 (선결 조건)**: 기존 `config.docs.sourceFilter`가 **존재하면서 빈 배열·null·미설정이 아닌 경우** 감지 결과를 적용하지 않고 기존 값을 그대로 유지한다. `/flow-init`은 imports 재생성을 위해 재실행될 수 있으므로 (`/meta-add-language-rules` 안내), 사용자가 명시적으로 설정한 sourceFilter를 재실행마다 덮어쓰지 않는다. 보존이 발동하면 Step 7에 `[보존] config.docs.sourceFilter 기존 값 유지`를 출력한다.
+**보존 정책 (선결 조건)**: 기존 `config.docs.sourceFilter`가 **존재하면서 빈 배열·null·미설정이 아닌 경우** 감지 결과를 적용하지 않고 기존 값을 그대로 유지한다. `/flow-init`은 imports 재생성을 위해 재실행될 수 있으므로 (`/meta-add-language-rules` 안내), 사용자가 명시적으로 설정한 sourceFilter를 재실행마다 덮어쓰지 않는다. 보존이 발동하면 Step 8에 `[보존] config.docs.sourceFilter 기존 값 유지`를 출력한다.
 
 기존 값이 부재(미설정·빈 배열·null)일 때만 아래 감지 로직을 적용한다.
 
@@ -234,10 +234,10 @@ python3 .tack/scripts/dev_context.py read --field=config.graphify.targets
 
 `dev-context.js read`는 배열 원소를 한 줄당 하나씩 newline-delimited로 출력하며, 빈 배열·null·미설정은 빈 stdout을 낸다. `config.graphify.targets`는 문자열 배열로만 의미가 있지만 `dev-context.js`는 동일 키에 boolean·number·문자열 같은 scalar 값도 저장 가능하다. 다음 케이스로 분기한다:
 
-- 명령이 비-0 exit으로 종료: Step 7에 `[감지 실패] config.graphify.targets`를 출력한다.
+- 명령이 비-0 exit으로 종료: Step 8에 `[감지 실패] config.graphify.targets`를 출력한다.
 - stdout이 비어 있음 (빈 배열·null·미설정): 아래 추천 분기로 진입한다.
-- stdout에 한 줄 이상의 라인이 있고 모든 라인이 비어 있지 않은 문자열 원소처럼 보인다 (배열이 비어 있지 않은 문자열 배열): 추천을 건너뛰고 Step 7에 `[보존] config.graphify.targets 기존 값 유지`를 출력한다.
-- stdout에 한 줄 이상의 라인이 있지만 저장된 값이 scalar(예: `true`, `42`, 단일 문자열 `"docs"` 등)로 의심된다: 잘못된 상태로 간주해 Step 7에 `[감지 실패] config.graphify.targets`를 출력하고 사용자에게 재설정 여부를 `AskUserQuestion`으로 묻는다. scalar 의심 신호는 — 라인 1개 + 값이 `true`/`false`/숫자/디렉토리로 해석되지 않는 단일 토큰 — 같은 휴리스틱으로 판정한다.
+- stdout에 한 줄 이상의 라인이 있고 모든 라인이 비어 있지 않은 문자열 원소처럼 보인다 (배열이 비어 있지 않은 문자열 배열): 추천을 건너뛰고 Step 8에 `[보존] config.graphify.targets 기존 값 유지`를 출력한다.
+- stdout에 한 줄 이상의 라인이 있지만 저장된 값이 scalar(예: `true`, `42`, 단일 문자열 `"docs"` 등)로 의심된다: 잘못된 상태로 간주해 Step 8에 `[감지 실패] config.graphify.targets`를 출력하고 사용자에게 재설정 여부를 `AskUserQuestion`으로 묻는다. scalar 의심 신호는 — 라인 1개 + 값이 `true`/`false`/숫자/디렉토리로 해석되지 않는 단일 토큰 — 같은 휴리스틱으로 판정한다.
 
 **저장소 유형별 추천값 분기** (기존 값 부재 시):
 
@@ -259,9 +259,98 @@ python3 .tack/scripts/dev_context.py read --field=config.graphify.targets
 python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets --value='<JSON 배열>'
 ```
 
-옵션 2(건너뛰기)를 선택하면 `set-field`를 호출하지 않고 Step 7에 `[정보] config.graphify.targets 미설정 유지`를 출력한다. 추후 `/graphify` 호출 시 hard error로 안내된다.
+옵션 2(건너뛰기)를 선택하면 `set-field`를 호출하지 않고 Step 8에 `[정보] config.graphify.targets 미설정 유지`를 출력한다. 추후 `/graphify` 호출 시 hard error로 안내된다.
 
-### Step 7: 결과 안내
+### Step 7: gh 버전 게이트 (≥ 2.94.0)
+
+Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 경우 이 단계를 건너뛴다.
+
+하네스의 GitHub 이슈 앵커 연산(`adapter-github-issue` §Sub-Issue Link)은 네이티브 sub-issue 명령 `gh issue edit --add-sub-issue`를 사용하며, 이 명령은 `gh` 2.94.0에서 도입됐다. 본 Step은 `gh` 설치·버전을 감지해 `config.gh.*` 4필드에 기록하고, 2.94.0 미만이면 하네스 부트스트랩을 차단한다.
+
+**단일 지점 원칙**: 버전 차단 판정은 `/flow-init` 이 한 지점에서만 성립한다. 개별 `flow-*` 스킬이나 `adapter-github-issue` 연산에 per-op 버전 게이트를 분산하지 않는다 — 부트스트랩을 통과한 환경에서는 연산 시점에 버전이 보장되므로, 어댑터의 가용성 게이트는 기존 graceful skip 계약을 그대로 유지한다. 차단은 부트스트랩 단계의 안내이지 후속 커맨드에 대한 런타임 강제가 아니다 — `[차단]`을 보고도 계속 진행한 사용자에게는 `config.gh.native_subissue`가 진단 기록으로 남고, 어댑터의 gh 미설치·권한 미충족 skip 경로가 잔여 방어로 동작한다.
+
+**실행 순서**: 가용성 감지 → 버전 파싱 → 버전 비교 → 4필드 기록 → (차단 판정 시) Step 8 인계. 먼저 `gh` 설치 여부를 확인한다.
+
+```bash
+command -v gh >/dev/null 2>&1
+```
+
+비-0 exit이면 미설치 상태로 확정하고 버전 파싱·비교를 건너뛴 뒤 4필드 기록으로 진행한다.
+
+**감지 상태 테이블** (exhaustive — 4행이 gh 감지의 모든 경우를 덮는다):
+
+| 상태 | `available` | `native_subissue` | `version` | 판정 |
+|------|-------------|-------------------|-----------|------|
+| `command -v gh` 실패 (미설치) | `false` | `false` | `""` | **차단** |
+| gh 설치, `gh --version` 파싱 실패 | `true` | `false` | `""` | **차단** (fail-closed) |
+| gh 설치, 파싱 버전 < 2.94.0 | `true` | `false` | `X.Y.Z` | **차단** |
+| gh 설치, 파싱 버전 ≥ 2.94.0 | `true` | `true` | `X.Y.Z` | proceed |
+
+**버전 파싱**:
+
+`gh --version` 첫 줄은 `gh version 2.96.0 (2026-07-02)` 형식이다 (gh 2.96.0 실측). 첫 줄에서 `X.Y.Z`를 추출한다.
+
+```bash
+GH_VERSION=$(gh --version 2>/dev/null | head -1 | sed -E 's/^gh version ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+```
+
+**파싱 성공 판정은 추출 결과가 `^[0-9]+\.[0-9]+\.[0-9]+$`에 매칭하는지로 한다** — 명령의 exit code로 판정하지 않는다. `sed`는 패턴이 매칭하지 않아도 exit 0으로 종료하며 입력 라인을 그대로 되돌려주므로, exit code를 신뢰하면 파싱 실패 행이 발동하지 않고 쓰레기 문자열이 버전 비교로 흘러든다. 미매칭이면 파싱 실패 상태(`version=""`, `native_subissue=false`)로 fail-closed 처리한다.
+
+**버전 비교**:
+
+major·minor·patch를 각각 분리해 **정수로 비교**한다. 문자열 비교(`[[ "$GH_VERSION" < "2.94.0" ]]`)는 `2.100.0`을 `2.94.0`보다 낮게 판정한다 — `1` < `9`가 문자 단위로 성립하기 때문이며, 실제로는 2.100.0이 더 높은 버전이다. 이 오판은 최신 gh를 쓰는 환경을 잘못 차단하므로 문자열 비교를 사용하지 않는다.
+
+```bash
+GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
+GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
+if [ "$GH_MAJOR" -gt 2 ] || { [ "$GH_MAJOR" -eq 2 ] && [ "$GH_MINOR" -ge 94 ]; }; then
+  GH_NATIVE_SUBISSUE=true
+else
+  GH_NATIVE_SUBISSUE=false
+fi
+```
+
+minor를 비교하기 전에 major 동등을 먼저 확정한다 — major 확인 없이 minor만 비교하면 `1.99.0`이 통과한다. 임계값 patch가 `0`이므로 patch 성분은 판정에 영향을 주지 않는다.
+
+`declare -A`·`mapfile` 같은 bash 전용 구문은 사용하지 않는다 (zsh 이식성 — `development-workflow.md` §Shell Portability).
+
+**4필드 기록**:
+
+Step 5·6과 동일한 형태로 기록한다. 기록은 **4개 상태 모두에서 수행한다** — 차단 상태도 먼저 기록한 뒤 차단한다.
+
+```bash
+python3 .tack/scripts/dev_context.py set-field --field=config.gh.available --value="$GH_AVAILABLE"
+python3 .tack/scripts/dev_context.py set-field --field=config.gh.native_subissue --value="$GH_NATIVE_SUBISSUE"
+python3 .tack/scripts/dev_context.py set-field --field=config.gh.version --value="$GH_VERSION"
+python3 .tack/scripts/dev_context.py set-field --field=config.gh.checked_at --value="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+```
+
+**쓰기 순서와 부분 실패**: 네 호출은 각각 독립 CLI 호출이므로 중간 실패 시 `config.gh`가 반쯤 갱신된 상태로 남는다. `checked_at`을 **마지막에** 기록해 이 상태를 판별 가능하게 만든다 — `checked_at`이 같은 실행에서 갱신되지 않았으면 나머지 세 필드는 이전 실행의 잔존 값일 수 있으므로 신뢰하지 않는다. 네 호출 중 하나라도 비-0 exit이면 Step 8에 `[감지 실패] config.gh.*`를 표기하고, 남아 있는 값은 유효하지 않은 것으로 안내한다.
+
+| 필드 | 값 타입 | 의미 |
+|------|---------|------|
+| `config.gh.available` | bool-as-string (`true`/`false`) | `command -v gh` 성공 여부 |
+| `config.gh.native_subissue` | bool-as-string (`true`/`false`) | 파싱된 버전이 2.94.0 이상인지 |
+| `config.gh.version` | semver 문자열 (`2.96.0`) 또는 빈 문자열 | `gh --version` 첫 줄에서 파싱한 `X.Y.Z` |
+| `config.gh.checked_at` | ISO8601 문자열 | 감지 시각 — `date -u +%Y-%m-%dT%H:%M:%SZ` |
+
+**차단 처리**:
+
+차단 3개 상태(미설치 / 파싱 실패 / < 2.94.0)에서는 4필드를 기록한 뒤 **이 Step에서 종료하지 않고** 차단 판정을 들고 Step 8로 진행한다. Step 8이 `[차단]` 라인과 업그레이드 안내를 출력한 다음 `/flow-init`을 **미완료 종료**한다. Step 7에서 곧바로 종료하면 사용자가 차단 사유와 복구 방법을 보지 못한다.
+
+미완료 종료는 파일 롤백을 수반하지 않는다 — Step 3·4가 이미 작성한 `CLAUDE.md`·`AGENTS.md`는 그대로 둔다. 차단은 하네스 워크플로우 진입 차단이지 파일 작성 취소가 아니다.
+
+**상태별 복구 안내**: 차단 3개 상태는 원인이 서로 다르므로 Step 8이 출력할 복구 문구도 상태별로 갈린다. 세 상태 모두 조치 후 `/flow-init` 재실행으로 게이트를 다시 통과시킨다.
+
+| 차단 상태 | 진단 라인 | 복구 안내 |
+|-----------|----------|----------|
+| 미설치 | `감지된 버전: 없음 (gh 미설치)` | `설치: brew install gh  또는  https://cli.github.com` |
+| 파싱 실패 | `감지된 버전: 파싱 실패 (gh --version 출력 형식 불일치)` | `gh --version 출력을 확인하세요. 버전 문자열이 'gh version X.Y.Z' 형식이 아닙니다` |
+| < 2.94.0 | `감지된 버전: <X.Y.Z>` | `업그레이드: brew upgrade gh  또는  https://cli.github.com` |
+
+미설치·파싱 실패 상태에 `brew upgrade gh`를 안내하지 않는다 — 설치되지 않은 formula에 `brew upgrade`는 실패하고, 파싱 실패는 버전이 낮아서 생긴 문제가 아니므로 업그레이드로 해소되지 않는다.
+
+### Step 8: 결과 안내
 
 작성된 파일 경로와 결과를 출력한다:
 
@@ -271,8 +360,26 @@ python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets -
   [신규/업데이트/변경 없음] AGENTS.md
   [감지] config.docs.sourceFilter = [".claude/",".codex/",".tack/","CLAUDE.md","AGENTS.md"]
   [감지] config.graphify.targets = ["./src","./docs/specs","scripts"]
+  [감지] config.gh.version = 2.96.0
 ```
 (일반 프로젝트의 경우: `[감지] config.docs.sourceFilter = [] (필터 없음)`)
+
+**차단 시 출력**: Step 7이 차단 판정을 넘긴 경우 헤더를 `완료:` 대신 `미완료:`로 출력한다 — 차단된 실행을 `완료:` 아래 표기하면 자기모순이다. `[차단]` 라인과 복구 안내를 함께 출력하고 `/flow-init`을 미완료 종료한다.
+
+진단 라인·복구 안내는 Step 7 §상태별 복구 안내 표의 해당 행을 그대로 사용한다. 아래는 `< 2.94.0` 행 예시다.
+
+```
+미완료:
+  [신규/업데이트/변경 없음] CLAUDE.md
+  [신규/업데이트/변경 없음] AGENTS.md
+  [차단] gh >= 2.94.0 미충족 — 네이티브 sub-issue 연산 불가
+    감지된 버전: 2.90.0
+    config.gh.*: 기록 완료
+    업그레이드: brew upgrade gh  또는  https://cli.github.com
+    업그레이드 후 /flow-init을 재실행하세요. 작성된 CLAUDE.md·AGENTS.md는 롤백되지 않습니다.
+```
+
+`config.gh.*` 라인은 실제 기록 결과를 반영한다 — 4필드 기록이 모두 성공했으면 `기록 완료`, 하나라도 실패했으면 `기록 실패 (아래 [감지 실패] 참조)`로 출력하고 `[감지 실패] config.gh.*` 라인을 함께 낸다. 기록 실패는 버전 판정을 바꾸지 않으므로 `[차단]`과 `[감지 실패]`는 동시에 나타날 수 있다.
 
 - `[신규]`: 파일이 새로 생성됨
 - `[업데이트]`: 내용이 달라져 파일을 다시 씀
@@ -284,6 +391,9 @@ python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets -
 - `[보존] config.graphify.targets 기존 값 유지`: 기존 `config.graphify.targets`가 비어 있지 않은 배열이어서 추천을 건너뛰고 보존한 경우. `[감지]`와 상호 배타.
 - `[정보] config.graphify.targets 미설정 유지`: 사용자가 추천 단계에서 옵션 2 "건너뛰기"를 선택한 경우. 추후 `/graphify` 호출 시 hard error로 안내된다.
 - `[감지 실패] config.graphify.targets`: `dev-context.js read` 호출 실패, scalar 값이 배열 키에 저장된 잘못된 상태, `set-field` 실패 중 하나가 발생한 경우. 기존 값은 변경되지 않고 사용자에게 재설정 여부를 묻는다.
+- `[감지] config.gh.version = X.Y.Z`: Step 7이 gh 버전을 파싱하고 2.94.0 이상으로 판정해 통과한 경우. `[차단]`과 상호 배타이며, `[감지 실패] config.gh.*`와도 상호 배타다 — 4필드가 모두 기록된 상태에서만 출력한다.
+- `[차단] gh >= 2.94.0 미충족 — 네이티브 sub-issue 연산 불가`: Step 7의 차단 3개 상태(미설치 / 파싱 실패 / < 2.94.0) 중 하나가 발동한 경우. 4필드 기록을 시도한 뒤 차단되며, Step 7 §상태별 복구 안내의 해당 행과 함께 `/flow-init`이 미완료 종료한다. `[감지] config.gh.version`과 상호 배타. `[감지 실패] config.gh.*`와는 동시 출력 가능하다 (기록 실패가 버전 판정을 바꾸지 않는다).
+- `[감지 실패] config.gh.*`: `dev_context.py` 미존재, 또는 4개 `set-field` 호출 중 하나 이상이 실패해 기록이 불완전한 경우. 감지 결과 자체는 유효하므로 버전 판정(통과·차단)은 그대로 적용하되, 저장된 `config.gh.*` 값은 신뢰하지 않는다 (Step 7 §쓰기 순서와 부분 실패).
 
 ## 오류 처리
 
@@ -292,8 +402,9 @@ python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets -
 | `<!-- shared-rules:begin -->` 마커 없는 기존 CLAUDE.md 또는 AGENTS.md | Step 1에서 경고 + AskUserQuestion → 백업 후 재생성 or 중단 |
 | `.tack/rules/` 없음 | CLAUDE.md·AGENTS.md begin/end 마커 사이를 빈 상태로 생성, 경고 출력 |
 | 쓰기 권한 없음 | 오류 메시지 출력 후 종료 |
-| Step 5: `dev-context.js` 미존재 또는 `set-field` 실패 | 경고 출력 + Step 5 스킵, Step 7에서 `[감지 실패] config.docs.sourceFilter` 표기 |
-| Step 6: `dev-context.js` 미존재 또는 `set-field` 실패 | 경고 출력 + Step 6 스킵, Step 7에서 `[감지 실패] config.graphify.targets` 표기 |
+| Step 5: `dev_context.py` 미존재 또는 `set-field` 실패 | 경고 출력 + Step 5 스킵, Step 8에서 `[감지 실패] config.docs.sourceFilter` 표기 |
+| Step 6: `dev_context.py` 미존재 또는 `set-field` 실패 | 경고 출력 + Step 6 스킵, Step 8에서 `[감지 실패] config.graphify.targets` 표기 |
+| Step 7: `dev_context.py` 미존재 또는 `set-field` 실패 | 경고 출력 + 4필드 기록 스킵, Step 8에서 `[감지 실패] config.gh.*` 표기. 버전 판정(통과·차단)은 기록 실패와 무관하게 그대로 적용한다 |
 
 ## Key Principles
 
@@ -303,3 +414,4 @@ python3 .tack/scripts/dev_context.py set-field --field=config.graphify.targets -
 - **`.tack/rules/` 단일 소스** — CLAUDE.md import 블록과 AGENTS.md 인라인 블록 모두 `.tack/rules/` 재귀 glob 결과(typescript/ 포함)로 재생성된다. 두 파일이 동일 규칙 집합을 보장한다 (base-layout §8 대칭). CLAUDE.md는 `@import` 포인터, AGENTS.md는 본문 인라인.
 - **저장소 유형 자동 감지** — `scripts/deploy-harness.sh` 존재 여부로 `config.docs.sourceFilter` 기본값을 결정한다 (하네스: prefix 목록 / 일반: 빈 배열). **기존 non-empty 값은 보존**한다 — `/flow-init`은 imports 재생성을 위해 재실행 가능하므로, 사용자 명시 설정을 재실행마다 덮어쓰지 않는다 (빈 배열·null·미설정일 때만 감지값 적용).
 - **graphify targets 추천** — 배포 직후 `config.graphify.targets`가 미설정·빈 배열일 때 추천값을 `AskUserQuestion`으로 확정한다. 비어 있지 않은 기존 값은 보존한다 (멱등).
+- **gh ≥ 2.94.0 전제조건** — Step 7이 gh 설치·버전을 감지해 `config.gh.*` 4필드에 기록하고, 미충족 시 `[차단]` 안내와 함께 `/flow-init`을 미완료 종료한다. 버전 차단은 이 한 지점에서만 판정하며 개별 `flow-*`·`adapter-*` 연산에 분산하지 않는다. 차단은 이미 작성된 `CLAUDE.md`·`AGENTS.md`를 롤백하지 않는다.
