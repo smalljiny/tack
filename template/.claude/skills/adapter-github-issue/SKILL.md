@@ -1,7 +1,7 @@
 ---
-version: 4
+version: 5
 name: adapter-github-issue
-description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints flat epic umbrella issues with uniform personal/org account routing. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
+description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints epic umbrella issues with uniform personal/org account routing. Links story issues under an epic as native sub-issues by issue number, with an idempotent pre-check and post-link verification. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
 origin: harness
 ---
 
@@ -9,11 +9,11 @@ origin: harness
 
 `gh` CLI를 감싸 epic·story를 GitHub 이슈로 프로그램적으로 mint하는 외부-도구 어댑터다.
 
-**역할**: `type:epic`·`type:story` 라벨을 멱등 부트스트랩하고, story 이슈를 생성하며, epic umbrella 이슈를 flat 하게 mint한다. 대상 repo owner가 개인 계정이든 조직 계정이든 분기 없이 균일 처리한다.
+**역할**: `type:epic`·`type:story` 라벨을 멱등 부트스트랩하고, story 이슈를 생성하며, epic umbrella 이슈를 mint하고, epic↔story를 네이티브 sub-issue 계층으로 연결한다. 대상 repo owner가 개인 계정이든 조직 계정이든 분기 없이 균일 처리한다.
 
 **산출물 (stdout 계약)**: 생성 연산은 이슈 번호와 URL을 stdout으로 반환한다. 호출자는 stdout을 파싱해 후속 배선(E3)에 사용한다.
 
-**소비자**: 소비자 스킬(`flow-spec`·`flow-pr`)이 이름으로 직접 Load하도록 설계된다 — skill-registry 발견 대상이 아니다. 실제 호출 배선은 E3-S2·E3-S5 소관이다. 본 스킬은 flat 이슈·라벨 mint 연산만 제공하며, 트리거 배선·PR 링크·sub-issue 계층은 소비자와 후속 스토리 소관이다.
+**소비자**: 소비자 스킬(`flow-spec`·`flow-pr`)이 이름으로 직접 Load하도록 설계된다 — skill-registry 발견 대상이 아니다. 실제 호출 배선은 E3-S2·E3-S5 소관이다. 본 스킬은 이슈·라벨 mint 연산과 sub-issue 계층 링크 연산을 제공하며, 트리거 배선과 PR 링크는 소비자와 후속 스토리 소관이다.
 
 **제약**: 이슈는 딜리버러블 앵커일 뿐 워크플로우 상태(phase:status 등)를 담지 않는다 — 상태 저장소는 MongoDB(E4) 소유다. `gh` 미설치 또는 대상 owner 미인증 시 mint를 skip하고 수동 명령을 안내한다 (하드 실패 아님). 제목·본문 동적 문자열은 stdin(`--body-file -`)으로 전달하며 `-m "$VAR"` 보간을 금지한다 (`.tack/rules/security.md` Shell Injection Defense).
 
@@ -29,7 +29,7 @@ origin: harness
 
 다음은 본 컴포넌트의 범위 밖이며 구현하지 않는다:
 
-- **sub-issue 계층 링크**: epic umbrella 아래 story를 GraphQL node ID로 계층 연결하는 작업. E5-S2 소관. S1은 flat 이슈 생성까지만.
+- **구버전 gh용 sub-issue fallback 경로**: `gh` < 2.94.0 환경에서 raw API 우회로 계층을 연결하는 작업. 계층 링크는 네이티브 `gh issue edit --add-sub-issue`(이슈 번호 입력) 단일 방식으로 확정했으며, gh ≥ 2.94.0 전제는 `flow-init` 부트스트랩 게이트가 강제한다. 계층 링크 **연산 자체**는 범위 안이며 §Sub-Issue Link (G4)가 제공한다.
 - **PR-closes-story 링크**: PR을 story 이슈에 연결하는 작업. E5-S3 소관.
 - **flow-spec/flow-pr 배선**: 소비자 스킬에 본 컴포넌트 호출을 삽입하는 작업. E3-S2·E3-S5 소관. S1은 독립 컴포넌트만 제공한다.
 - **Projects 대시보드**: 폐기됨. 대시보드·상태 저장소는 MongoDB(E4) 소유다.
@@ -41,7 +41,7 @@ origin: harness
 
 ## Operational Contract
 
-모든 mint 연산(라벨 부트스트랩·story 이슈·epic umbrella)이 공유하는 실행 계약이다. 이후 연산 섹션은 이 계약을 재정의하지 않고 "Operational Contract를 따른다"로 참조한다.
+모든 연산(라벨 부트스트랩·story 이슈·epic umbrella mint·sub-issue 계층 링크)이 공유하는 실행 계약이다. 이후 연산 섹션은 이 계약을 재정의하지 않고 "Operational Contract를 따른다"로 참조한다.
 
 ### Availability Gate
 
@@ -50,7 +50,7 @@ origin: harness
 1. `gh` CLI가 설치돼 있는가 — `command -v gh`.
 2. 대상 repo에 쓰기 권한이 있는가 — `gh api repos/<owner>/<name> --jq .permissions.push`가 `true`를 반환하는가.
 
-owner 핸들을 `gh auth status` 출력과 대조하는 방식은 사용하지 않는다. `gh auth status`는 인증된 **사용자 계정**을 나열할 뿐이고 `gh repo view --json owner`가 반환하는 org repo의 owner는 **조직 login**이므로, 이름 대조는 org repo를 (사용자가 write 권한을 가져도) 미인증으로 오판해 mint를 조용히 skip한다 — G4 개인/조직 균일 라우팅을 훼손한다. 대신 대상 repo에 대한 실제 권한을 조회한다:
+owner 핸들을 `gh auth status` 출력과 대조하는 방식은 사용하지 않는다. `gh auth status`는 인증된 **사용자 계정**을 나열할 뿐이고 `gh repo view --json owner`가 반환하는 org repo의 owner는 **조직 login**이므로, 이름 대조는 org repo를 (사용자가 write 권한을 가져도) 미인증으로 오판해 연산을 조용히 skip한다 — 개인/조직 균일 라우팅 목표를 훼손한다. 대신 대상 repo에 대한 실제 권한을 조회한다:
 
 ```bash
 gh api repos/<owner>/<name> --jq '.permissions.push' 2>/dev/null
@@ -60,7 +60,7 @@ gh api repos/<owner>/<name> --jq '.permissions.push' 2>/dev/null
 
 `GH_ISSUE_DRY_RUN=1`이면 이 게이트를 평가하기 전에 §Dry-run Contract가 우선한다 — `gh`를 호출하지 않으므로 미설치·미인증 환경에서도 조합 명령 출력이 동작한다.
 
-둘 중 하나라도 실패하면 mint를 **skip**하고 수동 명령을 안내한다. 하드 실패(비-0 exit)하지 않는다. 안내 명령의 전체 형태는 §Label Bootstrap·§Story Issue Create를 따른다 (제목은 §Shell-Injection Defense의 HEREDOC 캡처 패턴 사용).
+둘 중 하나라도 실패하면 연산(mint·링크)을 **skip**하고 수동 명령을 안내한다. 하드 실패(비-0 exit)하지 않는다. 안내 명령의 전체 형태는 §Label Bootstrap·§Story Issue Create를 따른다 (제목은 §Shell-Injection Defense의 HEREDOC 캡처 패턴 사용).
 
 ```
 gh를 사용할 수 없어 이슈 mint를 건너뜁니다. 수동으로 실행하세요 (전체 명령은 §Label Bootstrap·§Story Issue Create 참조):
@@ -188,9 +188,9 @@ BODY
 
 `type:epic` 라벨을 단 umbrella 이슈를 생성한다. §Operational Contract를 따른다. epic 요약과 묶인 story 목록을 본문에 기술하는 상위 앵커다.
 
-### flat 생성 (계층 링크 없음)
+### flat 생성 (본문에 계층 링크 삽입 없음)
 
-본문에 묶인 story id를 **텍스트로만** 나열한다. sub-issue 계층 링크(GraphQL node ID로 부모-자식 연결)는 **하지 않는다** — E5-S2 경계다. S1은 flat 이슈 생성까지다.
+본문에 묶인 story id를 **텍스트로만** 나열한다. umbrella mint 연산 자체는 계층을 연결하지 **않는다** — 계층 연결은 §Sub-Issue Link (G4)의 별도 연산이 담당하며, 이 경계는 mint와 링크를 독립 호출 가능하게 유지한다.
 
 본문은 stdin(`--body-file -`)으로 전달한다 (§Shell-Injection Defense).
 
@@ -209,13 +209,73 @@ gh issue create --repo <owner>/<name> --label type:epic \
 BODY
 ```
 
-story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. GitHub sub-issue 위젯에 연결되는 링크·node ID 참조를 포함하지 않는다.
+story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. 본문에 GitHub sub-issue 위젯 연결을 삽입하지 않는다 — 위젯에 나타나는 계층은 §Sub-Issue Link (G4) 연산이 형성한다.
 
 > **중복 가드 이월**: story 이슈(§Story Issue Create)와 달리 epic umbrella는 재-mint 중복 가드를 두지 않는다. umbrella를 언제·누가 mint하는가(트리거)가 OQ4로 E3-S2에 이월됐으므로, 재-mint 멱등성도 트리거 배선과 함께 E3-S2에서 확정한다. 의도적 이월이며 누락이 아니다.
 
 ### stdout·dry-run
 
 생성 성공 시 §stdout Return Convention에 따라 이슈 번호와 URL을 stdout으로 반환한다. `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue create` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 이슈를 생성하지 않는다.
+
+## Sub-Issue Link (G4 — 멱등·검증)
+
+epic umbrella 이슈(parent)와 story 이슈(child)를 GitHub 네이티브 sub-issue 계층으로 연결한다. §Operational Contract(가용성 게이트·계정 라우팅·셸 인젝션 방어·dry-run)를 따르며 재정의하지 않는다. §stdout Return Convention은 생성 연산의 번호·URL 반환을 규정하므로 링크 연산에는 적용되지 않는다 — 링크 연산의 stdout 라인은 아래 §멱등성·§링크 후 검증이 정의한다.
+
+전제는 `gh` ≥ 2.94.0이다. 이 전제는 `flow-init` 부트스트랩 게이트가 단일 지점에서 검사하므로 본 연산은 버전을 재검사하지 않는다.
+
+### 연산
+
+parent·child를 이슈 **번호**로 지정한다. 별도 내부 식별자 조회·변환 단계는 없다.
+
+```bash
+gh issue edit <parent> --repo <owner>/<name> --add-sub-issue <child>
+```
+
+### 입력 검증
+
+셸에 도달하기 전에 형식을 검증한다 (§Shell-Injection Defense의 제약 식별자 방어와 같은 목적 — 백틱·`$()` 유입 차단).
+
+- **이슈 번호** (parent·child 각각): `^[0-9]+$`에 매칭하지 않으면 연산을 **skip**한다. 하드 실패하지 않고 exit 0으로 종료한다 (skip-not-fail). skip 사유를 stdout에 한 줄로 출력해 멱등 no-op skip과 구별한다: `sub-issue 링크 skip: 이슈 번호 형식 불일치 (parent=<parent> child=<child>)`.
+- **story-id를 입력으로 받는 경로**: `^E[0-9]+-S[0-9]+$` 검증을 재사용한다 (§Story Issue Create와 동일 어서션). 미매칭 시 같은 형태로 skip 사유를 출력하고 skip한다. story-id에 대응하는 이슈 번호는 §Story Issue Create 중복 가드 검색의 `number` 출력에서 얻는다.
+
+### 번호 매칭 규율 (정확 일치)
+
+선체크와 링크 후 검증은 둘 다 자식 번호 목록에서 child를 찾는다. 이 매칭은 **정확 일치**로 수행하고 부분 문자열 포함 검사(`grep <child>`)를 쓰지 않는다.
+
+부분 문자열 검사는 두 게이트를 같은 방향으로 깨뜨린다 — `child=7`이고 기존 자식에 `37`이 있으면 선체크가 false-positive로 판정해 `gh issue edit`를 건너뛰고, 이어지는 검증도 같은 `37`에 false-pass하므로 형성되지 않은 계층이 연결됨으로 보고된다. §Story Issue Create가 bare-prefix 매칭을 거부하는 것과 같은 이유다.
+
+정확 일치 형태 두 가지 중 하나를 사용한다:
+
+```bash
+# (a) jq에서 판정 — true / false를 반환
+gh issue view <parent> --repo <owner>/<name> --json subIssues \
+  --jq 'any(.subIssues.nodes[].number == <child>; .)'
+
+# (b) 번호 목록을 받아 전체 라인 고정 매칭
+gh issue view <parent> --repo <owner>/<name> --json subIssues \
+  --jq '.subIssues.nodes[].number' | grep -Fxq '<child>'
+```
+
+### 멱등성 (선체크 — skip-not-fail)
+
+링크 **전**에 parent의 현재 자식 목록을 조회하고 §번호 매칭 규율의 정확 일치로 child가 이미 연결됐는지 확인한다.
+
+- 정확 일치가 성립하면 `gh issue edit`를 호출하지 않고 **no-op skip**한 뒤 exit 0으로 종료한다 (skip-not-fail). 재실행이 하드 실패하지 않는다. stdout에 `sub-issue 링크 no-op: <parent> ← <child> (이미 연결됨)`을 출력해 입력 검증 skip과 구별한다.
+- 성립하지 않으면 §Sub-Issue Link 연산으로 진행한다.
+
+### 링크 후 검증
+
+링크 직후 같은 조회를 재실행하고 §번호 매칭 규율의 정확 일치로 child가 자식 목록에 존재하는지 assert한다.
+
+`subIssues`는 `nodes` 배열과 `totalCount`를 담은 객체로 반환되며 각 원소가 `number`를 직접 노출한다 (gh 2.96.0 실측, 2026-07-26). 위 jq 경로가 자식 이슈 번호를 그대로 산출한다. 역방향 확인은 child 쪽에서 `gh issue view <child> --repo <owner>/<name> --json parent --jq '.parent.number'`가 parent 번호를 반환한다.
+
+조회 출력 구조가 이와 다르면(gh 버전 차이로 필드 shape가 변한 경우) 위 jq 경로를 그대로 쓰지 않고, 관찰된 구조에 맞춰 child 번호를 정확 일치로 매칭한다.
+
+정확 일치가 성립하면 stdout에 `sub-issue 링크 완료: <parent> ← <child>`를 출력하고 exit 0으로 종료한다. 성립하지 않으면 링크가 형성되지 않은 것이므로 `sub-issue 링크 검증 실패: <parent> ← <child>`를 출력하고 **비-0 exit**으로 호출자에게 보고한다 — 이 경우만 하드 실패이며, 위 두 skip 경로와 종료 코드로 구별된다.
+
+### dry-run
+
+`GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue edit --add-sub-issue` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 계층을 연결하지 않는다. 선체크 조회와 링크 후 검증 조회(`gh issue view`)도 gh 호출이므로 dry-run에서는 건너뛰고 edit 명령만 출력한다.
 
 ## Standalone Verification (G6 — 무오염 dry-run)
 
@@ -225,15 +285,16 @@ story 목록의 각 항목은 사람이 읽는 텍스트 라인이다. GitHub su
 
 G6 검증은 두 확인 행위로 구성되며 서로 다른 주체가 수행한다:
 
-- **(a) dry-run 출력 확인** — 계약을 실행하는 에이전트/소비자가 `GH_ISSUE_DRY_RUN=1` 하에서 세 연산의 bash를 해석·echo해 조합된 gh 명령이 stdout에 나오는지 확인한다. 본 컴포넌트는 실행 코드 없는 프롬프트 문서이므로 `GH_ISSUE_DRY_RUN`을 읽는 러너가 별도로 존재하지 않는다 — 라이브 dry-run 실행은 소비자(E3)가 컴포넌트를 구동할 때 일어난다.
+- **(a) dry-run 출력 확인** — 계약을 실행하는 에이전트/소비자가 `GH_ISSUE_DRY_RUN=1` 하에서 네 연산의 bash를 해석·echo해 조합된 gh 명령이 stdout에 나오는지 확인한다. 본 컴포넌트는 실행 코드 없는 프롬프트 문서이므로 `GH_ISSUE_DRY_RUN`을 읽는 러너가 별도로 존재하지 않는다 — 라이브 dry-run 실행은 소비자(E3)가 컴포넌트를 구동할 때 일어난다.
 - **(b) 무오염 보장** — §Dry-run Contract의 zero gh calls로 **구조적으로** 성립하며, 실 repo 조회·생성 없이 계약 텍스트의 정적 점검(reasoning)으로 확인한다. S1의 코드 없는 범위에서 G6은 이 구조적·정적 확인이다.
 
-세 연산을 `GH_ISSUE_DRY_RUN=1`로 해석했을 때 stdout에 조합된 gh 명령이 출력되는지 확인한다:
+네 연산을 `GH_ISSUE_DRY_RUN=1`로 해석했을 때 stdout에 조합된 gh 명령이 출력되는지 확인한다:
 
 1. **라벨 부트스트랩** (§Label Bootstrap) — dry-run 시 두 `gh label create` 명령(`type:epic`·`type:story`)이 출력되고 라벨은 생성되지 않는다.
 2. **story 이슈** (§Story Issue Create) — dry-run 시 조합된 `gh issue create --label type:story` 명령이 출력되고 이슈·중복 검색(`gh issue list`) 모두 gh를 호출하지 않는다.
 3. **epic umbrella** (§Epic Umbrella Mint) — dry-run 시 조합된 `gh issue create --label type:epic` 명령이 출력되고 이슈는 생성되지 않는다.
+4. **sub-issue 계층 링크** (§Sub-Issue Link) — dry-run 시 조합된 `gh issue edit <parent> --add-sub-issue <child>` 명령이 출력되고, 선체크·링크 후 검증 조회(`gh issue view`)를 포함해 gh를 전혀 호출하지 않으며 계층이 연결되지 않는다.
 
 ### 무오염 확인
 
-세 연산 모두 dry-run에서 gh를 호출하지 않으므로(§Dry-run Contract) 대상 repo에 실 이슈·라벨이 생성되지 않는다. 이 성질은 gh 미호출로 구조적으로 보장되며, 실 repo에 대한 조회·생성 없이 계약 텍스트의 정적 점검으로 확인한다. 실 이슈·라벨을 만들지 않는 것이 검증의 전제이므로 검증 자체가 repo를 변경하지 않는다.
+네 연산 모두 dry-run에서 gh를 호출하지 않으므로(§Dry-run Contract) 대상 repo에 실 이슈·라벨·계층이 생성되지 않는다. 이 성질은 gh 미호출로 구조적으로 보장되며, 실 repo에 대한 조회·생성 없이 계약 텍스트의 정적 점검으로 확인한다. 실 이슈·라벨을 만들지 않는 것이 검증의 전제이므로 검증 자체가 repo를 변경하지 않는다.
