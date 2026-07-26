@@ -214,7 +214,7 @@ python3 .tack/scripts/dev_context.py set-field \
 ```
 출력: `일반 프로젝트로 감지: config.docs.sourceFilter를 빈 배열로 설정했습니다 (필터 없음).`
 
-**수동 재설정**: 자동 감지값으로 강제 초기화하려면 사용자가 직접 빈 값으로 reset한 뒤 `/flow-init`을 재실행하거나, `dev-context.js set-field`로 임의 값을 지정한다:
+**수동 재설정**: 자동 감지값으로 강제 초기화하려면 사용자가 직접 빈 값으로 reset한 뒤 `/flow-init`을 재실행하거나, `dev_context.py set-field`로 임의 값을 지정한다:
 ```bash
 python3 .tack/scripts/dev_context.py set-field \
   --field=config.docs.sourceFilter --value='["src/","lib/"]'
@@ -232,7 +232,7 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 python3 .tack/scripts/dev_context.py read --field=config.graphify.targets
 ```
 
-`dev-context.js read`는 배열 원소를 한 줄당 하나씩 newline-delimited로 출력하며, 빈 배열·null·미설정은 빈 stdout을 낸다. `config.graphify.targets`는 문자열 배열로만 의미가 있지만 `dev-context.js`는 동일 키에 boolean·number·문자열 같은 scalar 값도 저장 가능하다. 다음 케이스로 분기한다:
+`dev_context.py read`는 배열 원소를 한 줄당 하나씩 newline-delimited로 출력하며, 빈 배열·null·미설정은 빈 stdout을 낸다. `config.graphify.targets`는 문자열 배열로만 의미가 있지만 `dev_context.py`는 동일 키에 boolean·number·문자열 같은 scalar 값도 저장 가능하다. 다음 케이스로 분기한다:
 
 - 명령이 비-0 exit으로 종료: Step 8에 `[감지 실패] config.graphify.targets`를 출력한다.
 - stdout이 비어 있음 (빈 배열·null·미설정): 아래 추천 분기로 진입한다.
@@ -269,44 +269,64 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 
 **단일 지점 원칙**: 버전 차단 판정은 `/flow-init` 이 한 지점에서만 성립한다. 개별 `flow-*` 스킬이나 `adapter-github-issue` 연산에 per-op 버전 게이트를 분산하지 않는다 — 부트스트랩을 통과한 환경에서는 연산 시점에 버전이 보장되므로, 어댑터의 가용성 게이트는 기존 graceful skip 계약을 그대로 유지한다. 차단은 부트스트랩 단계의 안내이지 후속 커맨드에 대한 런타임 강제가 아니다 — `[차단]`을 보고도 계속 진행한 사용자에게는 `config.gh.native_subissue`가 진단 기록으로 남고, 어댑터의 gh 미설치·권한 미충족 skip 경로가 잔여 방어로 동작한다.
 
-**실행 순서**: 가용성 감지 → 버전 파싱 → 버전 비교 → 4필드 기록 → (차단 판정 시) Step 8 인계. 먼저 `gh` 설치 여부를 확인한다.
+**실행 순서**: fail-closed 기본값 설정 → 가용성 감지 → 버전 파싱 → 버전 비교 → 4필드 기록 → (차단 판정 시) Step 8 인계.
+
+세 변수를 fail-closed 기본값으로 먼저 초기화한 뒤 `gh` 설치 여부를 확인한다. 초기화를 건너뛰면 미설치·파싱 실패 경로에서 변수가 미설정인 채로 기록 단계에 도달해, 상태 테이블 어느 행에도 없는 빈 문자열이 저장된다.
 
 ```bash
-command -v gh >/dev/null 2>&1
+GH_AVAILABLE=false
+GH_VERSION=""
+GH_NATIVE_SUBISSUE=false
+
+if command -v gh >/dev/null 2>&1; then
+  GH_AVAILABLE=true
+fi
 ```
 
-비-0 exit이면 미설치 상태로 확정하고 버전 파싱·비교를 건너뛴 뒤 4필드 기록으로 진행한다.
+`GH_AVAILABLE=false`면 미설치 상태로 확정하고 버전 파싱·비교를 건너뛴 뒤 기본값 그대로 4필드 기록으로 진행한다.
 
-**감지 상태 테이블** (exhaustive — 4행이 gh 감지의 모든 경우를 덮는다):
+**감지 상태 테이블** (exhaustive — 5행이 Step 7이 도달할 수 있는 모든 경우를 덮는다):
 
 | 상태 | `available` | `native_subissue` | `version` | 판정 |
 |------|-------------|-------------------|-----------|------|
+| Step 1에서 두 파일 모두 "중단" (Step 7 미실행) | (미기록) | (미기록) | (미기록) | skip — Step 8에 gh 관련 라인을 출력하지 않는다 |
 | `command -v gh` 실패 (미설치) | `false` | `false` | `""` | **차단** |
 | gh 설치, `gh --version` 파싱 실패 | `true` | `false` | `""` | **차단** (fail-closed) |
 | gh 설치, 파싱 버전 < 2.94.0 | `true` | `false` | `X.Y.Z` | **차단** |
 | gh 설치, 파싱 버전 ≥ 2.94.0 | `true` | `true` | `X.Y.Z` | proceed |
+
+1행(Step 7 미실행)에서는 `config.gh.*` 4필드를 기록하지 않으므로 기존 값이 있으면 그대로 남는다.
 
 **버전 파싱**:
 
 `gh --version` 첫 줄은 `gh version 2.96.0 (2026-07-02)` 형식이다 (gh 2.96.0 실측). 첫 줄에서 `X.Y.Z`를 추출한다.
 
 ```bash
-GH_VERSION=$(gh --version 2>/dev/null | head -1 | sed -E 's/^gh version ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+GH_RAW=$(gh --version 2>/dev/null | head -1 | sed -E 's/^gh version ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+if printf '%s' "$GH_RAW" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  GH_VERSION="$GH_RAW"
+else
+  GH_VERSION=""    # 파싱 실패 — fail-closed 유지, 버전 비교 건너뜀
+fi
 ```
 
-**파싱 성공 판정은 추출 결과가 `^[0-9]+\.[0-9]+\.[0-9]+$`에 매칭하는지로 한다** — 명령의 exit code로 판정하지 않는다. `sed`는 패턴이 매칭하지 않아도 exit 0으로 종료하며 입력 라인을 그대로 되돌려주므로, exit code를 신뢰하면 파싱 실패 행이 발동하지 않고 쓰레기 문자열이 버전 비교로 흘러든다. 미매칭이면 파싱 실패 상태(`version=""`, `native_subissue=false`)로 fail-closed 처리한다.
+**파싱 성공 판정은 추출 결과가 `^[0-9]+\.[0-9]+\.[0-9]+$`에 매칭하는지로 한다** — 명령의 exit code로 판정하지 않는다. `sed`는 패턴이 매칭하지 않아도 exit 0으로 종료하며 입력 라인을 그대로 되돌려주므로, exit code를 신뢰하면 파싱 실패 행이 발동하지 않고 쓰레기 문자열이 버전 비교로 흘러든다.
+
+미매칭이면 `GH_VERSION`을 빈 문자열로 되돌리고 `GH_NATIVE_SUBISSUE=false`를 유지한 채 버전 비교를 **건너뛴다**. 되돌림 없이 비교로 진행하면 `cut -d. -f1`이 `gh version foo` 같은 문자열을 그대로 산출하고 정수 비교가 `integer expression expected` 오류로 중단된다.
 
 **버전 비교**:
 
 major·minor·patch를 각각 분리해 **정수로 비교**한다. 문자열 비교(`[[ "$GH_VERSION" < "2.94.0" ]]`)는 `2.100.0`을 `2.94.0`보다 낮게 판정한다 — `1` < `9`가 문자 단위로 성립하기 때문이며, 실제로는 2.100.0이 더 높은 버전이다. 이 오판은 최신 gh를 쓰는 환경을 잘못 차단하므로 문자열 비교를 사용하지 않는다.
 
+`GH_VERSION`이 빈 문자열이면(미설치 또는 파싱 실패) 이 블록을 실행하지 않는다 — `GH_NATIVE_SUBISSUE`는 초기 `false`로 남는다.
+
 ```bash
-GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
-GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
-if [ "$GH_MAJOR" -gt 2 ] || { [ "$GH_MAJOR" -eq 2 ] && [ "$GH_MINOR" -ge 94 ]; }; then
-  GH_NATIVE_SUBISSUE=true
-else
-  GH_NATIVE_SUBISSUE=false
+if [ -n "$GH_VERSION" ]; then
+  GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
+  GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
+  if [ "$GH_MAJOR" -gt 2 ] || { [ "$GH_MAJOR" -eq 2 ] && [ "$GH_MINOR" -ge 94 ]; }; then
+    GH_NATIVE_SUBISSUE=true
+  fi
 fi
 ```
 
@@ -333,6 +353,10 @@ python3 .tack/scripts/dev_context.py set-field --field=config.gh.checked_at --va
 | `config.gh.native_subissue` | bool-as-string (`true`/`false`) | 파싱된 버전이 2.94.0 이상인지 |
 | `config.gh.version` | semver 문자열 (`2.96.0`) 또는 빈 문자열 | `gh --version` 첫 줄에서 파싱한 `X.Y.Z` |
 | `config.gh.checked_at` | ISO8601 문자열 | 감지 시각 — `date -u +%Y-%m-%dT%H:%M:%SZ` |
+
+"bool-as-string"은 **CLI 인자 표현**을 가리킨다. `dev_context.py`의 `coerce_config_value`가 `"true"`/`"false"` 리터럴을 JSON boolean으로 변환해 저장하므로 `dev-context.json`에는 `"available": true`(따옴표 없음)로 기록되고, `read`가 다시 `true`/`false` 문자열로 출력한다. 소비자는 `read` 출력을 문자열 비교하는 `config.codex.*` 선례를 따른다.
+
+**소비자 부재 (현재 상태)**: `config.gh.*`를 읽는 컴포넌트는 아직 없다. 4필드는 부트스트랩 시점의 **진단 기록**이며, 실행 시점 재검사를 대체하지 않는다. 부트스트랩 이후 gh가 제거·다운그레이드되면 기록은 stale이 되고 이를 감지하는 경로는 없다 — 소비 배선은 E3 소관이다.
 
 **차단 처리**:
 
@@ -390,7 +414,7 @@ python3 .tack/scripts/dev_context.py set-field --field=config.gh.checked_at --va
 - `[감지] config.graphify.targets = <배열>`: 기존 `config.graphify.targets`가 부재(빈 배열·null·미설정)해 추천값을 사용자 확정 후 set한 경우. 출력 배열은 `AskUserQuestion`으로 확정된 최종 값.
 - `[보존] config.graphify.targets 기존 값 유지`: 기존 `config.graphify.targets`가 비어 있지 않은 배열이어서 추천을 건너뛰고 보존한 경우. `[감지]`와 상호 배타.
 - `[정보] config.graphify.targets 미설정 유지`: 사용자가 추천 단계에서 옵션 2 "건너뛰기"를 선택한 경우. 추후 `/graphify` 호출 시 hard error로 안내된다.
-- `[감지 실패] config.graphify.targets`: `dev-context.js read` 호출 실패, scalar 값이 배열 키에 저장된 잘못된 상태, `set-field` 실패 중 하나가 발생한 경우. 기존 값은 변경되지 않고 사용자에게 재설정 여부를 묻는다.
+- `[감지 실패] config.graphify.targets`: `dev_context.py read` 호출 실패, scalar 값이 배열 키에 저장된 잘못된 상태, `set-field` 실패 중 하나가 발생한 경우. 기존 값은 변경되지 않고 사용자에게 재설정 여부를 묻는다.
 - `[감지] config.gh.version = X.Y.Z`: Step 7이 gh 버전을 파싱하고 2.94.0 이상으로 판정해 통과한 경우. `[차단]`과 상호 배타이며, `[감지 실패] config.gh.*`와도 상호 배타다 — 4필드가 모두 기록된 상태에서만 출력한다.
 - `[차단] gh >= 2.94.0 미충족 — 네이티브 sub-issue 연산 불가`: Step 7의 차단 3개 상태(미설치 / 파싱 실패 / < 2.94.0) 중 하나가 발동한 경우. 4필드 기록을 시도한 뒤 차단되며, Step 7 §상태별 복구 안내의 해당 행과 함께 `/flow-init`이 미완료 종료한다. `[감지] config.gh.version`과 상호 배타. `[감지 실패] config.gh.*`와는 동시 출력 가능하다 (기록 실패가 버전 판정을 바꾸지 않는다).
 - `[감지 실패] config.gh.*`: `dev_context.py` 미존재, 또는 4개 `set-field` 호출 중 하나 이상이 실패해 기록이 불완전한 경우. 감지 결과 자체는 유효하므로 버전 판정(통과·차단)은 그대로 적용하되, 저장된 `config.gh.*` 값은 신뢰하지 않는다 (Step 7 §쓰기 순서와 부분 실패).
