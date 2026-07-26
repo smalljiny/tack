@@ -1,7 +1,7 @@
 ---
-version: 5
+version: 6
 name: adapter-github-issue
-description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints epic umbrella issues with uniform personal/org account routing. Links story issues under an epic as native sub-issues by issue number, with an idempotent pre-check and post-link verification. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
+description: Mint GitHub issues and labels as deliverable anchors via the `gh` CLI. Idempotently bootstraps type:epic/type:story labels, creates story issues, and mints epic umbrella issues with uniform personal/org account routing. Links story issues under an epic as native sub-issues by issue number, with an idempotent pre-check and post-link verification. Links a pull request to its story issue with a same-repo `Closes #N` closing keyword and verifies the link via closingIssuesReferences, warning when the PR base is not the repository default branch. Self-skips with a manual fallback when `gh` is missing or the target owner is unauthenticated. Intended for direct Load by consumer skills (flow-spec, flow-pr) rather than skill-registry discovery.
 origin: harness
 ---
 
@@ -9,11 +9,11 @@ origin: harness
 
 `gh` CLI를 감싸 epic·story를 GitHub 이슈로 프로그램적으로 mint하는 외부-도구 어댑터다.
 
-**역할**: `type:epic`·`type:story` 라벨을 멱등 부트스트랩하고, story 이슈를 생성하며, epic umbrella 이슈를 mint하고, epic↔story를 네이티브 sub-issue 계층으로 연결한다. 대상 repo owner가 개인 계정이든 조직 계정이든 분기 없이 균일 처리한다.
+**역할**: `type:epic`·`type:story` 라벨을 멱등 부트스트랩하고, story 이슈를 생성하며, epic umbrella 이슈를 mint하고, epic↔story를 네이티브 sub-issue 계층으로 연결하며, PR을 story 이슈에 closing keyword로 연결한다. 대상 repo owner가 개인 계정이든 조직 계정이든 분기 없이 균일 처리한다.
 
 **산출물 (stdout 계약)**: 생성 연산은 이슈 번호와 URL을 stdout으로 반환한다. 호출자는 stdout을 파싱해 후속 배선(E3)에 사용한다.
 
-**소비자**: 소비자 스킬(`flow-spec`·`flow-pr`)이 이름으로 직접 Load하도록 설계된다 — skill-registry 발견 대상이 아니다. 실제 호출 배선은 E3-S2·E3-S5 소관이다. 본 스킬은 이슈·라벨 mint 연산과 sub-issue 계층 링크 연산을 제공하며, 트리거 배선과 PR 링크는 소비자와 후속 스토리 소관이다.
+**소비자**: 소비자 스킬(`flow-spec`·`flow-pr`)이 이름으로 직접 Load하도록 설계된다 — skill-registry 발견 대상이 아니다. 실제 호출 배선은 E3-S2·E3-S5 소관이다. 본 스킬은 이슈·라벨 mint 연산, sub-issue 계층 링크 연산, PR-story 링크 연산을 제공하며, 트리거 배선은 소비자 소관이다.
 
 **제약**: 이슈는 딜리버러블 앵커일 뿐 워크플로우 상태(phase:status 등)를 담지 않는다 — 상태 저장소는 MongoDB(E4) 소유다. `gh` 미설치 또는 대상 owner 미인증 시 mint를 skip하고 수동 명령을 안내한다 (하드 실패 아님). 제목·본문 동적 문자열은 stdin(`--body-file -`)으로 전달하며 `-m "$VAR"` 보간을 금지한다 (`.tack/rules/security.md` Shell Injection Defense).
 
@@ -30,7 +30,7 @@ origin: harness
 다음은 본 컴포넌트의 범위 밖이며 구현하지 않는다:
 
 - **구버전 gh용 sub-issue fallback 경로**: `gh` < 2.94.0 환경에서 raw API 우회로 계층을 연결하는 작업. 계층 링크는 네이티브 `gh issue edit --add-sub-issue`(이슈 번호 입력) 단일 방식으로 확정했으며, gh ≥ 2.94.0 전제는 `flow-init` 부트스트랩 게이트가 강제한다. 계층 링크 **연산 자체**는 범위 안이며 §Sub-Issue Link (G4)가 제공한다.
-- **PR-closes-story 링크**: PR을 story 이슈에 연결하는 작업. E5-S3 소관.
+- **cross-repo PR 링크와 base branch 정책 전환**: `owner/repo#N` 형태의 다른 repo 이슈 auto-close는 closing keyword로 동작하지 않으므로 규정하지 않는다. base branch를 default branch로 전환·강제하는 정책 변경도 범위 밖이며 E3-S5 소관이다 — 본 컴포넌트는 불일치를 감지·경고까지만 수행한다. PR-story 링크 **연산 자체**는 범위 안이며 §PR-Story Link (G5)가 제공한다.
 - **flow-spec/flow-pr 배선**: 소비자 스킬에 본 컴포넌트 호출을 삽입하는 작업. E3-S2·E3-S5 소관. S1은 독립 컴포넌트만 제공한다.
 - **Projects 대시보드**: 폐기됨. 대시보드·상태 저장소는 MongoDB(E4) 소유다.
 - **native 커스텀 Issue Types**: 폐기됨. 타입 표현은 라벨(`type:epic`·`type:story`) 단일 방식이다.
@@ -41,7 +41,7 @@ origin: harness
 
 ## Operational Contract
 
-모든 연산(라벨 부트스트랩·story 이슈·epic umbrella mint·sub-issue 계층 링크)이 공유하는 실행 계약이다. 이후 연산 섹션은 이 계약을 재정의하지 않고 "Operational Contract를 따른다"로 참조한다.
+모든 연산(라벨 부트스트랩·story 이슈·epic umbrella mint·sub-issue 계층 링크·PR-story 링크)이 공유하는 실행 계약이다. 이후 연산 섹션은 이 계약을 재정의하지 않고 "Operational Contract를 따른다"로 참조한다.
 
 ### Availability Gate
 
@@ -240,9 +240,9 @@ gh issue edit <parent> --repo <owner>/<name> --add-sub-issue <child>
 
 ### 번호 매칭 규율 (정확 일치)
 
-선체크와 링크 후 검증은 둘 다 자식 번호 목록에서 child를 찾는다. 이 매칭은 **정확 일치**로 수행하고 부분 문자열 포함 검사(`grep <child>`)를 쓰지 않는다.
+이 규율은 이슈 번호를 번호 목록에서 찾는 모든 게이트에 적용된다 — §Sub-Issue Link의 선체크·링크 후 검증(자식 번호 목록에서 child)과 §PR-Story Link의 멱등 선체크·링크 검증(`closingIssuesReferences` 번호 목록에서 story 이슈)이 해당한다. 매칭은 **정확 일치**로 수행하고 부분 문자열 포함 검사(`grep <n>`)를 쓰지 않는다.
 
-부분 문자열 검사는 두 게이트를 같은 방향으로 깨뜨린다 — `child=7`이고 기존 자식에 `37`이 있으면 선체크가 false-positive로 판정해 `gh issue edit`를 건너뛰고, 이어지는 검증도 같은 `37`에 false-pass하므로 형성되지 않은 계층이 연결됨으로 보고된다. §Story Issue Create가 bare-prefix 매칭을 거부하는 것과 같은 이유다.
+부분 문자열 검사는 선체크와 검증을 같은 방향으로 깨뜨린다 — `child=7`이고 기존 자식에 `37`이 있으면 선체크가 false-positive로 판정해 링크 명령을 건너뛰고, 이어지는 검증도 같은 `37`에 false-pass하므로 형성되지 않은 링크가 연결됨으로 보고된다. §Story Issue Create가 bare-prefix 매칭을 거부하는 것과 같은 이유다.
 
 정확 일치 형태 두 가지 중 하나를 사용한다:
 
@@ -277,6 +277,120 @@ gh issue view <parent> --repo <owner>/<name> --json subIssues \
 
 `GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh issue edit --add-sub-issue` 명령을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — 계층을 연결하지 않는다. 선체크 조회와 링크 후 검증 조회(`gh issue view`)도 gh 호출이므로 dry-run에서는 건너뛰고 edit 명령만 출력한다.
 
+## PR-Story Link (G5 — closing keyword)
+
+PR을 대응 story 이슈에 GitHub closing keyword로 연결한다. PR 본문에 `Closes #<story-issue-number>` 라인을 넣으면 GitHub가 PR↔이슈 링크를 형성하고, PR 머지 시 이슈를 자동 close한다. §Operational Contract(가용성 게이트·계정 라우팅·셸 인젝션 방어·dry-run)를 따르며 재정의하지 않는다.
+
+§stdout Return Convention은 생성 연산(story 이슈·epic umbrella)의 번호·URL 반환을 규정하므로 링크 연산에는 적용되지 않는다 — G5의 stdout 라인과 종료 코드는 아래 §링크 검증이 정의한다. `gh pr create`가 반환한 PR 번호·URL을 호출자에게 되돌리는 책임은 PR을 만드는 소비자(E3-S5)의 몫이다. 본 연산은 그 번호를 §링크 검증 입력으로 **일시 보유**하며(값 소유가 아니라 통과 사용), 본문에 넣을 closing keyword 라인과 그 검증을 소유한다.
+
+### 연산 (같은 repo `Closes #N`)
+
+closing keyword는 **같은 repo 구문** `Closes #<story-issue-number>`만 사용한다. cross-repo 구문(`owner/repo#N`)은 GitHub이 auto-close를 발동하지 않으므로 규정하지 않는다 (§Non-Goals).
+
+본문은 stdin(`--body-file -`) 또는 임시 파일(`--body-file <path>`)로 전달한다 (§Shell-Injection Defense — `-m "$VAR"` 금지). 두 경로의 전달 방식이 다르며 그 근거는 각 경로에 적는다.
+
+**신규 PR 생성 경로** — 본문이 하네스가 조립한 semi-trusted 텍스트이므로 단일따옴표 HEREDOC로 파이프한다. 제목은 §Shell-Injection Defense에 따라 단일따옴표 HEREDOC로 변수에 캡처한 뒤 `--title "$TITLE"`로 전달한다.
+
+```bash
+TITLE=$(cat <<'TITLE_EOF'
+<PR 제목>
+TITLE_EOF
+)
+gh pr create --repo <owner>/<name> --base <base> --head <head> \
+  --title "$TITLE" --body-file - <<'BODY'
+<PR 요약>
+
+Closes #<story-issue-number>
+BODY
+```
+
+PR 번호·URL은 `gh pr create` stdout에서 얻어 §링크 검증의 `<pr-number>` 입력으로 사용한다.
+
+**기존 PR 추가 경로** — 기존 본문은 §Shell-Injection Defense가 "신뢰불가 provenance"로 명시한 raw PR 본문이므로 HEREDOC 파이프를 쓰지 않고 **1차 완화**를 적용한다.
+
+**호출 트리거**: 기존 PR 경로를 실행할 때, 조회한 기존 본문에 `Closes #<story-issue-number>` 라인을 덧붙인 전문을 Write 도구로 임시 파일에 쓴 뒤 `--body-file <path>`(`-` 아님)로 전달한다. 본문 바이트가 셸 파싱에 재유입되지 않아 delimiter 조기 종료 취약 클래스가 제거된다.
+
+```bash
+# 1. 기존 본문·base 조회
+gh pr view <pr-number> --repo <owner>/<name> --json body,baseRefName \
+  --jq '{body: .body, base: .baseRefName}'
+
+# 2. 기존 본문 전문 + "Closes #<story-issue-number>" 라인을 Write 도구로 임시 파일에 기록
+#    (HEREDOC 파이프 금지 — §Shell-Injection Defense 1차 완화)
+
+# 3. 임시 파일 경로로 전달
+gh pr edit <pr-number> --repo <owner>/<name> --body-file <tmp-body-path>
+```
+
+`gh pr edit --body-file`은 본문을 **교체**한다 (append 아님 — `gh pr edit --help`의 `--body`가 "Set the new body"로 규정). 전문 재공급 없이 `Closes #N`만 넘기면 PR 설명이 소실된다. 위 1단계가 `baseRefName`을 함께 조회하는 이유는 기존 PR의 base가 입력으로 주어지지 않아 §base branch 감지 비교에 필요하기 때문이다.
+
+### 입력 검증
+
+- **story 이슈 번호**: `^[0-9]+$`에 매칭하지 않으면 연산을 **skip**한다. 하드 실패하지 않고 exit 0으로 종료한다 (skip-not-fail). skip 사유를 stdout에 한 줄로 출력한다: `PR-story 링크 skip: 이슈 번호 형식 불일치 (issue=<story-issue-number>)`.
+- **PR 번호** (기존 PR 추가 경로): 같은 `^[0-9]+$` 검증을 적용하고 미매칭 시 같은 형태로 skip한다.
+
+### 멱등성 (선체크 — skip-not-fail)
+
+두 경로 모두 본문을 쓰기 **전**에 재실행 여부를 확인한다.
+
+- **신규 PR 생성 경로**: `gh pr list --repo <owner>/<name> --head <head> --state all --json number,url`로 같은 head 브랜치의 기존 PR을 조회한다. 결과가 있으면 `gh pr create`를 호출하지 않고 기존 PR 추가 경로로 전환한다 — `gh pr create`는 중복 PR에서 하드 실패하므로 선체크로 그 실패를 회피한다.
+- **기존 PR 추가 경로**: 조회한 기존 본문에 `Closes #<story-issue-number>` 라인이 §번호 매칭 규율의 정확 일치로 이미 있으면 `gh pr edit`를 호출하지 않고 **no-op skip**한 뒤 exit 0으로 종료한다. stdout에 `PR-story 링크 no-op: PR #<pr-number> → issue #<story-issue-number> (이미 연결됨)`을 출력한다. 선체크 없이 재실행하면 `Closes #N` 라인이 본문에 중복 누적된다.
+
+두 선체크 모두 skip-not-fail이며, 재실행이 하드 실패하지 않는다.
+
+### base branch 감지 (불일치 경고)
+
+closing keyword는 PR base가 repo **default branch**일 때만 링크·auto-close를 발동한다. base가 default branch가 아니면 GitHub이 keyword를 무시한다.
+
+`gh repo view`는 대상 repo를 **위치 인자**로 받는다 — `--repo` 플래그가 없으며 붙이면 `unknown flag: --repo`로 실패한다 (gh 2.96.0 실측). 다른 연산의 `gh issue`·`gh pr` 하위 명령이 `--repo`를 받는 것과 다르다.
+
+```bash
+gh repo view <owner>/<name> --json defaultBranchRef --jq .defaultBranchRef.name
+```
+
+조회 결과를 PR base와 비교한다. base는 신규 PR 생성 경로에서는 `--base <base>` 입력값이고, 기존 PR 추가 경로에서는 §연산 1단계가 조회한 `baseRefName`이다.
+
+- 일치하면 그대로 진행한다.
+- 불일치하면 stdout에 경고를 출력하고 진행한다: `PR-story 링크 경고: base=<base>가 default branch=<default>와 달라 closing keyword가 무시됩니다 (링크·auto-close 미형성)`.
+- 조회가 빈 출력·비-0 exit으로 실패하면 default branch를 알 수 없으므로 base 비교를 수행하지 않는다. 이때는 §링크 검증의 `base == default` 행(하드 실패 가능 경로)을 적용하지 않고 `PR-story 링크 경고: default branch 조회 실패 — base 비교를 건너뜁니다`를 출력한 뒤 exit 0으로 종료한다. 조회 실패를 불일치로 오판하면 `base == default`인 정상 PR이 매번 경고를 받고 검증 실패 행이 도달 불가가 된다.
+
+감지·경고까지만 수행한다. base branch를 default branch로 전환하거나 정책을 변경하지 않는다 (§Non-Goals — E3-S5 소관).
+
+### 링크 검증
+
+PR 본문 전달 직후 링크 형성 여부를 조회한다.
+
+```bash
+gh pr view <pr-number> --repo <owner>/<name> --json closingIssuesReferences \
+  --jq '.closingIssuesReferences[].number'
+```
+
+번호 매칭은 §번호 매칭 규율 (정확 일치)를 따른다 — `grep -Fxq '<story-issue-number>'` 또는 jq `any(.closingIssuesReferences[].number == <story-issue-number>; .)`. 부분 문자열 검사(`grep <n>`)는 이슈 `#7`이 `#37`에 false-pass하므로 쓰지 않는다.
+
+판정은 base branch 상태에 따라 갈린다:
+
+| base 상태 | `closingIssuesReferences` | 판정 | stdout | exit |
+|-----------|---------------------------|------|--------|------|
+| base == default | story 번호 정확 일치 | 성공 | `PR-story 링크 완료: PR #<pr-number> → issue #<story-issue-number>` | 0 |
+| base == default | story 번호 부재 (빈 배열 포함) | **검증 실패** | `PR-story 링크 검증 실패: PR #<pr-number> → issue #<story-issue-number>` | **비-0** |
+| base != default | 빈 배열 | **정상** (경고만) | `PR-story 링크 미형성(정상): base=<base>가 default branch가 아닙니다` | 0 |
+| base != default | story 번호 정확 일치 | 성공 | `PR-story 링크 완료: PR #<pr-number> → issue #<story-issue-number>` | 0 |
+
+4행(`base != default` + 정확 일치)은 도달 가능하다 — PR 사이드바 "Development"에서 수동 연결한 이슈는 base와 무관하게 `closingIssuesReferences`에 나타난다. closing keyword가 non-default base에서 동작한다는 뜻이 아니며, 본문 keyword 외 경로로 링크가 이미 형성된 상태다.
+
+`base != default`에서 빈 배열은 **정상 상태**다 — GitHub이 keyword를 무시한 예상된 결과이므로 하드 실패하지 않는다. 하드 실패는 `base == default`인데 링크가 형성되지 않은 경우 한 가지뿐이며, 입력 검증 skip·base 불일치 경고는 모두 exit 0으로 이와 구별된다 (§Sub-Issue Link의 skip/실패 구별과 같은 규율).
+
+### dry-run
+
+`GH_ISSUE_DRY_RUN=1`이면 §Dry-run Contract에 따라 조합된 `gh pr create` 또는 `gh pr edit` 명령과 본문에 삽입될 `Closes #<story-issue-number>` 라인을 stdout에 출력하고 `gh`를 호출하지 않으며 exit 0으로 종료한다 — PR을 만들거나 수정하지 않는다. 아래 조회도 모두 gh 호출이므로 dry-run에서는 건너뛴다:
+
+- 중복 PR 선체크 (`gh pr list --head`)
+- 기존 본문·base 조회 (`gh pr view --json body,baseRefName`)
+- default branch 조회 (`gh repo view <owner>/<name> --json defaultBranchRef`)
+- 링크 검증 조회 (`gh pr view --json closingIssuesReferences`)
+
+따라서 dry-run에서는 멱등 선체크·base 비교·링크 검증이 모두 평가되지 않는다 — 불일치 경고와 위 §링크 검증 판정 표는 dry-run에서 도달하지 않는다. dry-run 출력은 조합 명령과 `Closes #N` 라인에 한정된다.
+
 ## Standalone Verification (G6 — 무오염 dry-run)
 
 소비자(E3) 배선 없이 컴포넌트를 독립 검증한다. 검증은 `GH_ISSUE_DRY_RUN=1` 하에서만 수행하며, §Dry-run Contract가 gh 미호출(zero gh calls)을 보장하므로 대상 repo(예: `smalljiny/tack`)를 오염시키지 않는다 — 무오염은 실행이 아니라 **구조적으로** 성립한다.
@@ -285,16 +399,19 @@ gh issue view <parent> --repo <owner>/<name> --json subIssues \
 
 G6 검증은 두 확인 행위로 구성되며 서로 다른 주체가 수행한다:
 
-- **(a) dry-run 출력 확인** — 계약을 실행하는 에이전트/소비자가 `GH_ISSUE_DRY_RUN=1` 하에서 네 연산의 bash를 해석·echo해 조합된 gh 명령이 stdout에 나오는지 확인한다. 본 컴포넌트는 실행 코드 없는 프롬프트 문서이므로 `GH_ISSUE_DRY_RUN`을 읽는 러너가 별도로 존재하지 않는다 — 라이브 dry-run 실행은 소비자(E3)가 컴포넌트를 구동할 때 일어난다.
+- **(a) dry-run 출력 확인** — 계약을 실행하는 에이전트/소비자가 `GH_ISSUE_DRY_RUN=1` 하에서 다섯 연산의 bash를 해석·echo해 조합된 gh 명령이 stdout에 나오는지 확인한다. 본 컴포넌트는 실행 코드 없는 프롬프트 문서이므로 `GH_ISSUE_DRY_RUN`을 읽는 러너가 별도로 존재하지 않는다 — 라이브 dry-run 실행은 소비자(E3)가 컴포넌트를 구동할 때 일어난다.
 - **(b) 무오염 보장** — §Dry-run Contract의 zero gh calls로 **구조적으로** 성립하며, 실 repo 조회·생성 없이 계약 텍스트의 정적 점검(reasoning)으로 확인한다. S1의 코드 없는 범위에서 G6은 이 구조적·정적 확인이다.
 
-네 연산을 `GH_ISSUE_DRY_RUN=1`로 해석했을 때 stdout에 조합된 gh 명령이 출력되는지 확인한다:
+**검증 가능성의 비대칭**: 링크 형성 자체를 실측할 수 있는 범위는 두 링크 연산에서 다르다. §Sub-Issue Link (G4)는 읽기 전용 `gh issue view --json subIssues` 조회로 기존 계층의 필드 shape와 매칭 결과를 repo 오염 없이 실측할 수 있다. §PR-Story Link (G5)는 그렇지 않다 — 링크·auto-close는 default branch를 base로 하는 실 PR을 만들어야 발동하므로 무오염 조건에서 라이브 검증이 **불가**하다. 따라서 G5는 조합된 `gh pr create`/`gh pr edit`/`gh pr view --json closingIssuesReferences` 명령 형태와 base≠default 분기 계약 텍스트의 **정적 계약 점검**으로 성립시킨다. default-base 임시 PR을 만들어 auto-close를 확인하는 절차는 수행하지 않는다.
+
+다섯 연산을 `GH_ISSUE_DRY_RUN=1`로 해석했을 때 stdout에 조합된 gh 명령이 출력되는지 확인한다:
 
 1. **라벨 부트스트랩** (§Label Bootstrap) — dry-run 시 두 `gh label create` 명령(`type:epic`·`type:story`)이 출력되고 라벨은 생성되지 않는다.
 2. **story 이슈** (§Story Issue Create) — dry-run 시 조합된 `gh issue create --label type:story` 명령이 출력되고 이슈·중복 검색(`gh issue list`) 모두 gh를 호출하지 않는다.
 3. **epic umbrella** (§Epic Umbrella Mint) — dry-run 시 조합된 `gh issue create --label type:epic` 명령이 출력되고 이슈는 생성되지 않는다.
 4. **sub-issue 계층 링크** (§Sub-Issue Link) — dry-run 시 조합된 `gh issue edit <parent> --add-sub-issue <child>` 명령이 출력되고, 선체크·링크 후 검증 조회(`gh issue view`)를 포함해 gh를 전혀 호출하지 않으며 계층이 연결되지 않는다.
+5. **PR-story 링크** (§PR-Story Link) — dry-run 시 조합된 `gh pr create` 또는 `gh pr edit` 명령과 `Closes #<story-issue-number>` 라인이 출력되고, 중복 PR 선체크(`gh pr list --head`)·기존 본문·base 조회(`gh pr view --json body,baseRefName`)·default branch 조회(`gh repo view <owner>/<name> --json defaultBranchRef`)·링크 검증 조회(`gh pr view --json closingIssuesReferences`)를 포함해 gh를 전혀 호출하지 않으며 PR이 생성·수정되지 않는다. base 비교가 일어나지 않으므로 불일치 경고도 출력되지 않는다.
 
 ### 무오염 확인
 
-네 연산 모두 dry-run에서 gh를 호출하지 않으므로(§Dry-run Contract) 대상 repo에 실 이슈·라벨·계층이 생성되지 않는다. 이 성질은 gh 미호출로 구조적으로 보장되며, 실 repo에 대한 조회·생성 없이 계약 텍스트의 정적 점검으로 확인한다. 실 이슈·라벨을 만들지 않는 것이 검증의 전제이므로 검증 자체가 repo를 변경하지 않는다.
+다섯 연산 모두 dry-run에서 gh를 호출하지 않으므로(§Dry-run Contract) 대상 repo에 실 이슈·라벨·계층·PR이 생성되지 않는다. 이 성질은 gh 미호출로 구조적으로 보장되며, 실 repo에 대한 조회·생성 없이 계약 텍스트의 정적 점검으로 확인한다. 실 이슈·라벨·PR을 만들지 않는 것이 검증의 전제이므로 검증 자체가 repo를 변경하지 않는다.
