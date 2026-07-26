@@ -105,6 +105,8 @@ source가 destination으로 렌더되는 방식은 네 가지다.
 
 **이중 tracked 경계**: 두 layer가 각각 tracked를 갖는다 — **tack repo는 source(`template/`)를 추적**하고, **target/dogfood instance repo는 배포 결과(렌더된 `.tack/`·프롬프트·컨텍스트 파일)를 추적**한다(D3). 둘은 서로 다른 layer의 서로 다른 대상이며 모순이 아니다. tack 개발자가 커밋하는 것은 source, 배포된 instance가 커밋하는 것은 렌더 결과다.
 
+**커밋 scope 파생**: 이 경계에서 `.tack/commit-scopes.md`의 환경별 scope 설정이 갈린다. 두 layer 모두 하네스 파일을 tracked로 두므로 구분 기준은 tracked 여부가 아니라 **지배적 커밋 산출물**이다 — tack repo는 하네스 컴포넌트 자체가 산출물이라 인프라 scope(agent·skill·command·rule·hook·script·contract·template·docs·harness)만으로 충분하고, 배포 instance는 제품 코드가 지배적 산출물이라 프로젝트 scope를 **추가**한다. 인프라 scope는 instance에서도 유지한다 — `copier update` 재조정 커밋이 `.tack/rules/`·`.tack/scripts/`·`.claude/skills/`를 건드리므로 라벨링 대상이 계속 존재한다. `commit-scopes.md`는 init-once(§5)라 이 조정은 배포 후 수동으로 하며, 기존 instance로의 정책 전파는 `copier update` 동작 검증(E1-S4) 소관이다.
+
 ## 8. 도구별 vs 공유 규칙 분리
 
 규칙은 도구 전용과 공유로 이원화한다. 아래는 destination 기준이며, 각각의 source는 `template/`의 대응 위치에 있다.
