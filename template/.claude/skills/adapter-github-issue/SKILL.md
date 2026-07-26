@@ -110,6 +110,9 @@ sub-issue 링크 skip: gh < 2.94.0 — 네이티브 sub-issue 미지원 (/flow-i
 
 - **금지 — 리터럴 직접 보간**: 신뢰불가 텍스트(spec 요약·AI 생성 문자열)를 `--title "<...>"`처럼 명령 소스의 큰따옴표 리터럴에 **직접 보간**하지 않는다. 큰따옴표는 리터럴 소스의 word-splitting·globbing만 억제할 뿐, 그 안에 실제로 존재하는 백틱·`$()`의 명령 치환은 막지 못한다. 제목이 백틱을 포함하면(예: `` Fix `parseUser()` bug `` — 마크다운 코드 관례로 흔함) gh 도달 전에 셸이 `parseUser()`를 실행한다. 이것이 `.tack/rules/security.md`가 금지한 "문자열 연결로 셸 인자 구성"이다.
 - **금지 — `-m` 인라인**: `-m "$VAR"` 또는 `-m "$(...)"` 패턴. 동적 메시지는 항상 stdin(`--body-file -`) 또는 위 HEREDOC 캡처로 우회한다.
+- **브랜치·repo 참조 값** (`<head>`·`<base>`·`<owner>/<name>`): 명령 소스의 큰따옴표 리터럴에 직접 보간하지 않고 변수에 담아 `"$HEAD"`·`"$BASE"` 형태로 전달한다. git은 브랜치명에 백틱·`;`·`|`·`&`를 허용한다 (`git check-ref-format --branch 'a\`b\`'` 통과 — `$()`만 거부). 제목과 같은 이유로, 리터럴 보간은 값 안의 백틱을 gh 도달 전에 셸이 평가하게 만든다.
+
+  현재 이 값들의 provenance는 하네스 자신(토픽 브랜치명)·운영자 설정(`config.git.baseBranch`)·이미 존재하는 PR의 `baseRefName`이므로 외부 공격자 경로가 없다. 위 규율은 provenance가 바뀌어도 계약이 유지되도록 두는 defense-in-depth다.
 - **HEREDOC delimiter 충돌**: 단일따옴표 HEREDOC은 변수 확장·명령 치환은 막지만 **delimiter 조기 종료**는 막지 못한다. 본문·제목·story 목록 내용에 delimiter 리터럴(`BODY`·`TITLE_EOF`)과 정확히 일치하는 라인이 있으면, 그 첫 매칭 라인에서 HEREDOC이 조기 종료되고 이후 라인이 셸 명령으로 실행된다. delimiter는 고정·공개 리터럴이므로 내용에 영향을 줄 수 있는 주체가 매칭 라인을 심어 브레이크아웃할 수 있다.
   - **1차 완화 (신뢰불가 provenance 내용)**: 외부·미확인 출처 텍스트(raw issue/PR 본문, 웹훅 페이로드 등)를 본문으로 넘길 때는 HEREDOC 파이프 대신 Write 도구로 본문 바이트를 임시 파일에 쓰고 `--body-file <path>`(`-` 아님)로 전달한다. 내용이 셸 파싱에 재유입되지 않아 이 취약 클래스를 제거한다.
   - **2차 완화 (HEREDOC 유지 시)**: delimiter를 고정 리터럴 대신 호출별 nonce를 붙인 예측불가 문자열로 사용하거나, 내용에 delimiter와 정확히 일치하는 라인이 있으면 임베딩 전에 거부한다.
@@ -342,25 +345,34 @@ PR 번호·URL은 `gh pr create` stdout에서 얻어 §링크 검증의 `<pr-num
 
 본문을 에이전트 컨텍스트로 읽어들였다가 Write 도구로 재작성하지 않는다 — 전문을 바이트 단위로 재현해야 하는데 `gh pr edit --body-file`이 교체 연산이므로, 재현 과정의 절삭·공백 변형이 그대로 PR 설명 손실이 된다. 아래 경로는 본문이 셸 변수·모델 컨텍스트 어디도 거치지 않고 파일에서 파일로 흐른다.
 
+각 `gh` 호출을 검사하고 실패 시 **fail-closed**로 중단한다. `>` 리다이렉션은 명령이 실패해도 대상 파일을 먼저 0바이트로 truncate하므로, 조회 실패를 무시하고 진행하면 빈 파일에 `Closes #N`만 붙어 `gh pr edit`가 PR 설명 전체를 그 한 줄로 **교체**한다 — 복구 불가능한 데이터 손실이다.
+
 ```bash
 TMP_BODY=$(mktemp -t gh-pr-body)   # 저장소 트리 밖 (커밋 유입 방지)
+trap 'rm -f "$TMP_BODY"' EXIT      # 중단·오류 경로에서도 정리
 
 # 1. 기존 본문을 파일로 직접 수신 (--jq가 raw 문자열을 출력 — JSON 인용 없음)
-gh pr view <pr-number> --repo <owner>/<name> --json body --jq '.body' > "$TMP_BODY"
+if ! gh pr view <pr-number> --repo <owner>/<name> --json body --jq '.body' > "$TMP_BODY"; then
+  echo "PR-story 링크 중단: 기존 본문 조회 실패 (PR #<pr-number>) — 본문을 수정하지 않았습니다" >&2
+  exit 1
+fi
 
 # 2. base 조회 (§base branch 감지 비교용 — 기존 PR은 base가 입력으로 주어지지 않는다)
-PR_BASE=$(gh pr view <pr-number> --repo <owner>/<name> --json baseRefName --jq '.baseRefName')
+if ! PR_BASE=$(gh pr view <pr-number> --repo <owner>/<name> --json baseRefName --jq '.baseRefName'); then
+  echo "PR-story 링크 중단: base 조회 실패 (PR #<pr-number>) — 본문을 수정하지 않았습니다" >&2
+  exit 1
+fi
 
 # 3. closing keyword append
 printf '\nCloses #%s\n' "<story-issue-number>" >> "$TMP_BODY"
 
 # 4. 파일 경로로 전달
 gh pr edit <pr-number> --repo <owner>/<name> --body-file "$TMP_BODY"
-
-rm -f "$TMP_BODY"
 ```
 
-임시 파일은 `mktemp`로 저장소 트리 밖에 만들고 전달 후 삭제한다. 저장소 안에 두면 PR 본문이 `git status`에 노출되거나 커밋에 휩쓸린다.
+두 조회 중 하나라도 실패하면 `gh pr edit`에 도달하지 않는다 — 본문 수정 없이 비-0 exit으로 종료한다. 이 중단은 §링크 검증의 하드 실패와 별개이며, 링크가 형성되지 않은 게 아니라 **시도조차 하지 않은** 상태다.
+
+임시 파일은 `mktemp`로 저장소 트리 밖에 만들고 `trap ... EXIT`로 정리한다. 저장소 안에 두면 PR 본문이 `git status`에 노출되거나 커밋에 휩쓸리고, `trap` 없이 명시 `rm`만 두면 중단 경로에서 파일이 남는다.
 
 `gh pr edit --body-file`은 본문을 **교체**한다 (append 아님 — `gh pr edit --help`의 `--body`가 "Set the new body"로 규정). 전문 재공급 없이 `Closes #N`만 넘기면 PR 설명이 소실된다. 위 1단계가 `baseRefName`을 함께 조회하는 이유는 기존 PR의 base가 입력으로 주어지지 않아 §base branch 감지 비교에 필요하기 때문이다.
 
@@ -381,9 +393,17 @@ rm -f "$TMP_BODY"
 
   본문 텍스트에서 `Closes #N` 라인을 찾는 방식은 쓰지 않는다. §번호 매칭 규율이 정의한 정확 일치(`grep -Fxq '<number>'`·jq 수치 `==`)는 번호 목록에 적용되는 형태라 본문 라인에 성립하지 않고, 텍스트 매칭으로 대체하면 `Closes #7`이 `Closes #70`에 false-positive를 낸다. GitHub closing keyword는 대소문자 무시이며 `Fixes`·`Resolves`·`Close`·`Fixed`·`Resolved` 변형도 링크를 형성하므로, 본문에 `Fixes #12`가 이미 있어도 `Closes #12` 텍스트 검색은 이를 놓치고 중복 keyword를 덧붙인다. `closingIssuesReferences` 조회는 keyword 변형·대소문자·표기 방식과 무관하게 **형성된 링크 자체**를 보므로 이 실패 모드가 없다.
 
-  base가 default branch가 아니면 `closingIssuesReferences`가 빈 배열이므로 이 선체크는 no-op을 판정하지 못한다. 이 경우 §base branch 감지의 경고 경로가 이미 링크 미형성을 알리므로, 선체크는 "이미 연결됨" 판정 없이 통과시키고 본문 전달로 진행한다.
+  **2차 가드 (base != default 전용)**: base가 default branch가 아니면 `closingIssuesReferences`가 항상 빈 배열이라 위 선체크가 no-op을 판정하지 못한다. 이 상태에서 1차 선체크만 두면 재실행마다 `Closes #N`이 본문에 누적되고 매번 exit 0으로 끝나므로 멱등이 깨진다. 1차 선체크가 비었고 base != default일 때만 조회한 본문에 대해 **앵커 매칭**으로 2차 가드를 적용한다.
 
-두 선체크 모두 skip-not-fail이며, 재실행이 하드 실패하지 않는다.
+  ```bash
+  grep -Eiq '^[[:space:]]*(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#<story-issue-number>[[:space:]]*$' "$TMP_BODY"
+  ```
+
+  라인 전체를 `^...$`로 고정하므로 `#7`이 `Closes #70`에 매칭하지 않고, 문장 중간의 우연한 언급도 잡히지 않는다. `-i`와 keyword 변형(`close`/`closes`/`closed`/`fix`/`fixes`/`fixed`/`resolve`/`resolves`/`resolved`)을 함께 다뤄 GitHub이 링크를 형성하는 표기 집합과 일치시킨다. 매칭하면 no-op skip + exit 0으로 종료하고 stdout에 `PR-story 링크 no-op: PR #<pr-number> → issue #<story-issue-number> (본문에 closing keyword 존재, base != default로 링크 미형성)`을 출력한다.
+
+  이 2차 가드는 base == default 경로에는 적용하지 않는다 — 그 경로는 `closingIssuesReferences`가 링크 형성 여부를 직접 알려주므로 본문 텍스트를 볼 이유가 없고, 텍스트 매칭은 keyword 표기 변형에 취약한 열등한 신호다.
+
+두 선체크와 2차 가드 모두 skip-not-fail이며, 재실행이 하드 실패하지 않는다.
 
 ### base branch 감지 (불일치 경고)
 
