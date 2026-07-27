@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: code-reviewer
 description: Senior code review expert who evaluates code quality, security, and maintainability. Use immediately after writing or modifying code. Automatically invoked after /dev:impl task completion and in /dev:review. In B6 unit-review (stage 2), check per-function correctness and security after the flow-review lock.
 tools: Read, Grep, Glob, Bash
@@ -14,6 +14,28 @@ A senior code reviewer ensuring high standards of code quality and security.
 1. Check recent changes with `git diff`
 2. Focus review on modified files
 3. Begin review immediately
+
+호출 프롬프트에 변경 파일 경로 목록이 명시 목록으로 포함돼 있으면 1·2 대신 아래 `## Stage-2 Unit Review`의 스코프를 따른다.
+
+## Stage-2 Unit Review (`/flow-review`)
+
+`/flow-review`가 `topicTier == high`인 토픽의 stage 2에서 이 에이전트를 호출할 때 따르는 프로세스다. stage 1의 architect가 이미 구조 배치를 판정하고 `lock: locked`를 확정한 뒤에 실행된다.
+
+**적용 조건**: 호출 프롬프트에 변경 파일 경로 목록이 **명시 목록으로 포함돼 있으면** 이 절을 적용한다. 목록이 없으면 이 절을 적용하지 않고 전체 변경 범위를 리뷰한다 — `topicTier ∈ {low, normal}` 병렬 리뷰와 `/flow-impl` Story 단위 호출이 그 경로다. `topicTier`는 호출 프롬프트에 전달되지 않으므로, 목록의 유무가 이 절의 유일한 판별 신호다.
+
+**스코프**: 전달받은 변경 파일 경로 목록으로 한정한다. 그 목록에 없는 파일은 리뷰하지 않으며, `git diff` 전체 범위로 스코프를 넓히지 않는다. 단 `## Commit Message Content Policy Check`의 입력(`.tack/local/active/<topic>/implementation-plan.md`)은 이 스코프 제한 대상이 아니다 — 그 파일은 git-ignored라 변경 파일 목록에 나타날 수 없으며, 해당 절은 자체 타이밍 규칙대로 실행한다.
+
+**보는 것**: 목록 안 각 파일의 함수 단위 정확성과 보안. 아래 `## Review Checklist`·`## Security Checks`·`## Code Quality`·`## Performance`·`## Best Practices` 기준을 그 스코프에 적용한다.
+
+**보지 않는 것**: stage 1이 lock한 구조 배치 — 파일 위치, 모듈 경계, 추상 수준, 기존 중복 여부. 이 항목들은 재론하지 않는다.
+
+구조 이슈를 발견하면 수정을 제안하지 않고 다음 한 줄만 보고한다:
+
+```
+[STRUCTURE] <한 줄 요약> — stage 1 재실행이 필요합니다
+```
+
+`[STRUCTURE]` 항목은 severity `HIGH`로 집계한다 — `## Approval Criteria`의 Blocked 조건에 들어가고, `/flow-review` 처리 내역 표에도 `HIGH` 행으로 기록된다. stage 2에서 구조 이슈를 직접 고치면 lock의 의미가 사라지므로 보고만 한다.
 
 ## Review Checklist
 

@@ -29,6 +29,8 @@ const TARGETS = {
   flowImpl: `${REPO_ROOT}/template/.claude/skills/flow-impl/SKILL.md`,
   flowReview: `${REPO_ROOT}/template/.claude/skills/flow-review/SKILL.md`,
   riskRouting: `${REPO_ROOT}/template/.claude/skills/wf-risk-routing/SKILL.md`,
+  architect: `${REPO_ROOT}/template/.claude/agents/architect.md`,
+  codeReviewer: `${REPO_ROOT}/template/.claude/agents/code-reviewer.md`,
 }
 
 // 각 assertion이 겨냥하는 절의 heading 앵커. 절 삭제 통제의 입력이기도 하다.
@@ -36,6 +38,8 @@ const ANCHORS = {
   plannerDecomposition: /^#{1,6}\s+4\.7\.5\./,
   flowImplTypeRouting: /^#{1,6}\s+5\..*Story Type/,
   flowReviewStageBranch: /^#{1,6}\s+5-B\./,
+  architectStage1: /^#{1,6}\s+Stage-1 Structural Review/,
+  codeReviewerStage2: /^#{1,6}\s+Stage-2 Unit Review/,
 }
 
 const NORMAL_FALLBACK_SENTENCE = '필드가 없는 Story는 `normal`로 간주한다'
@@ -62,14 +66,21 @@ function headingMask(lines) {
   })
 }
 
-/** heading 앵커에 일치하는 절의 범위 [start, end)를 돌려준다. 없으면 null. */
+const headingLevel = (line) => line.match(/^(#{1,6})\s/)?.[1].length ?? 0
+
+/**
+ * heading 앵커에 일치하는 절의 범위 [start, end)를 돌려준다. 없으면 null.
+ * 절의 끝은 **같거나 더 높은 레벨**의 다음 heading이다 — 하위 heading(`###` 아래 `####`)은
+ * 절 안에 포함한다.
+ */
 function sectionRange(text, anchor) {
   const lines = text.split('\n')
   const isHeading = headingMask(lines)
   const start = lines.findIndex((line, i) => isHeading[i] && anchor.test(line))
   if (start === -1) return null
+  const level = headingLevel(lines[start])
   let end = start + 1
-  while (end < lines.length && !isHeading[end]) end += 1
+  while (end < lines.length && !(isHeading[end] && headingLevel(lines[end]) <= level)) end += 1
   return { lines, start, end }
 }
 
@@ -153,6 +164,14 @@ function hasDelegationLiteral(text) {
   return text.includes(DELEGATION_LITERAL)
 }
 
+/** 텍스트에서 `| <숫자> | <문항> |` 형태의 rubric 행만 뽑아 배열로 돌려준다. */
+function rubricRows(text) {
+  return text
+    .split('\n')
+    .filter((line) => /^\|\s*\d+\s*\|/.test(line))
+    .map((line) => line.trim())
+}
+
 // --- 핵심 assertion 4개 -----------------------------------------------------
 
 describe('core assertions on edited template components', () => {
@@ -204,6 +223,42 @@ describe('consumer delegation assertions', () => {
       hasDelegationLiteral(read(TARGETS.flowReview)),
       'flow-review/SKILL.md에 표준 위임 문구가 없습니다',
     )
+  })
+})
+
+// --- stage 프로세스 본문 ↔ 호출부 정합 ---------------------------------------
+//
+// rubric은 호출부(flow-review Step 5-B)와 에이전트 본문(architect) 두 곳에 존재한다.
+// 두 사본이 조용히 갈라지는 것을 막기 위해 행 단위 동일성을 단언한다.
+
+describe('stage process bodies match the flow-review call site', () => {
+  test('architect stage-1 rubric rows equal the flow-review 5-B rubric rows', () => {
+    const callSite = sectionUnderHeading(read(TARGETS.flowReview), ANCHORS.flowReviewStageBranch)
+    const agentBody = sectionUnderHeading(read(TARGETS.architect), ANCHORS.architectStage1)
+    assert.ok(callSite, 'flow-review Step 5-B 절을 찾지 못했습니다')
+    assert.ok(agentBody, 'architect Stage-1 절을 찾지 못했습니다')
+
+    const callSiteRows = rubricRows(callSite)
+    const agentRows = rubricRows(agentBody)
+    assert.strictEqual(callSiteRows.length, 8, '호출부 rubric 행이 8개가 아닙니다')
+    assert.deepStrictEqual(agentRows, callSiteRows, 'architect rubric이 호출부와 다릅니다')
+  })
+
+  test('architect stage-1 body states the lock verdict and keeps its tools unchanged', () => {
+    const text = read(TARGETS.architect)
+    const body = sectionUnderHeading(text, ANCHORS.architectStage1)
+    assert.ok(body, 'architect Stage-1 절을 찾지 못했습니다')
+    assert.match(body, /lock: blocked/)
+    assert.match(body, /lock: locked/)
+    assert.match(text, /^tools: Read, Grep, Glob$/m, 'architect tools가 변경됐습니다')
+  })
+
+  test('code-reviewer stage-2 body scopes to the passed changed-file list', () => {
+    const body = sectionUnderHeading(read(TARGETS.codeReviewer), ANCHORS.codeReviewerStage2)
+    assert.ok(body, 'code-reviewer Stage-2 절을 찾지 못했습니다')
+    assert.match(body, /변경 파일 경로 목록/)
+    assert.match(body, /재론하지 않는다/)
+    assert.match(body, /\[STRUCTURE\]/)
   })
 })
 
