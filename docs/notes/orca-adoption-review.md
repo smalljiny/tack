@@ -96,7 +96,7 @@ computeBranchName(sanitizedName, settings, gitUsername) {
 }
 selectBranchPrefixInput(settings, gitUsername) {
   switch (settings.branchPrefix) {
-    case "git-username": return gitUsername;   // 현재값 → smalljiny/
+    case "git-username": return gitUsername;   // 검토 초기값 → smalljiny/
     case "custom":       return settings.branchPrefixCustom ?? null;
     case "none":         return null;
   }
@@ -122,9 +122,30 @@ worktree id가 경로 기반이라 브랜치를 바꿔도 핸들·세션·메타
 
 **권고**: `branchPrefix = none` + 하네스가 `git branch -m <type>/<topic>`으로 접두 부여.
 
-### 3.3 `autoRenameBranchFromWork` (기본 on, 현재 on)
+### 3.3 `autoRenameBranchFromWork` (기본 on, 현재 on) — 위험도 하향 정정
 
-앱 코드에 `buildBranchNamePrompt`가 있고, **에이전트의 첫 프롬프트를 근거로 LLM이 브랜치명을 생성해 자동 rename**한다. 하네스가 지어 둔 이름이 작업 중 바뀌면 teardown T3(`merge-base --is-ancestor <branch> …`)·T5(`branch -d <branch>`)가 대상을 잃는다. **끄는 것을 권고**한다. (코드 확인이며 실험 재현은 미수행.)
+앱 코드에 `buildBranchNamePrompt`가 있어 **에이전트의 첫 프롬프트를 근거로 LLM이 브랜치명을 생성해 자동 rename**한다. 초기에는 이것이 teardown T3(`merge-base --is-ancestor <branch> …`)·T5(`branch -d <branch>`)의 대상을 잃게 만든다고 보고 "끄는 것을 권고"했으나, **게이트 조건을 확인한 결과 CLI 경로에서는 발동하지 않는다.**
+
+앱 UI 설명 문구:
+
+> Auto-rename branch & worktree — When an agent starts working in a new workspace, Orca renames its auto-generated branch (e.g. `Nautilus`) to a short name summarizing the task. **Only branches Orca named itself are renamed, and never after they have been pushed.**
+
+생성 시점 게이트(난독화 해제):
+
+```js
+Qa = Ht && settings.autoRenameBranchFromWork === true
+     && !explicitName.trim()      // 워크스페이스 이름을 비워 둔 경우만
+     && !!selectedAgent           // 컴포저에서 에이전트를 고른 경우만
+     && !branchNameOverride
+     && !explicitDisplayName;
+// → worktree meta 에 pendingFirstAgentMessageRename: Qa 로 기록
+```
+
+즉 (a) 이름을 비운 채 UI 컴포저로 만들고 (b) 그 자리에서 에이전트를 선택한 워크스페이스에만, (c) Orca가 스스로 지은 브랜치에 한해, (d) push 전에만 적용된다. 판정은 **생성 시점에 고정**된다.
+
+**실측**: `orca worktree create --name worktree2`(명시 이름) → `git branch -m feature/worktree2` → 에이전트 기동 → 프롬프트 1회 완료(`state: done`) 후 2분간 폴링. 브랜치는 `feature/worktree2` 그대로였다. 발동하지 않았다.
+
+**정정된 권고**: 하네스는 항상 `--name <topic>`을 명시하는 CLI 경로를 쓰므로 이 설정을 **끌 필요가 없다**. 다만 사람이 UI 컴포저에서 이름을 비우고 에이전트를 골라 워크스페이스를 만드는 경우에는 발동하므로, 그 사용 패턴을 병행한다면 끄는 편이 안전하다.
 
 ---
 
@@ -186,8 +207,8 @@ bash teardown.sh <topic>                 ← 하네스 소유 (게이트 → syn
 | `worktreeBasePath` | repo | `../tack.worktrees` | 유지 ✅ |
 | `nestWorkspaces` | 전역 | off | 유지 ✅ (타 repo도 `Worktree Location` 지정 필요) |
 | `workspaceDir` | 전역 | `/Users/mario/Workspace` | 유지 |
-| `branchPrefix` | 전역 | `git-username` | **`none`** 으로 변경 |
-| `autoRenameBranchFromWork` | 전역 | on | **off** 로 변경 |
+| `branchPrefix` | 전역 | **`none`** ✅ | 유지 (실측: 브랜치 `worktree2` — 접두 없음) |
+| `autoRenameBranchFromWork` | 전역 | on | 유지 가능 — CLI 경로 미발동 확인(§3.3). UI 컴포저 병행 시에만 off |
 | `externalWorktreeVisibility` | repo | `hide` | 검토 — 열리면 하네스 생성 worktree도 `list`·`ps`에 등재될 가능성 |
 | `setupScriptLaunchMode` / `hookSettings.scripts.setup` | repo | `new-tab` / 빈 값 | 현행 유지 (주입을 setup hook에 넣을 필요가 없어짐 — §4 철회 3) |
 
@@ -226,9 +247,9 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 **도입 규칙 3개**
 1. `orca worktree rm`을 하네스 토픽에 직접 쓰지 않는다(§5).
 2. worktree 제거 전에 Orca 터미널을 닫는다(§6-1).
-3. 브랜치 접두는 하네스가 rename으로 부여하고, Orca 자동 rename은 끈다(§3.2·§3.3).
+3. 브랜치 접두는 하네스가 rename으로 부여한다 — `branchPrefix=none` 전제(§3.2).
 
-**다음 확인거리**: `externalWorktreeVisibility` 변경 효과, `branchPrefix=none` 적용 후 재실측, orchestration 파일럿 2건.
+**다음 확인거리**: `externalWorktreeVisibility` 변경 효과, orchestration 파일럿 2건. (`branchPrefix=none` 재실측은 2026-07-27 완료 — §3.2·§7.)
 
 ---
 
@@ -244,3 +265,4 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 | `orcaprov2` | `--agent` 경로의 `ps` 등재 | `agents[{state,lastAssistantMessage}]` 확인 |
 | `wtplace` | `worktreeBasePath` 적용 | `tack.worktrees/tack/wtplace` (nest 잔존) |
 | `worktree1` | 최종 형태 end-to-end | 배치 일치, provision·teardown 무수정 통과, 브랜치 rename 추적 확인 |
+| `worktree2` | `branchPrefix=none` 재실측 + 자동 rename 검증 | 브랜치 `worktree2`(접두 없음), 사후 rename 반영(수 초 지연 후 일치), 자동 rename 미발동 |
