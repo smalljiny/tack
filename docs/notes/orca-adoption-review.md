@@ -40,7 +40,9 @@
 
 **결론**: 일반 명령·headless는 임의 worktree에서 자유롭게 되지만, **에이전트 TUI 직접 기동은 Orca-tracked worktree에서만** 된다. runtime capability `agent-session.host-authority.v1`과 일치한다. 래퍼(`zsh -ic claude`)로 우회는 되지만 문서화되지 않은 경로다.
 
-미등재의 원인은 절대적 제약이 아니라 **repo 설정** `externalWorktreeVisibility: 'hide'`로 보인다 — 하네스가 만든 probe worktree들이 `worktreeMeta`에는 기록돼 있었다. (설정 변경 실측은 미수행. 열리면 §5의 형태 B가 형태 A만큼 유용해질 수 있다.)
+미등재의 원인은 절대적 제약이 아니라 **repo 설정** `externalWorktreeVisibility: 'hide'`로 보인다 — 하네스가 만든 probe worktree들이 `worktreeMeta`에는 기록돼 있었다.
+
+**결정(2026-07-27)**: 상태 조회 대상은 **Orca가 생성한 worktree로 한정**한다. 따라서 external worktree 등재 여부는 검토 항목에서 제외하고, `externalWorktreeVisibility`는 `hide` 그대로 둔다. 이 결정으로 worktree 생성 주체는 Orca로 확정되며, 하네스는 생성 이후 주입·정리만 담당한다(§4).
 
 ### 2.2 `worktree ps`의 에이전트 관측
 
@@ -209,7 +211,7 @@ bash teardown.sh <topic>                 ← 하네스 소유 (게이트 → syn
 | `workspaceDir` | 전역 | `/Users/mario/Workspace` | 유지 |
 | `branchPrefix` | 전역 | **`none`** ✅ | 유지 (실측: 브랜치 `worktree2` — 접두 없음) |
 | `autoRenameBranchFromWork` | 전역 | on | 유지 가능 — CLI 경로 미발동 확인(§3.3). UI 컴포저 병행 시에만 off |
-| `externalWorktreeVisibility` | repo | `hide` | 검토 — 열리면 하네스 생성 worktree도 `list`·`ps`에 등재될 가능성 |
+| `externalWorktreeVisibility` | repo | `hide` | 유지 — Orca 생성 worktree만 조회하기로 결정(§2.1), 검토 종료 |
 | `setupScriptLaunchMode` / `hookSettings.scripts.setup` | repo | `new-tab` / 빈 값 | 현행 유지 (주입을 setup hook에 넣을 필요가 없어짐 — §4 철회 3) |
 
 CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 모두 앱 UI에서 변경한다.
@@ -249,7 +251,7 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 2. worktree 제거 전에 Orca 터미널을 닫는다(§6-1).
 3. 브랜치 접두는 하네스가 rename으로 부여한다 — `branchPrefix=none` 전제(§3.2).
 
-**다음 확인거리**: `externalWorktreeVisibility` 변경 효과, orchestration 파일럿 2건. (`branchPrefix=none` 재실측은 2026-07-27 완료 — §3.2·§7.)
+**다음 확인거리**: orchestration 파일럿 2건. (`branchPrefix=none` 재실측·자동 rename 게이트는 2026-07-27 완료 — §3.2·§3.3·§7. `externalWorktreeVisibility`는 §2.1 결정으로 종료.)
 
 ---
 
