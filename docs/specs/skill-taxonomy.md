@@ -107,3 +107,4 @@ Codex 측(`template/.codex/`·`template/AGENTS.md.jinja`)은 `skills/`만 포함
 - **tier는 배치를, user-invocable은 노출을** — 두 결정을 섞지 않는다. `meta-` 스킬이라고 자동 노출되지 않고, `user-invocable: true`라고 tier가 바뀌지 않는다.
 - **canonical 규칙 우선** — 이 문서는 아키텍처 서술이며, 강제 규칙은 `template/.claude/rules/common/component-boundaries.md`가 소유한다. 충돌 시 규칙이 우선한다.
 - **대상 트리는 `template/` 소스** — 배포된 destination의 스킬 구조는 이 source 트리의 렌더 결과다. 루트 `.claude/`는 pre-M1 부트스트랩 레퍼런스로 이 체계의 관리 대상이 아니다.
+- **tier별 컴포넌트 개수를 문서에 기록하지 않는다** — 개수는 스킬을 추가·제거할 때마다 바뀌지만 이를 갱신하는 소유자가 없다. Copier 렌더도 `flow-init`도 tier 개수를 다시 쓰지 않으므로, 기록된 숫자는 다음 스킬 추가 시점에 곧바로 stale된다. tier 구성은 prefix 규약과 개별 열거로 서술하고, 실제 개수가 필요하면 `template/.claude/skills/` 트리를 직접 센다. 개수는 트리 하나에만 유효하다는 제약도 있다 — 같은 tier라도 루트 부트스트랩 `.claude/`와 `template/.claude/`의 스킬 수가 다르므로 두 트리를 동시에 만족하는 단일 숫자가 존재하지 않는다.
