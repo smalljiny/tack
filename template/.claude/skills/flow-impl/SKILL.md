@@ -1,7 +1,7 @@
 ---
-version: 3
+version: 4
 name: flow-impl
-description: Execute Stories from the implementation plan. Supports `--all` for sequential batch execution of all remaining Stories. Automatically invokes tdd-specialist and code-reviewer per Story. Stops after one Story by default; `--all` or `config.dev_impl.batch_mode=true` runs all remaining Stories sequentially.
+description: Execute Stories from the implementation plan. Supports `--all` for sequential batch execution of all remaining Stories. Invokes the Story-Type-appropriate agent (tdd-specialist, prompt-engineer, refactor-cleaner) and code-reviewer per Story. Stops after one Story by default; `--all` or `config.dev_impl.batch_mode=true` runs all remaining Stories sequentially.
 origin: harness
 user-invocable: true
 ---
@@ -106,10 +106,15 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
 ### 2. Understand Story Details
 
 Extract from the plan document:
-- **Type**: tdd, config, infra, refactor, prompt
+- **Type**: tdd, config, infra, refactor, prompt, scaffold
+- **Risk Tier**: low, normal, high — 값 해석과 필드 부재·이상값 처리는 아래 위임 스킬이 소유한다
 - **Goal**: What to achieve
 - **Tasks**: Checklist of `- [ ] T<storyN>.<taskM> — <subject>` lines
 - **Completion Criteria**: Validation criteria
+
+`**Risk Tier**` 값을 읽은 뒤, tier가 이 Story의 처리에 어떤 영향을 주는지 결정하기 위해 라우팅 소유자를 로드한다:
+
+Load `.claude/skills/wf-risk-routing/SKILL.md` and follow its process.
 
 ### 3. **Pre-work briefing and approval**
 
@@ -117,7 +122,7 @@ Extract from the plan document:
 ```
 --- Starting Story <ID>: <Name> ---
 ```
-Then proceed to Step 4 immediately without waiting for approval.
+아래 **tier 노트 조건** 중 하나라도 해당하면 그 노트를 이 라인 바로 다음 줄에 출력한다. 그 다음 Step 4로 진행하며 승인을 기다리지 않는다.
 
 **All other cases (first Story, or non-batch)**: Present the full briefing:
 
@@ -126,7 +131,8 @@ Then proceed to Step 4 immediately without waiting for approval.
 ## Pre-work Briefing: [Story ID] [Story Name]
 
 ### Story Overview
-- Type: [tdd / config / infra / refactor / prompt]
+- Type: [tdd / config / infra / refactor / prompt / scaffold]
+- Risk Tier: [low / normal / high]
 - Goal: [What to achieve]
 
 ### Work Plan
@@ -142,10 +148,17 @@ Then proceed to Step 4 immediately without waiting for approval.
 ---
 ```
 
+**tier 노트 조건** (단일 모드·batch 모드 공통, `wf-risk-routing`이 `/flow-impl`에 부여한 보고 의무):
+
+- Story의 `**Risk Tier**` 필드가 없거나 값이 `low`·`normal`·`high` 중 어느 것도 아니면 `normal`로 간주하고 다음 한 줄을 출력한다: `Risk Tier 미기재 또는 이상값 — normal로 처리합니다.`
+- Story의 tier가 `high`이면서 Type이 `tdd` 또는 `refactor`이고 plan에 선행 `scaffold` Story가 없으면 다음 한 줄을 출력한다: `high tier + <Type> Story에 선행 scaffold Story가 없습니다 — 골격 의례 없이 진행합니다.` 실행을 중단하지 않으며 Story를 분해하지도 않는다.
+
+단일 모드·첫 Story에서는 브리핑 블록 다음에, batch 모드 Story 2 이후에는 `--- Starting Story ---` 라인 다음에 출력한다.
+
 After the briefing block is printed (closing `---`), **advisor 조건부 호출**을 먼저 수행한다:
 
 **복잡한 Story 판정 조건** — 아래 중 하나라도 해당하면 `advisor`를 호출한다:
-- Story Type이 `infra` (스크립트·코드 변경, 시스템 영향 큼)
+- Story Type이 `infra` 또는 `scaffold` (스크립트·코드 변경, 시스템 영향 큼)
 - Tasks 수 ≥ 5
 
 조건에 해당하면 `advisor()`를 호출해 설계 상 위험·엣지 케이스·대안을 사전 검토한다.
@@ -208,8 +221,18 @@ Step 3 직후, 현재 Story의 `**Tasks**:` 목록을 파싱해 Task 도구 entr
 **Type: `infra`** → Direct handling:
 - Change infrastructure and document
 
+**Type: `scaffold`** → Direct handling:
+- 시그니처, 타입/인터페이스, 호출·이벤트 체인 배선, throwing stub을 작성한다. 함수 본문 로직은 작성하지 않는다.
+- 완료 판정은 언어별 정적 검사 + entry 모듈 import 스모크로 수행한다. 판정 기준을 적용하기 전에 Read 도구로 `.tack/contracts/implementation-plan.md`를 열어 `### scaffold 완료 판정 (언어별)` 절의 해당 언어 행을 확인한다 — 그 절이 canonical 출처이며 본 스킬은 표를 복제하지 않는다.
+- tdd-specialist를 호출하지 않는다. RED-GREEN-REFACTOR 사이클은 골격에 적용하지 않으며, stub을 채우는 후속 구현 Story가 담당한다.
+- **호출 트리거** (prompt-authoring 규칙 7): 골격 작성을 마친 직후, 계약 표에서 확인한 언어별 정적 검사 명령과 entry 모듈 import 스모크 명령을 Bash 도구로 각각 1회 실행한다. 두 결과를 Step 6으로 넘어가기 전에 확인한다. Step 7은 이 결과를 재실행 없이 인용한다.
+
 **Batch failure condition**: If the invoked agent (tdd-specialist, prompt-engineer, or refactor-cleaner) reports an unresolvable failure:
 - `batch == true`: set `batch_failed = true` with reason "test failure" and proceed to Step 11 (terminal)
+- `batch == false`: surface the failure and stop
+
+**Batch failure condition (`scaffold`)**: `scaffold` Story의 정적 검사가 실패하거나 entry 모듈 import 스모크가 실패하면:
+- `batch == true`: set `batch_failed = true` with reason "scaffold static check or import smoke failed" and proceed to Step 11 (terminal)
 - `batch == false`: surface the failure and stop
 
 ### 6. **Automatically invoke code-reviewer agent** (immediately after implementation)
@@ -222,7 +245,7 @@ Immediately review the Story code:
 
 - simplify는 외부 plugin으로 설치된 스킬이며, 사용 가능 스킬 목록에 `simplify`가 노출돼 있을 때만 동작한다. 등록되지 않은 환경에서는 이 단계를 건너뛴다.
 - simplify는 코드 재사용·효율성·품질을 재검토하고 개선이 있으면 즉시 수정한다.
-- `config`·`infra`·`refactor`·`prompt` 타입은 simplify를 적용하지 않는다. `prompt` 타입은 REFINE 사이클이 품질 개선을 담당한다.
+- `config`·`infra`·`refactor`·`prompt`·`scaffold` 타입은 simplify를 적용하지 않는다. `prompt` 타입은 REFINE 사이클이 품질 개선을 담당한다. `scaffold` 타입은 골격에 본문 로직이 없어 simplify 대상이 아니다.
 
 **`prompt` 타입 — code-reviewer는 comment-only**: `prompt-engineer`가 Eval Acceptance를 달성한 후 code-reviewer가 실행된다. code-reviewer는 **평가 대상 프롬프트 파일을 수정하지 않는다** — 관찰 사항만 보고한다. 프롬프트 파일 수정이 필요하면 `prompt-engineer`를 재호출해 eval 게이트를 다시 통과해야 한다.
 
@@ -239,7 +262,7 @@ Immediately review the Story code:
 - **`prompt` 타입**: `prompt-engineer` Acceptance 결과를 재사용한다.
   - Acceptance 통과 → 현재 Story의 모든 Eval Case 체크박스를 markdown `- [ ]` → `- [x]`로 Edit한다 (스코프: 현재 Story의 Completion Criteria 한정).
   - Acceptance 미통과 → 기존 batch_failed 정책 적용 (아래 batch failure condition 참조).
-- **`tdd` / `config` / `infra` / `refactor` 타입**: 본 단계에서 LLM이 각 Criterion을 직접 점검한다 (2단계로 진행).
+- **`tdd` / `config` / `infra` / `refactor` / `scaffold` 타입**: 본 단계에서 LLM이 각 Criterion을 직접 점검한다 (2단계로 진행).
 
 **2단계 — Criterion 단위 점검** (스코프: 현재 Story의 모든 Completion Criteria 라인):
 
@@ -256,8 +279,12 @@ Immediately review the Story code:
   - 파일 검사: `test -f`, `test -d`, `ls`
   - 텍스트 검색: `grep`, `rg`, `head`, `tail`, `cat`, `wc`
   - Git read-only: `git diff`, `git log`, `git show`, `git status`, `git branch`
-  - Criterion이 백틱 리터럴로 명시한 read-only 명령 (예: `node --test`, `bash -n`, `tsc --noEmit`). 호출 전 다음 mutating 토큰이 인자에 없는지 확인하고, 하나라도 발견되면 Bash 호출을 거부한다: `-delete`, `-exec`, `-execdir`, `-ok`, `>`, `>>`, `rm`, `mv`, `cp`, `chmod`, `chown`, `|` (외부 명령 파이프).
-- **빌드·테스트 결과 재사용**: Step 5에서 실행된 빌드·테스트 명령(예: `npm test`, `npm run build`, `jest`, `pytest`)의 결과는 재실행하지 않고 Step 5 보고 메시지의 마지막 결과 라인(GREEN 확인 라인 / 종료 코드 / stdout 마지막 줄)을 인용해 판정한다.
+  - Criterion이 백틱 리터럴로 명시한 read-only 명령 (예: `node --test`, `bash -n`, `tsc --noEmit`, `mypy --cache-dir=/dev/null`, `node --check`). 호출 전 다음 mutating 토큰이 인자에 없는지 확인하고, 하나라도 발견되면 Bash 호출을 거부한다: `-delete`, `-exec`, `-execdir`, `-ok`, `>`, `>>`, `rm`, `mv`, `cp`, `chmod`, `chown`, `|` (외부 명령 파이프).
+  - entry 모듈 import 스모크는 아래 두 형태만 허용한다. 인터프리터 인라인 payload는 셸을 거치지 않아 위 mutating 토큰 검사가 닿지 않으므로, 토큰 대신 payload 형태를 제한한다.
+    - `python3 -c "import <module>"` — `<module>`은 `[A-Za-z_][A-Za-z0-9_.]*`에 일치하는 단일 모듈 경로.
+    - `node -e "import('<entry>').catch(e=>{console.error(e);process.exit(1)})"` — `<entry>`는 파일 경로 리터럴. `.catch` 없이 호출하면 import 실패가 unhandled rejection이 되어 종료 코드가 Node 버전에 따라 달라진다.
+    - payload에 `;`, 개행, `__import__`, `open(`, `exec`, `eval`, `require(` 중 하나라도 있으면 Bash 호출을 거부한다.
+- **빌드·테스트 결과 재사용**: Step 5에서 실행된 빌드·테스트 명령(예: `npm test`, `npm run build`, `jest`, `pytest`, 그리고 `scaffold` Story의 정적 검사·entry 모듈 import 스모크)의 결과는 재실행하지 않고 Step 5 보고 메시지의 마지막 결과 라인(GREEN 확인 라인 / 종료 코드 / stdout 마지막 줄)을 인용해 판정한다.
 - **금지**: 파일·환경 변경, 패키지 설치, 네트워크 호출, 위 mutating 토큰을 포함하는 명령. 이들 명령이 필요한 Criterion은 Bash로 실행하지 않고 Read 도구 + Step 5 증거로 판정한다.
 - **판정 증거 부재**: Read 도구·Step 5 증거·허용 명령으로도 판정할 수 없으면 FAIL 처리하고 사유에 `evidence-not-available`을 명시한다.
 
@@ -341,11 +368,12 @@ Print: `auto_commit: <commit-message>`
 
 **Batch failure conditions summary** — any of the following stops the batch loop:
 1. tdd-specialist: RED→GREEN test failure unresolved (Step 5)
-2. code-reviewer: blocking issue unresolved after auto-fix attempt (Step 6)
-3. Completion Criteria: one or more criteria fail verification (Step 7)
-4. Commit: user responds `n` (commit refused) (Step 8)
-5. No `**Commit**` field: user declines to skip (Step 8)
-6. Unchecked tasks gate: user selects '실제 미수행' (Step 9.5 게이트)
+2. scaffold Story: static check or entry-module import smoke failed (Step 5)
+3. code-reviewer: blocking issue unresolved after auto-fix attempt (Step 6)
+4. Completion Criteria: one or more criteria fail verification (Step 7)
+5. Commit: user responds `n` (commit refused) (Step 8)
+6. No `**Commit**` field: user declines to skip (Step 8)
+7. Unchecked tasks gate: user selects '실제 미수행' (Step 9.5 게이트)
 
 ### 9. Update Plan Document (Story checkbox)
 
@@ -513,7 +541,7 @@ Resume after fixing the issue:
 - **Unchecked-Task gate** — Step 9.5 후 `[ ]` Task가 남으면 단일·batch 모드 모두 사용자에게 의도(보고 누락 / 실제 미수행)를 묻고 분기한다. '보고 누락' → markdown `[x]` + `TaskUpdate(completed)` 처리 후 Step 10 진행, '실제 미수행' → 단일 모드 stop / batch 모드 batch_failed (Step 11)
 - **Per-Criterion verification** — Step 7은 각 Completion Criterion을 LLM이 직접 점검 (`prompt` 타입은 prompt-engineer Acceptance 결과 재사용); 통과 Criterion만 `[x]` 갱신 + PASS/FAIL 근거 출력
 - **Bash re-run policy in Step 7** — Step 5에서 실행된 빌드·테스트 명령은 재실행하지 않는다; 파일 존재·grep·Criterion 명시 명령에 한해 Bash 호출 허용
-- **Batch stops on failure** — any of the 5 failure conditions (test, review, criteria, commit refused, no-commit-field refused) halts the batch immediately; `currentBatchRunning` is reset on every terminal exit (Step 11)
+- **Batch stops on failure** — any of the 7 failure conditions (test, scaffold static check/import smoke, review, criteria, commit refused, no-commit-field refused, unchecked-task gate) halts the batch immediately; `currentBatchRunning` is reset on every terminal exit (Step 11)
 - **Batch persistence** — `currentBatchRunning`·`currentBatchTopic` 필드로 비정상 종료된 배치를 topic-scoped로 감지·재개한다; 토픽 불일치 시 silently reset, Step 11 모든 terminal exit 시 초기화. Step 1 게이트 실패 등 Step 11 미도달 시에는 stale 상태가 유지되어 다음 호출에서 재개 다이얼로그를 트리거한다.
 - **Pre-work briefing for first Story only in batch mode** — Story 2 onward shows a single "Starting Story" line; full briefing and approval gate apply only to the first Story (subject to `auto_start`)
 - **Prior approval required** (unless `config.dev_impl.auto_start=true`) — do not start the first Story without approving the work plan
@@ -521,8 +549,10 @@ Resume after fixing the issue:
 - **Approval rejection no rollback** — 사용자가 briefing 승인을 거절(`n`)해도 phase는 `impl:in-progress`로 유지된다. 게이트가 두 상태 모두 통과시키므로 다음 호출이 자연스럽게 재개된다.
 - **TDD enforced** — `tdd` type must write tests first
 - **Immediate review** — automatically invoke code-reviewer immediately after implementation
-- **simplify after code-review (tdd only)** — `tdd` 타입은 code-reviewer 직후 `simplify` 스킬을 추가 실행; `config`·`infra`·`refactor`·`prompt` 타입은 제외 (`prompt`는 REFINE 사이클이 담당)
-- **Pre-work advisor (complex Stories)** — `infra` 타입 또는 Tasks 수 ≥ 5인 Story는 브리핑 직후 `advisor()`를 호출해 설계 위험·엣지 케이스를 사전 점검
+- **simplify after code-review (tdd only)** — `tdd` 타입은 code-reviewer 직후 `simplify` 스킬을 추가 실행; `config`·`infra`·`refactor`·`prompt`·`scaffold` 타입은 제외 (`prompt`는 REFINE 사이클이 담당, `scaffold`는 본문 로직이 없음)
+- **scaffold Story handling** — `scaffold` 타입은 Direct handling으로 시그니처·타입·체인 배선·throwing stub만 작성한다. TDD 강제와 simplify에서 제외하며, 완료는 언어별 정적 검사 + entry 모듈 import 스모크로 판정한다 (기준의 canonical 출처는 `.tack/contracts/implementation-plan.md`의 `### scaffold 완료 판정 (언어별)` 절)
+- **Pre-work advisor (complex Stories)** — `infra`·`scaffold` 타입 또는 Tasks 수 ≥ 5인 Story는 브리핑 직후 `advisor()`를 호출해 설계 위험·엣지 케이스를 사전 점검
+- **Tier note surface** — `**Risk Tier**` 부재·이상값, 그리고 `high` + `tdd`/`refactor`에 선행 `scaffold` Story가 없는 경우를 브리핑(단일 모드) 또는 `--- Starting Story ---` 라인(batch 모드)에 한 줄로 남긴다; 어느 조건도 실행을 중단하지 않는다
 - **Commit from plan** — commit message comes from the Story's `**Commit**` field; never invent a message
 - **auto_commit default is false** — user sees and approves each commit unless `config.dev_impl.auto_commit=true`
 - **batch + auto_start + auto_commit = fully unattended** — enabling all three removes every human gate after Story 1 approval; use only in trusted environments. **예외**: Step 9.5 미체크 Task 게이트는 batch 모드에서도 사용자 응답을 기다린다 — 데이터 정합성(`보고 누락` vs `실제 미수행` 구분)이 자동 결정 불가능한 의도된 동작이다.
