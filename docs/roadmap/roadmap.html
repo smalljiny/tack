@@ -635,7 +635,7 @@
         <div class="s-t">원장 정합 + E2-S3</div>
         <ul class="s-list">
           <li>미등록 story 이슈 mint (18건)</li>
-          <li>끊긴 <code>docs/roadmap.md</code> 참조 5곳 정리</li>
+          <li><a href="https://github.com/smalljiny/tack/issues/41">#41</a> 끊긴 <code>docs/roadmap.md</code> 참조 5곳 정리</li>
           <li><a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 config 스키마 + 위험 tier 필드</li>
         </ul>
       </div>
@@ -960,9 +960,9 @@
       </div>
       <div class="debt-card">
         <div class="debt-top"><span class="sev">문서</span><span class="debt-title">삭제된 <code>docs/roadmap.md</code>를 가리키는 참조 5곳</span>
-          <span class="debt-num">추적 없음</span></div>
+          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/41">#41</a></div>
         <div class="debt-body">위 대체로 경로가 사라졌지만 참조가 남았습니다 — <code>README.md:46</code>, <code>CLAUDE.md:11</code>·<code>AGENTS.md:7</code>(git-미추적 배포 사본), <code>harness-audit.js:325-328</code>(<code>template/</code>·루트 두 사본), 이 페이지 footer의 "설계 정본"(이번 갱신에서 수정). 감사 체크 <code>eval-roadmap</code>이 실패해 Eval Coverage에서 2점이 빠집니다(현재 8/10).</div>
-        <div class="debt-gate">▸ 이슈 승격 후보 · 경로를 <code>docs/roadmap/</code>로 정정하면 닫힘</div>
+        <div class="debt-gate">▸ 경로를 <code>docs/roadmap/</code>로 정정하면 닫힘</div>
       </div>
       <div class="debt-card high">
         <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">story 이슈 18건 미등록</span>
@@ -1018,13 +1018,13 @@
       <div class="next-card">
         <div class="next-n">03</div>
         <div class="next-t">원장을 현실에 맞춘다 (병행)</div>
-        <div class="next-d">닫기 누락 4건(#14·#16·#5·#7)과 로드맵 ✅ 4건 표기는 해소됐고, 2026-07-28 재점검에서 <strong>완료됐는데 열린 채인 이슈는 없었습니다</strong>. 남은 것은 미등록 story 18건 mint와 끊긴 <code>docs/roadmap.md</code> 참조 정리 — 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다.</div>
+        <div class="next-d">닫기 누락 4건(#14·#16·#5·#7)과 로드맵 ✅ 4건 표기는 해소됐고, 2026-07-28 재점검에서 <strong>완료됐는데 열린 채인 이슈는 없었습니다</strong>. 남은 것은 미등록 story 18건 mint와 <a href="https://github.com/smalljiny/tack/issues/41">#41</a> 참조 정리 — 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다.</div>
       </div>
     </div>
   </section>
 
   <footer>
-    <span>출처: GitHub 이슈 #1~#40 + sub-issue 계층 (2026-07-28 재점검)</span>
+    <span>출처: GitHub 이슈 #1~#41 + sub-issue 계층 (2026-07-28 재점검)</span>
     <span>설계 정본: docs/dossier/ · 진행 원장은 이 페이지</span>
     <span>구현 명세: docs/specs/</span>
     <span>완료 판정: docs/_local/done/ 아카이브 + 머지된 PR</span>
