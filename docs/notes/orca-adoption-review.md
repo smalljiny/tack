@@ -164,7 +164,7 @@ Qa = Ht && settings.autoRenameBranchFromWork === true
 | 에이전트 TUI | 기동 → `tui-idle` → 프롬프트 → 응답, `ps.agents` 등재 |
 | `bash teardown.sh worktree1` | **무수정 동작** — done 아카이브 sync-back → main stale 원본 폐기 → `git worktree remove` 성공 → 브랜치 보존 |
 
-즉 통합 형태는 다음과 같이 정리된다.
+즉 통합 형태는 다음과 같이 정리된다. §2.1 결정에 따라 **생성 주체는 Orca로 확정**이며, 하네스가 `git worktree add`로 직접 만드는 경로는 쓰지 않는다.
 
 ```
 orca worktree create --name <topic>      ← Orca 소유 (checkout + 카드 + 트래킹)
@@ -218,7 +218,7 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 
 ---
 
-## 8. orchestration 스킬 검토 (진행 중)
+## 8. orchestration 스킬 검토
 
 **가용성**: `orca orchestration task-list --json` → `ok, tasks: []` 정상 응답. `orchestration.db`(94KB) 존재. 설정 목록에 orchestration 전용 실험 플래그 키는 보이지 않았다(스킬 문서는 Settings > Experimental 활성화를 전제로 명시).
 
@@ -240,6 +240,28 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 
 **현 시점 판단**: 보류. 워크트리·세션 계층(§4)이 먼저 안정화된 뒤, (a) Codex 리뷰 dispatch화, (b) 병렬 story 운용 두 건을 파일럿 후보로 둔다. 하네스에 넣는다면 tier는 `adapter-*`(가용성 게이트 + 폴백 보유).
 
+### 8.1 파일럿 계획 (실행 전 사전 등록)
+
+문서 독해만으로는 판단이 서지 않는 항목을 실측으로 좁히기 위한 최소 시나리오. **실행 전에 기록해 두어, 결과에 맞춰 기준을 사후 조정하지 않도록 한다.**
+
+**대상**: `worktree2`(`~/Workspace/tack.worktrees/worktree2`, 브랜치 `feature/worktree2`, claude 세션 1개 가동 중). 하네스 컨텍스트는 미주입 상태이므로, 규칙 충돌 관측이 목적이면 `provision.sh worktree2`를 선행한다.
+
+**절차**: `task-create` → `dispatch --to <handle> --inject` → `check --wait --types worker_done,escalation,decision_gate` → `dispatch-show`/`task-list`로 상태 확인.
+
+**측정 항목**
+
+| # | 질문 | 판정 기준 |
+|---|---|---|
+| P1 | `--inject`가 실행 중인 claude TUI에 preamble을 실제로 전달하는가 | 워커 화면에 TASK 블록이 뜨고, `dispatch-show`가 dispatch 존재를 보고 |
+| P2 | 워커가 `worker_done`을 자력으로 보내는가 | 코디네이터의 `check --wait`가 `worker_done` 1건 수신, `task-list` 상태가 `completed` |
+| P3 | 주입된 preamble이 하네스 규칙(CLAUDE.md·`.claude/rules`)과 충돌하는가 | 워커가 하네스 워크플로우를 무시하거나, 반대로 preamble 지시를 무시하는지 관찰 |
+| P4 | 상태 이중화가 실제 문제인가 | orchestration 태스크 상태와 `dev-context.json` phase가 어긋나는 지점을 기록 |
+| P5 | 비용 | 워커 세션 1건의 토큰 소비를 `ps`·워커 화면으로 개략 확인 |
+
+**중단 조건**: `--inject` 2회 연속 실패, 또는 워커가 하네스 규칙을 깨는 파일 수정을 시도할 때 즉시 중단한다.
+
+**정리 절차**: `orchestration reset --tasks`는 **runtime-global**이라 다른 진행 중 코디네이션까지 지운다. 파일럿 종료 시에는 `task-list`로 잔여를 확인하고 개별 `task-update`로 닫는 것을 우선하며, `reset`은 잔여가 이 파일럿 것뿐임을 확인한 뒤에만 쓴다.
+
 ---
 
 ## 9. 종합 판단
@@ -251,13 +273,19 @@ CLI에 settings setter가 없다(206개 커맨드 전수 확인). 위 설정은 
 2. worktree 제거 전에 Orca 터미널을 닫는다(§6-1).
 3. 브랜치 접두는 하네스가 rename으로 부여한다 — `branchPrefix=none` 전제(§3.2).
 
-**다음 확인거리**: orchestration 파일럿 2건. (`branchPrefix=none` 재실측·자동 rename 게이트는 2026-07-27 완료 — §3.2·§3.3·§7. `externalWorktreeVisibility`는 §2.1 결정으로 종료.)
+**다음 확인거리**: orchestration 파일럿 — 시나리오·측정 항목·중단 조건은 §8.1에 사전 등록했다. (`branchPrefix=none` 재실측·자동 rename 게이트는 2026-07-27 완료 — §3.2·§3.3·§7. `externalWorktreeVisibility`는 §2.1 결정으로 종료.)
+
+**하네스 쪽 수정 과제 2건** (도입 확정 시)
+1. worktree 제거 전 Orca 터미널 정리 단계 추가 — `flow-worktree` T7을 T4(제거)보다 앞으로(§6-1).
+2. `teardown.sh`·`flow-worktree` T3·T5의 `feature/<topic>` 하드코딩을 dev-context 기록 기반으로 전환(§6-2).
 
 ---
 
 ## 부록: probe 이력
 
-모든 probe는 실행 후 정리했고, 매회 다음을 검증했다 — `git worktree list` 정리, 브랜치 삭제, `.git/info/exclude` 백업 대비 무변경, main `docs/_local/dev-context.json` 무변경, main `git status` clean.
+probe는 실행 후 정리했고, 매회 다음을 검증했다 — `git worktree list` 정리, 브랜치 삭제, `.git/info/exclude` 백업 대비 무변경, main `docs/_local/dev-context.json` 무변경, main `git status` clean.
+
+**예외**: `worktree2`는 orchestration 파일럿(§8.1) 대상으로 **유지 중**이다. 파일럿 종료 후 정리한다.
 
 | probe | 목적 | 산출 |
 |---|---|---|
