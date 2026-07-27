@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 name: flow-review
 description: Perform a final full code review. On high-tier topics, runs a stage-1 architect structural verdict that locks the layout before stage-2 code-reviewer and security-reviewer, auto-promotes adversarial review, and gates completion on user approval; otherwise runs both reviewers in parallel with adversarial review opt-in.
 origin: harness
@@ -208,7 +208,9 @@ stage 1부터 재실행됩니다.
 
 `lock == locked`일 때만 실행한다. 두 에이전트를 동시에 호출한다.
 
-**code-reviewer** — 스코프는 Step 4에서 산출한 `CHANGED_FILES` 목록으로 한정한다. 호출 프롬프트에 그 경로 목록을 명시 목록으로 실어 보낸다. code-reviewer는 그 목록 안에서 함수 단위 정확성·보안만 본다. stage 1이 lock한 구조 배치(파일 위치·모듈 경계·추상 수준)는 재론하지 않는다.
+**호출 트리거**: stage 2 진입 시점과 Step 6의 재리뷰 시점 각각에서, code-reviewer를 호출하기 직전에 Bash 도구로 `git diff --name-only <pullRemote>/<baseBranch>...HEAD`를 재실행해 `CHANGED_FILES`를 갱신한다. Step 4에서 산출한 값을 재사용하지 않는다 — review-fix commit이 신규 파일을 추가하면 고정된 목록은 그 파일을 스코프에서 누락시킨다.
+
+**code-reviewer** — 스코프는 위에서 갱신한 `CHANGED_FILES` 목록으로 한정한다. 호출 프롬프트에 그 경로 목록을 명시 목록으로 실어 보낸다. code-reviewer는 그 목록 안에서 함수 단위 정확성·보안만 본다. stage 1이 lock한 구조 배치(파일 위치·모듈 경계·추상 수준)는 재론하지 않는다.
 
 **security-reviewer** examines:
 - Security vulnerabilities
