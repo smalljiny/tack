@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 name: flow-review
 description: Perform a final full code review. On high-tier topics, runs a stage-1 architect structural verdict that locks the layout before stage-2 code-reviewer and security-reviewer, auto-promotes adversarial review, and gates completion on user approval; otherwise runs both reviewers in parallel with adversarial review opt-in.
 origin: harness
@@ -362,7 +362,7 @@ severity가 명시되지 않은 adversarial-review 이슈(설계 challenge 등)�
 ## Architecture Review (stage 1)
 <architect 원문 출력 — 8문항 판정 + 근거>
 
-lock: locked \| blocked        (`topicTier == high`인 보고서에만 적고, 그 외에는 이 라인을 생략한다)
+<lock: locked \| blocked — topicTier == high인 보고서에만 적고, 그 외에는 이 라인을 생략>
 
 ## Tier Notes
 <tier 이상값·필드 부재 노트 한 줄씩, 없으면 "—">
