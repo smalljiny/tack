@@ -196,7 +196,7 @@ first-match 순서 규칙. Story 단위로 그 Story가 접촉하는 delta 항�
 | 5 | Affected domains ≥ 3 (ADDED만이어도) | normal |
 | 6 | 그 외 (ADDED만 + affected domains ≤ 2) | low |
 
-tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다. 이 계약은 tier 값에 따른 어떤 분기도 정의하지 않는다 — 리뷰 깊이·design ceremony·골격 의례 라우팅은 이 계약의 범위 밖이다.
+tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다. 이 계약은 tier 값에 따른 어떤 분기도 정의하지 않는다 — 리뷰 깊이·design ceremony·골격 의례 라우팅은 이 계약의 범위 밖이다. 그 라우팅의 소유자는 `.claude/skills/wf-risk-routing/SKILL.md`이며, tier 값을 읽어 골격 의례와 리뷰 깊이를 결정하는 주체는 그 스킬과 그 스킬을 로드하는 `/flow-impl`·`/flow-review`다. `## Story Type Definitions`의 `scaffold` 행이 기술하는 것은 그 Story Type의 발동 조건이며, 라우팅 실행 규칙은 아니다.
 
 **Backward compatibility**: `**Risk Tier**` 필드가 없는 plan은 실패로 처리하지 않는다. `plan-review`는 필드 부재를 warning 없이 통과시킨다 — 필드는 기대값이며 강제 대상이 아니다.
 
