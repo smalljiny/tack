@@ -1,5 +1,5 @@
 ---
-version: 17
+version: 18
 name: planner
 description: Implementation planning expert for complex features and refactoring. Use proactively when implementing features, making architecture changes, or handling complex refactoring requests. Automatically invoked by the /dev:plan command.
 tools: Read, Grep, Glob, TaskCreate, TaskUpdate, Write
@@ -118,7 +118,7 @@ Plan 출력 직전 각 Story에서 `preserve X` / `do not break Y` / `verify Z` 
 
 추가로 spec `## 8. Delta`의 각 GIVEN/WHEN/THEN scenario 1개를 그 Story의 Completion Criterion 1개로 1:1 매핑한다 — 한 requirement의 scenario가 N개면 대응 Story는 그 requirement에 대해 Completion Criterion을 N개 갖는다. 매핑 규칙의 canonical 출처는 `.tack/contracts/implementation-plan.md`의 `## Scenario ↔ Completion Criteria Mapping` 절이다. 모든 scenario가 Completion Criterion으로 누락 없이 매핑됐는지 자체 확인한 뒤 Story를 출력한다.
 
-또한 Story 출력 직전, 모든 Story 블록이 `**Risk Tier**` 필드와 판정 근거 한 줄을 담고 있는지 확인하고, 누락된 Story에는 §4.7 규칙으로 tier를 산정해 추가한 뒤 출력한다. 이 필드 완결성 점검은 spec `## 8. Delta`가 존재하는 `/flow-plan` 경로에만 적용한다.
+또한 Story 출력 직전, 모든 Story 블록이 `**Risk Tier**` 필드와 판정 근거 한 줄을 담고 있는지 확인하고, 누락된 Story에는 §4.7 규칙으로 tier를 산정해 추가한 뒤 출력한다. tier 부여 후 `high` + `tdd`/`refactor`이면서 선행 `scaffold` Story가 없는 Story가 남아 있으면 §4.7.5 분해를 적용한 뒤 출력한다. 이 필드 완결성 점검은 spec `## 8. Delta`가 존재하는 `/flow-plan` 경로에만 적용한다.
 
 ### 4.5. `prompt` 타입 Story 작성 지침
 
@@ -146,7 +146,7 @@ Eval Case 스키마 전체 명세는 `.tack/contracts/implementation-plan.md`의
 
 #### 4.5.5. Story Type 결정 안내
 
-Story Type 결정 시 `.tack/contracts/implementation-plan.md`의 Story Type Definitions 표 Triggers 컬럼을 1차 단서로 사용한다. Path 트리거가 확장자 트리거보다 우선한다 — `scripts/` 하위 실행 코드는 확장자와 무관하게 `infra`이며, 이는 contract `config` 행 carve-out과 일치한다. 자연어 표현이 `restructure`/`rewrite`/`재배치`여도 변경 파일 확장자가 최종 결정 기준이다 (`.md`/`.yml`/`.json` → `config`, `.ts`/`.js`/`.py` → `refactor` 또는 `tdd`). Eval Case가 명시적으로 존재할 때만 `prompt`. .md 파일 변경이라도 Eval Case가 없으면 `config`.
+Story Type 결정 시 `.tack/contracts/implementation-plan.md`의 Story Type Definitions 표 Triggers 컬럼을 1차 단서로 사용한다. Path 트리거가 확장자 트리거보다 우선한다 — `scripts/` 하위 실행 코드는 확장자와 무관하게 `infra`이며, 이는 contract `config` 행 carve-out과 일치한다. 자연어 표현이 `restructure`/`rewrite`/`재배치`여도 변경 파일 확장자가 최종 결정 기준이다 (`.md`/`.yml`/`.json` → `config`, `.ts`/`.js`/`.py` → `refactor` 또는 `tdd`). Eval Case가 명시적으로 존재할 때만 `prompt`. .md 파일 변경이라도 Eval Case가 없으면 `config`. `scaffold`는 §4.7.5 골격 분해의 산물로만 생성한다 — 사용자 요청이나 변경 경로에서 직접 선택하지 않는다.
 
 ### 4.6. Component Authoring — load prompt-authoring rule
 
@@ -166,9 +166,30 @@ Load .claude/rules/common/prompt-authoring.md and follow its process.
 
 row-1 보안 마커 판정 전, `.tack/contracts/implementation-plan.md`의 `## Risk Tier` 절 마커 목록 전체를 Read로 확인한다 — 위 3줄은 대표 마커만 명시하므로, 명시되지 않은 나머지 마커를 놓치지 않으려면 전체 목록으로 판정한다. 마커 목록뿐 아니라 위 3줄의 임계값(`REMOVED ≥ 1`·`MODIFIED ≥ 3`·`affected domains ≥ 3` 등)도 그 `## Risk Tier` 절의 6행 판정표를 canonical로 따른다 — 위 3줄과 표가 어긋나면 표가 우선한다. 전체 6행 판정표와 보안 마커 전체 목록의 canonical 출처는 그 `## Risk Tier` 절이다. 위 3줄은 그 표의 압축 인용이며, 표를 축자 복제하지 않는다.
 
-planner는 tier를 기록만 한다. tier 값으로 review depth·design ceremony·skeleton ceremony 등 어떤 분기도 수행하지 않는다 — 라우팅은 이 토픽의 범위 밖이다.
+planner가 tier 값으로 수행하는 분기는 §4.7.5의 골격 분해 1건뿐이다. review depth·design ceremony 라우팅은 수행하지 않는다 — 그 라우팅의 소유자는 `.claude/skills/wf-risk-routing/SKILL.md`이며 `/flow-review`가 리뷰 시점에 적용한다.
 
 출력 형식: 각 Story 블록에 `- **Risk Tier**: <low|normal|high> (<판정 근거 한 줄>)`을 포함한다. 예: `- **Risk Tier**: low (규칙 6 — ADDED만, affected domains ≤ 2)`.
+
+#### 4.7.5. scaffold 분해 (골격 의례)
+
+plan에 `**Risk Tier**`가 `high`인 Story가 1개 이상이면, Story 분해 전에 라우팅표 소유자를 로드한다:
+
+Load `.claude/skills/wf-risk-routing/SKILL.md` and follow its process.
+
+이 절의 발동 조건·종료 조건은 그 스킬 라우팅표의 골격 의례 열과 같은 규칙이다. 한쪽을 수정하면 두 곳을 함께 갱신한다.
+
+**발동 조건**: `**Risk Tier**`가 `high`이면서 Story Type이 `tdd` 또는 `refactor`인 Story. 그 외 tier·Type의 Story는 분해하지 않고 현행대로 단일 Story로 출력한다.
+
+**산출**: 발동 조건에 해당하는 **모든** Story를 각각 다음 두 종류로 분해해 plan에 출력한다.
+
+1. **선행 `scaffold` Story 1개** — 시그니처, 타입/인터페이스, 호출·이벤트 체인 배선, throwing stub까지만 포함한다. 함수 본문 로직은 넣지 않는다. Completion Criteria는 언어별 정적 검사 + entry 모듈 import 스모크만 담는다. 기준을 작성하기 전에 Read 도구로 `.tack/contracts/implementation-plan.md`를 열어 `### scaffold 완료 판정 (언어별)` 절의 언어별 행을 확인한다 — 그 절이 완료 판정의 canonical 출처다.
+2. **함수별 구현 Story N개** — 골격에 배선된 stub을 함수 단위로 채운다. 원 Story의 Type(`tdd` 또는 `refactor`)을 그대로 유지한다. 부모 Story가 지고 있던 scenario 매핑 Completion Criteria는 전부 이 구현 Story들에 분배한다.
+
+구현 Story는 선행 `scaffold` Story 뒤에 배치한다. `scaffold` Story의 독립 배포 가능성은 동일 PR 내 후속 구현 Story와 묶인 PR 단위에서 평가된다 — 계약 `## Key Constraints`의 `scaffold` carve-out을 따른다.
+
+`scaffold` Story의 `**Commit**` 필드는 후속 구현 Story와 같은 scope를 쓰고, subject에 배선 범위를 명시한다 (예: `feat(auth): scaffold session refresh chain`).
+
+**종료 조건**: 이 분해는 plan 저작 시 **1회만** 적용한다. 같은 delta를 다루는 선행 `scaffold` Story가 이미 plan에 있으면 그 Story 집합은 분해하지 않는다 — 분해로 생성된 자식 Story(`scaffold` Story와 구현 Story 모두)가 재분해 대상에서 제외되는 근거다. 자식 Story도 부모와 같은 delta를 접촉해 `high` tier로 유지되므로, 이 종료 조건이 없으면 규칙이 자기 출력에 재발화한다.
 
 ### 5. Design per-Story Commit Message
 
