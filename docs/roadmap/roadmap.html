@@ -286,7 +286,7 @@
     transition: r .12s ease, stroke-width .12s ease;
   }
   .gnode.todo circle.body { fill: var(--panel-2); stroke-width: 1.8; stroke-dasharray: 4 3.2; }
-  .gnode.wip circle.body { fill: var(--panel-2); stroke-width: 3.4; }
+  .gnode.wip circle.body { fill: var(--panel-2); stroke-width: 2.8; }
   .gnode circle.inner { fill: none; stroke: var(--nc); stroke-width: 1.4; stroke-dasharray: 3 3.4; opacity: .8; }
   .gnode text {
     font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--nc);
@@ -811,6 +811,7 @@
               <span class="card-num">이슈 미등록</span></div>
             <div class="kv"><span class="k">범위</span><span class="v">worktree 프로비저닝(게이트=<code>spec:confirmed</code>) · per-worktree <code>docs/_local</code> · 태그 기반 스킬 발견</span></div>
             <div class="kv"><span class="k">위치</span><span class="v">CP1 이후 단계 — 전환의 필요 조건 아님</span></div>
+            <div class="kv rest"><span class="k">주의</span><span class="v"><code>template/</code>에 <code>flow-worktree</code>·<code>wf-worktree-context</code> 실물이 있지만 레퍼런스 하네스 복사분입니다 — <code>docs/_local/done/</code>에 E3-S3 토픽 이력이 없어 story로는 미착수입니다.</span></div>
           </div>
         </div>
       </div>
@@ -952,18 +953,6 @@
     <p class="sec-note">어느 에픽에도 속하지 않지만 체크포인트의 통과 조건으로 작동합니다. tack의 부채는 런타임 버그가 아니라 <strong>기록이 현실과 어긋나는 것</strong>입니다 — 다음 판단의 입력이 오염됩니다.</p>
 
     <div class="debt-grid">
-      <div class="debt-card">
-        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">로드맵 ✅ 4건 불일치 — 원본 문서 대체로 해소</span>
-          <span class="debt-num">근거 <code>b7018c2</code></span></div>
-        <div class="debt-body">E1-S3·E1-S4·E2-S3·E4-S4를 완료로 표기하고 완료된 E1-S6은 행이 없던 <code>docs/roadmap.md</code>는 2026-07-27 이 페이지로 대체되며 삭제됐습니다. 잘못된 기록은 더 남아 있지 않습니다 — 네 건은 이제 <strong>미착수 backlog</strong>일 뿐입니다(E1-S3·E1-S4 · <a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 · E4-S4).</div>
-        <div class="debt-gate">▸ 2026-07-27 해소 · CP3 게이트는 story 이슈 미등록 건으로 계속 열림</div>
-      </div>
-      <div class="debt-card">
-        <div class="debt-top"><span class="sev">문서</span><span class="debt-title">삭제된 <code>docs/roadmap.md</code>를 가리키는 참조 5곳</span>
-          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/41">#41</a></div>
-        <div class="debt-body">위 대체로 경로가 사라졌지만 참조가 남았습니다 — <code>README.md:46</code>, <code>CLAUDE.md:11</code>·<code>AGENTS.md:7</code>(git-미추적 배포 사본), <code>harness-audit.js:325-328</code>(<code>template/</code>·루트 두 사본), 이 페이지 footer의 "설계 정본"(이번 갱신에서 수정). 감사 체크 <code>eval-roadmap</code>이 실패해 Eval Coverage에서 2점이 빠집니다(현재 8/10).</div>
-        <div class="debt-gate">▸ 경로를 <code>docs/roadmap/</code>로 정정하면 닫힘</div>
-      </div>
       <div class="debt-card high">
         <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">story 이슈 18건 미등록</span>
           <span class="debt-num">추적 없음</span></div>
@@ -971,16 +960,10 @@
         <div class="debt-gate">▸ CP3 게이트 · E5 기능으로 자동화 가능</div>
       </div>
       <div class="debt-card">
-        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">완료 story·epic 닫기 누락 — 정합 완료</span>
-          <span class="debt-num"><a href="https://github.com/smalljiny/tack/issues/14">#14</a> · <a href="https://github.com/smalljiny/tack/issues/16">#16</a> · <a href="https://github.com/smalljiny/tack/issues/5">#5</a> · <a href="https://github.com/smalljiny/tack/issues/7">#7</a></span></div>
-        <div class="debt-body">E2-S4(PR #30)·E3-S2(PR #32)와 story가 전부 완료된 epic E5·E7이 열려 있어 진행률이 실제보다 낮게 읽혔습니다. 2026-07-27 근거 PR을 코멘트로 남기고 4건 모두 닫았습니다.</div>
-        <div class="debt-gate">▸ 2026-07-27 해소 · 코드 변경 없음</div>
-      </div>
-      <div class="debt-card">
-        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">harness-guide 스킬 개수 불일치 — 표기 삭제 완료</span>
-          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/34">#34</a></div>
-        <div class="debt-body"><code>harness-guide.md</code>·<code>AGENTS.md</code>의 스킬 트리에 적힌 <code>stack-*</code>·<code>wf-*</code> 개수 표기는 갱신 소유자가 없어 실제 트리와 어긋난 채 매 세션 주입됐습니다. 2026-07-27 두 파일 4줄에서 개수 표기를 지우고 열거 서술만 남겼습니다. 근거는 <a href="https://github.com/smalljiny/tack/pull/40">PR #40</a> — 수정 대상 두 파일이 <code>.git/info/exclude</code>로 git-미추적이라 이 로드맵과 <code>docs/specs/skill-taxonomy.md</code>가 유일한 tracked 기록입니다.</div>
-        <div class="debt-gate">▸ 2026-07-27 해소 · 개수 표기 삭제</div>
+        <div class="debt-top"><span class="sev">문서</span><span class="debt-title">삭제된 <code>docs/roadmap.md</code>를 가리키는 참조 5곳</span>
+          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/41">#41</a></div>
+        <div class="debt-body">2026-07-27 대체(<code>b7018c2</code>)로 경로가 사라졌지만 참조가 남았습니다 — <code>README.md:46</code>, <code>CLAUDE.md:11</code>·<code>AGENTS.md:7</code>(git-미추적 배포 사본), <code>harness-audit.js:325-328</code>(<code>template/</code>·루트 두 사본), 이 페이지 footer의 "설계 정본"(이번 갱신에서 수정). 감사 체크 <code>eval-roadmap</code>이 실패해 Eval Coverage에서 2점이 빠집니다(현재 8/10).</div>
+        <div class="debt-gate">▸ 경로를 <code>docs/roadmap/</code>로 정정하면 닫힘</div>
       </div>
       <div class="debt-card">
         <div class="debt-top"><span class="sev">문서</span><span class="debt-title">skill-registry Rule 6 ↔ stack-prompt 충돌</span>
@@ -993,6 +976,24 @@
           <span class="debt-num">세션 메모리</span></div>
         <div class="debt-body">Codex 스킬층 3파일 dev-context cutover · <code>wf-delta-spec</code> Grep 신뢰경계 · flow-done의 <code>explore.md</code> 미열거 · 세션 로그 경로 이관 · <code>config.gh.*</code> 참조표 배치.</div>
         <div class="debt-gate">▸ 이슈로 승격 필요 · 현재는 기록만</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">로드맵 ✅ 4건 불일치 — 원본 문서 대체로 해소</span>
+          <span class="debt-num">근거 <code>b7018c2</code></span></div>
+        <div class="debt-body">E1-S3·E1-S4·E2-S3·E4-S4를 완료로 표기하고 완료된 E1-S6은 행이 없던 <code>docs/roadmap.md</code>는 2026-07-27 이 페이지로 대체되며 삭제됐습니다. 잘못된 기록은 더 남아 있지 않습니다 — 네 건은 이제 <strong>미착수 backlog</strong>일 뿐입니다(E1-S3·E1-S4 · <a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 · E4-S4).</div>
+        <div class="debt-gate">▸ 2026-07-27 해소 · CP3 게이트는 story 이슈 미등록 건으로 계속 열림</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">완료 story·epic 닫기 누락 — 정합 완료</span>
+          <span class="debt-num"><a href="https://github.com/smalljiny/tack/issues/14">#14</a> · <a href="https://github.com/smalljiny/tack/issues/16">#16</a> · <a href="https://github.com/smalljiny/tack/issues/5">#5</a> · <a href="https://github.com/smalljiny/tack/issues/7">#7</a></span></div>
+        <div class="debt-body">E2-S4(PR #30)·E3-S2(PR #32)와 story가 전부 완료된 epic E5·E7이 열려 있어 진행률이 실제보다 낮게 읽혔습니다. 2026-07-27 근거 PR을 코멘트로 남기고 4건 모두 닫았습니다.</div>
+        <div class="debt-gate">▸ 2026-07-27 해소 · 코드 변경 없음</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">harness-guide 스킬 개수 불일치 — 표기 삭제 완료</span>
+          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/34">#34</a></div>
+        <div class="debt-body"><code>harness-guide.md</code>·<code>AGENTS.md</code>의 스킬 트리에 적힌 <code>stack-*</code>·<code>wf-*</code> 개수 표기는 갱신 소유자가 없어 실제 트리와 어긋난 채 매 세션 주입됐습니다. 2026-07-27 두 파일 4줄에서 개수 표기를 지우고 열거 서술만 남겼습니다. 근거는 <a href="https://github.com/smalljiny/tack/pull/40">PR #40</a> — 수정 대상 두 파일이 <code>.git/info/exclude</code>로 git-미추적이라 이 로드맵과 <code>docs/specs/skill-taxonomy.md</code>가 유일한 tracked 기록입니다.</div>
+        <div class="debt-gate">▸ 2026-07-27 해소 · 개수 표기 삭제</div>
       </div>
     </div>
   </section>
