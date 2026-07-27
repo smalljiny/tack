@@ -1,0 +1,1323 @@
+<title>tack 로드맵 — 진행 궤도</title>
+<style>
+  :root {
+    --bg: #f4f5f9;
+    --panel: #ffffff;
+    --panel-2: #fafbfd;
+    --ink: #14161d;
+    --ink-2: #4b5162;
+    --ink-3: #7b8194;
+    --line: #e1e4ec;
+    --line-strong: #cbd0dc;
+
+    --star: #4b62d6;
+    --star-soft: #e7eaf9;
+    --star-line: #b9c2ef;
+
+    --now: #d4562a;
+    --now-soft: #fbe9e1;
+
+    --done: #2f8a6b;
+    --done-soft: #e0f1ea;
+    --wip: #a97a12;
+    --wip-soft: #f7eeda;
+    --todo: #7b8194;
+    --todo-soft: #eceef4;
+    --debt: #c0433e;
+    --debt-soft: #f9e3e2;
+
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Pretendard", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+    --shadow: 0 1px 2px rgba(20,22,29,.04), 0 4px 14px rgba(20,22,29,.05);
+    --shadow-lg: 0 10px 20px rgba(12,14,20,.12), 0 30px 60px rgba(12,14,20,.2);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1119; --panel: #161a23; --panel-2: #1a1f29;
+      --ink: #e8ebf2; --ink-2: #a5adbe; --ink-3: #6d7588;
+      --line: #252b37; --line-strong: #323a49;
+      --star: #8b9bee; --star-soft: #1d2340; --star-line: #3a4577;
+      --now: #f0794a; --now-soft: #3a2118;
+      --done: #46b48d; --done-soft: #113028;
+      --wip: #d2a344; --wip-soft: #332810;
+      --todo: #7b8496; --todo-soft: #222732;
+      --debt: #e5615c; --debt-soft: #371d1c;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+      --shadow-lg: 0 10px 24px rgba(0,0,0,.5), 0 34px 70px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f9; --panel: #ffffff; --panel-2: #fafbfd;
+    --ink: #14161d; --ink-2: #4b5162; --ink-3: #7b8194;
+    --line: #e1e4ec; --line-strong: #cbd0dc;
+    --star: #4b62d6; --star-soft: #e7eaf9; --star-line: #b9c2ef;
+    --now: #d4562a; --now-soft: #fbe9e1;
+    --done: #2f8a6b; --done-soft: #e0f1ea;
+    --wip: #a97a12; --wip-soft: #f7eeda;
+    --todo: #7b8194; --todo-soft: #eceef4;
+    --debt: #c0433e; --debt-soft: #f9e3e2;
+    --shadow: 0 1px 2px rgba(20,22,29,.04), 0 4px 14px rgba(20,22,29,.05);
+    --shadow-lg: 0 10px 20px rgba(12,14,20,.12), 0 30px 60px rgba(12,14,20,.2);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1119; --panel: #161a23; --panel-2: #1a1f29;
+    --ink: #e8ebf2; --ink-2: #a5adbe; --ink-3: #6d7588;
+    --line: #252b37; --line-strong: #323a49;
+    --star: #8b9bee; --star-soft: #1d2340; --star-line: #3a4577;
+    --now: #f0794a; --now-soft: #3a2118;
+    --done: #46b48d; --done-soft: #113028;
+    --wip: #d2a344; --wip-soft: #332810;
+    --todo: #7b8496; --todo-soft: #222732;
+    --debt: #e5615c; --debt-soft: #371d1c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+    --shadow-lg: 0 10px 24px rgba(0,0,0,.5), 0 34px 70px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--star); text-decoration: none; border-bottom: 1px solid transparent; }
+  a:hover { border-bottom-color: var(--star-line); }
+  a:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; border-radius: 3px; }
+  code { font-family: var(--mono); font-size: .88em; }
+
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 42px 26px 72px; }
+
+  /* ── header ─────────────────────────────── */
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 9px;
+  }
+  h1 {
+    font-size: clamp(25px, 3.2vw, 34px); line-height: 1.14; margin: 0 0 10px;
+    letter-spacing: -.022em; text-wrap: balance; font-weight: 640;
+  }
+  .lede { max-width: 70ch; color: var(--ink-2); font-size: 15px; margin: 0; }
+
+  /* ── HERO: 진행 궤도 ────────────────────── */
+  .orbit {
+    margin-top: 30px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: var(--shadow); padding: 26px 4px 22px;
+    position: relative; overflow: hidden;
+  }
+  .orbit-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 0 24px; margin-bottom: 6px;
+  }
+  .orbit-head h2 { font-size: 15px; font-weight: 640; margin: 0; letter-spacing: -.01em; }
+  .orbit-head .tag {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--ink-3);
+  }
+  .orbit-head .pct {
+    margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .orbit-head .pct b { color: var(--ink); font-size: 13px; }
+
+  .rail-box { position: relative; padding: 46px 24px 8px; }
+
+  .stations {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(88px, 1fr));
+    position: relative; z-index: 2;
+  }
+
+  .rail, .rail-fill {
+    position: absolute; height: 3px; border-radius: 3px; top: 46px;
+    margin-top: 19.5px; z-index: 1;
+  }
+  .rail { left: 24px; right: 24px; background: var(--line-strong); }
+  .rail-fill {
+    left: 24px; width: var(--fill, 0%);
+    background: linear-gradient(90deg, var(--done), var(--done) 78%, var(--now));
+  }
+
+  .st { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 4px; }
+
+  .node {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    background: var(--panel); border: 2.5px solid var(--line-strong); color: var(--ink-3);
+    flex: none; position: relative; z-index: 2;
+  }
+  .st.done .node { border-color: var(--done); background: var(--done-soft); color: var(--done); }
+  .st.wip .node  { border-color: var(--wip);  background: var(--wip-soft);  color: var(--wip); }
+  .st.todo .node { border-color: var(--line-strong); background: var(--panel-2); }
+
+  .st.gate .node {
+    border-radius: 7px; transform: rotate(45deg);
+    border-color: var(--star); background: var(--star-soft); color: var(--star);
+  }
+  .st.gate .node span { transform: rotate(-45deg); font-size: 13px; }
+  .st.gate.locked .node { border-color: var(--line-strong); background: var(--panel-2); color: var(--ink-3); }
+
+  .st-id {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+    color: var(--ink-2); margin-top: 9px;
+  }
+  .st.gate .st-id { color: var(--star); }
+  .st.gate.locked .st-id { color: var(--ink-3); }
+  .st-lbl { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; margin-top: 2px; max-width: 13ch; }
+
+  .st-bar { width: 42px; height: 4px; border-radius: 3px; background: var(--todo-soft); margin-top: 8px; overflow: hidden; }
+  .st-bar i { display: block; height: 100%; background: var(--done); }
+  .st.wip .st-bar i { background: var(--wip); }
+  .st.gate .st-bar { display: none; }
+
+  .now-flag {
+    position: absolute; top: 0; transform: translateX(-50%);
+    left: var(--now-x, 28%); z-index: 4; display: flex; flex-direction: column; align-items: center;
+    pointer-events: none;
+  }
+  .now-pill {
+    background: var(--now); color: #fff; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .06em; padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+    box-shadow: 0 3px 10px rgba(212,86,42,.35);
+  }
+  .now-stem { width: 2px; height: 14px; background: var(--now); }
+  .now-tip {
+    width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid var(--now);
+  }
+  .st.now .node {
+    border-color: var(--now); background: var(--now-soft); color: var(--now);
+    box-shadow: 0 0 0 5px var(--now-soft);
+  }
+  .st.now .st-id { color: var(--now); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .st.now .node { animation: pulse 2.6s ease-out infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(212,86,42,.34); }
+      70%  { box-shadow: 0 0 0 12px rgba(212,86,42,0); }
+      100% { box-shadow: 0 0 0 0 rgba(212,86,42,0); }
+    }
+  }
+
+  .orbit-legend {
+    display: flex; flex-wrap: wrap; gap: 7px 18px; padding: 16px 24px 0; margin-top: 14px;
+    border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2);
+  }
+  .orbit-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .sw.d { background: var(--done-soft); border: 2px solid var(--done); }
+  .sw.w { background: var(--wip-soft); border: 2px solid var(--wip); }
+  .sw.t { background: var(--panel-2); border: 2px solid var(--line-strong); }
+  .sw.g { background: var(--star-soft); border: 2px solid var(--star); border-radius: 3px; transform: rotate(45deg); }
+  .sw.n { background: var(--now-soft); border: 2px solid var(--now); }
+  .hint { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: auto; letter-spacing: .04em; }
+  .hint::before { content: "⌖ "; color: var(--star); }
+  @media (hover: none), (pointer: coarse) { .hint { display: none; } }
+
+  /* ── 현재 위치 3-카드 ───────────────────── */
+  .status {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+    gap: 12px; margin-top: 14px;
+  }
+  .s-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 15px 17px; box-shadow: var(--shadow); border-top: 3px solid var(--line-strong);
+  }
+  .s-card.past { border-top-color: var(--done); }
+  .s-card.here { border-top-color: var(--now); background: var(--panel); }
+  .s-card.nextup { border-top-color: var(--star); }
+  .s-k {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .s-card.past .s-k { color: var(--done); }
+  .s-card.here .s-k { color: var(--now); }
+  .s-card.nextup .s-k { color: var(--star); }
+  .s-t { font-size: 15px; font-weight: 640; letter-spacing: -.012em; margin: 5px 0 5px; }
+  .s-d { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+  .s-d code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  .s-list { margin: 7px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .s-list li { font-size: 12.5px; color: var(--ink-2); display: flex; gap: 7px; }
+  .s-list li::before { content: "▸"; color: var(--now); flex: none; }
+  .s-card.nextup .s-list li::before { color: var(--star); }
+
+  /* ── 의존 그래프 ────────────────────────── */
+  :root {
+    --m0: #64748b; --m0s: #e8eaef;
+    --m1: #0d8f84; --m1s: #dcf0ee;
+    --m2: #7c5cd6; --m2s: #ebe5fa;
+    --m3: #b4801a; --m3s: #f7eeda;
+    --m4: #3b6fd4; --m4s: #e3ebfa;
+    --m5: #c05a86; --m5s: #fae4ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --m0: #94a3b8; --m0s: #242a35;
+      --m1: #38c2b3; --m1s: #12312e;
+      --m2: #a68bf0; --m2s: #241d3c;
+      --m3: #d2a344; --m3s: #332810;
+      --m4: #7ea2ee; --m4s: #182642;
+      --m5: #e58cae; --m5s: #3a1e2b;
+    }
+  }
+  :root[data-theme="light"] {
+    --m0: #64748b; --m0s: #e8eaef; --m1: #0d8f84; --m1s: #dcf0ee;
+    --m2: #7c5cd6; --m2s: #ebe5fa; --m3: #b4801a; --m3s: #f7eeda;
+    --m4: #3b6fd4; --m4s: #e3ebfa; --m5: #c05a86; --m5s: #fae4ed;
+  }
+  :root[data-theme="dark"] {
+    --m0: #94a3b8; --m0s: #242a35; --m1: #38c2b3; --m1s: #12312e;
+    --m2: #a68bf0; --m2s: #241d3c; --m3: #d2a344; --m3s: #332810;
+    --m4: #7ea2ee; --m4s: #182642; --m5: #e58cae; --m5s: #3a1e2b;
+  }
+
+  .graph-box {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 20px 0 16px;
+  }
+  .graph-scroll { overflow-x: auto; padding: 0 20px; }
+  .graph-scroll svg { display: block; width: 100%; min-width: 760px; height: auto; }
+
+  .edge { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+  .edge.debt { stroke: var(--debt); stroke-dasharray: 4 3; opacity: .7; }
+
+  .gnode { cursor: pointer; }
+  .gnode circle.body {
+    fill: var(--ns); stroke: var(--nc); stroke-width: 2.4;
+    transition: r .12s ease, stroke-width .12s ease;
+  }
+  .gnode.todo circle.body { fill: var(--panel-2); stroke-width: 1.8; stroke-dasharray: 4 3.2; }
+  .gnode circle.inner { fill: none; stroke: var(--nc); stroke-width: 1.4; stroke-dasharray: 3 3.4; opacity: .8; }
+  .gnode text {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--nc);
+    text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .gnode.sm text { font-size: 10.5px; }
+  .gnode.sm circle.body { stroke-width: 1.8; }
+  .gnode.dbt { --nc: var(--debt); --ns: var(--debt-soft); }
+  .gnode.gate { --nc: var(--star); --ns: var(--star-soft); }
+  .gnode.gate circle.body { stroke-width: 3; }
+  .gnode.gate text { font-size: 11.5px; }
+  .gnode:hover circle.body { stroke-width: 3.4; }
+  .gnode-link { outline: none; }
+  .gnode-link:focus-visible circle.body { stroke-width: 3.6; stroke: var(--star); }
+  .gnode.m0 { --nc: var(--m0); --ns: var(--m0s); }
+  .gnode.m1 { --nc: var(--m1); --ns: var(--m1s); }
+  .gnode.m2 { --nc: var(--m2); --ns: var(--m2s); }
+  .gnode.m3 { --nc: var(--m3); --ns: var(--m3s); }
+  .gnode.m4 { --nc: var(--m4); --ns: var(--m4s); }
+  .gnode.m5 { --nc: var(--m5); --ns: var(--m5s); }
+  .g-cap { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); text-anchor: middle; }
+  .g-cap.end { text-anchor: end; }
+
+  .g-legend {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 15px 22px 0; margin-top: 14px;
+    border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2);
+  }
+  .g-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .g-legend .ms-sw { width: 13px; height: 13px; border-radius: 50%; flex: none; border: 2.4px solid; }
+  .g-legend .ms-sw.g0 { border-color: var(--m0); background: var(--m0s); }
+  .g-legend .ms-sw.g1 { border-color: var(--m1); background: var(--m1s); }
+  .g-legend .ms-sw.g2 { border-color: var(--m2); background: var(--m2s); }
+  .g-legend .ms-sw.g3 { border-color: var(--m3); background: var(--m3s); }
+  .g-legend .ms-sw.g4 { border-color: var(--m4); background: var(--m4s); }
+  .g-legend .ms-sw.g5 { border-color: var(--m5); background: var(--m5s); }
+  .g-legend .ms-sw.gg { border-color: var(--star); background: var(--star-soft); }
+  .g-legend .ms-sw.gx { border-color: var(--debt); background: var(--debt-soft); border-style: dashed; }
+  .g-legend .div { width: 1px; height: 15px; background: var(--line); }
+  .g-legend .st-sw { width: 13px; height: 13px; border-radius: 50%; flex: none;
+    border: 2.4px solid var(--ink-3); background: var(--todo-soft); }
+  .g-legend .st-sw.n { background: var(--panel-2); border-style: dashed; border-width: 1.8px; }
+
+  #gnote {
+    position: fixed; z-index: 60; pointer-events: none; opacity: 0;
+    transform: translateY(4px); transition: opacity .13s ease, transform .13s ease;
+    max-width: 330px; background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line-strong); border-left: 3px solid var(--nc, var(--star));
+    border-radius: 10px; padding: 10px 13px; box-shadow: var(--shadow-lg);
+  }
+  #gnote.on { opacity: 1; transform: translateY(0); }
+  #gnote .n-num {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--nc, var(--star));
+    letter-spacing: .04em;
+  }
+  #gnote .n-title { font-size: 13.5px; font-weight: 620; letter-spacing: -.01em; margin: 2px 0 4px; }
+  #gnote .n-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .04em; }
+  #gnote .n-dep { font-size: 12px; color: var(--ink-2); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  @media (prefers-reduced-motion: reduce) { #gnote { transition: opacity .01s linear; } }
+
+  /* ── section heads ──────────────────────── */
+  .sec { margin-top: 46px; }
+  .sec-head { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin-bottom: 4px; }
+  .sec-head h2 { font-size: 19px; font-weight: 640; letter-spacing: -.015em; margin: 0; }
+  .sec-tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+  .sec-note { font-size: 13.5px; color: var(--ink-2); margin: 0 0 18px; max-width: 78ch; }
+
+  /* ── timeline detail ────────────────────── */
+  .track { display: flex; flex-direction: column; gap: 13px; }
+
+  .ms {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .ms.is-now { border-color: var(--now); box-shadow: 0 0 0 3px var(--now-soft), var(--shadow); }
+  .ms-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 13px 18px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+  }
+  .ms-id {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    color: var(--ink); background: var(--todo-soft); border: 1px solid var(--line-strong);
+    border-radius: 6px; padding: 2px 8px;
+  }
+  .ms.closed .ms-id { background: var(--done-soft); border-color: var(--done); color: var(--done); }
+  .ms-name { font-size: 15px; font-weight: 620; letter-spacing: -.01em; }
+  .ms-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: auto; }
+  .ms-now {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .07em;
+    background: var(--now); color: #fff; border-radius: 5px; padding: 2px 8px;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 1px; background: var(--line); }
+  .card { background: var(--panel); padding: 15px 18px 17px; position: relative; }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .card.d::before { background: var(--done); }
+  .card.w::before { background: var(--wip); }
+  .card.t::before { background: var(--line-strong); }
+  .card.g::before { background: var(--star); }
+
+  .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .chip {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; border-radius: 5px; padding: 2px 7px; flex: none;
+  }
+  .chip.d { background: var(--done-soft); color: var(--done); }
+  .chip.w { background: var(--wip-soft); color: var(--wip); }
+  .chip.t { background: var(--todo-soft); color: var(--ink-3); }
+  .chip.g { background: var(--star-soft); color: var(--star); }
+  .card-num { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); margin-left: auto; }
+  .card-title { font-size: 14.5px; font-weight: 620; letter-spacing: -.005em; }
+
+  .kv { display: flex; gap: 8px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k {
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3); flex: none; width: 42px; padding-top: 2px;
+  }
+  .kv .v { color: var(--ink-2); }
+  .kv.rest .v { color: var(--ink); }
+  .kv .v code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+
+  /* ── checkpoint band ────────────────────── */
+  .cp {
+    border: 1.5px solid var(--star); background: var(--star-soft);
+    border-radius: 14px; padding: 16px 20px 18px; box-shadow: var(--shadow); position: relative;
+  }
+  .cp.is-now { border-color: var(--now); background: var(--now-soft); box-shadow: 0 0 0 3px var(--now-soft), var(--shadow); }
+  .cp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cp-mark { color: var(--star); font-size: 13px; }
+  .cp.is-now .cp-mark { color: var(--now); }
+  .cp-id { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--star); }
+  .cp.is-now .cp-id { color: var(--now); }
+  .cp-title { font-size: 16px; font-weight: 660; letter-spacing: -.012em; }
+  .cp-when { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: auto; }
+  .cp-desc { font-size: 13.5px; color: var(--ink-2); margin: 6px 0 12px; max-width: 80ch; }
+
+  .gates { display: flex; flex-wrap: wrap; gap: 7px; }
+  .gate {
+    font-size: 12.5px; padding: 4px 11px; border-radius: 999px;
+    border: 1px solid var(--star-line); background: var(--panel); color: var(--ink-2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .gate.ok { border-color: var(--done); color: var(--done); }
+  .gate.open { border-style: dashed; }
+  .cp.is-now .gate.open { border-color: var(--now); color: var(--now); }
+  .cp-foot { font-size: 12.5px; color: var(--ink-2); margin: 12px 0 0; padding-top: 11px; border-top: 1px solid var(--star-line); }
+  .cp.is-now .cp-foot { border-top-color: var(--now); }
+  .cp-foot b { color: var(--star); font-weight: 620; }
+  .cp.is-now .cp-foot b { color: var(--now); }
+
+  /* ── debt ───────────────────────────────── */
+  .debt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .debt-card {
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+    border-radius: 10px; padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .debt-card.high { border-left-color: var(--debt); }
+  .debt-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .sev {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    border-radius: 5px; padding: 2px 7px; background: var(--todo-soft); color: var(--ink-3);
+  }
+  .sev.high { background: var(--debt-soft); color: var(--debt); }
+  .debt-num { font-family: var(--mono); font-size: 11.5px; margin-left: auto; }
+  .debt-title { font-size: 13.5px; font-weight: 600; }
+  .debt-body { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+  .debt-gate { font-family: var(--mono); font-size: 10.5px; color: var(--star); margin-top: 8px; letter-spacing: .04em; }
+
+  /* ── next ───────────────────────────────── */
+  .next { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .next-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 15px 17px; box-shadow: var(--shadow); }
+  .next-n { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--star); letter-spacing: .05em; }
+  .next-t { font-size: 14px; font-weight: 620; margin: 3px 0 4px; }
+  .next-d { font-size: 12.5px; color: var(--ink-2); }
+
+  footer {
+    margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-3); font-family: var(--mono);
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+  }
+
+  /* ── hover zoom overlay ─────────────────── */
+  #zoom-layer { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+  #zoom-layer::before {
+    content: ""; position: absolute; inset: 0; background: rgba(12,14,20,.34);
+    opacity: 0; transition: opacity .18s ease;
+  }
+  #zoom-layer.on::before { opacity: 1; }
+  @media (prefers-color-scheme: dark) { #zoom-layer::before { background: rgba(0,0,0,.5); } }
+  :root[data-theme="dark"] #zoom-layer::before { background: rgba(0,0,0,.5); }
+  :root[data-theme="light"] #zoom-layer::before { background: rgba(12,14,20,.34); }
+
+  .zoom-clone {
+    position: fixed; margin: 0; opacity: 0; transform-origin: center center;
+    transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1);
+    transition: transform .17s cubic-bezier(.2,.7,.3,1), opacity .17s ease;
+    background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lg);
+  }
+  .zoom-clone.in { opacity: 1; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--s, 1.2)); }
+  .zoom-clone.cp { border-color: var(--star); }
+  .zoom-clone.cp.is-now, .zoom-clone.ms.is-now { border-color: var(--now); }
+  @media (prefers-reduced-motion: reduce) {
+    .zoom-clone { transition: opacity .01s linear; }
+    #zoom-layer::before { transition: none; }
+  }
+
+  /* ── responsive: 궤도를 세로로 ──────────── */
+  @media (max-width: 900px) {
+    .rail-box { padding: 12px 18px 8px; }
+    .rail, .rail-fill { top: 12px; margin-top: 0; width: 3px; height: auto; }
+    .rail { left: 39px; right: auto; bottom: 40px; }
+    .rail-fill { left: 39px; width: 3px; height: var(--fill-v, 0%); background: linear-gradient(180deg, var(--done), var(--done) 78%, var(--now)); }
+    .stations { grid-template-columns: 1fr; gap: 14px; }
+    .st { flex-direction: row; align-items: center; text-align: left; gap: 13px; padding: 0; }
+    .st-id { margin-top: 0; flex: none; width: 42px; }
+    .st-lbl { max-width: none; }
+    .st-bar { width: 60px; margin-top: 0; margin-left: auto; flex: none; }
+    .now-flag { position: static; transform: none; flex-direction: row; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .now-stem, .now-tip { display: none; }
+  }
+  @media (max-width: 620px) {
+    .wrap { padding: 32px 16px 56px; }
+    .ms-meta, .cp-when { margin-left: 0; width: 100%; }
+    .kv { flex-direction: column; gap: 2px; }
+    .kv .k { width: auto; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">tack · github issues → roadmap · 2026-07-27</p>
+    <h1>지금 어디에 있나 — tack 진행 궤도</h1>
+    <p class="lede">에픽 E1~E8과 등록된 story 이슈에서 파생한 현황입니다. <strong>flow 파이프라인 절반이 서 있고, 지금은 CP1(자체 하네스 전환) 관문 앞</strong>입니다. 막고 있는 것은 코드 story 두 건 — <a href="https://github.com/smalljiny/tack/issues/17">#17</a>·<a href="https://github.com/smalljiny/tack/issues/18">#18</a>입니다.</p>
+
+    <!-- ══ HERO 다이어그램 ══ -->
+    <div class="orbit">
+      <div class="orbit-head">
+        <h2>진행 궤도</h2>
+        <span class="tag">E1 → E8 · 체크포인트 3</span>
+        <span class="pct"><b>14 / 36</b> story 완료</span>
+      </div>
+
+      <div class="rail-box">
+        <div class="rail" aria-hidden="true"></div>
+        <div class="rail-fill" style="--fill: 39%; --fill-v: 40%;" aria-hidden="true"></div>
+
+        <div class="now-flag" style="--now-x: 38.9%;" aria-hidden="true">
+          <span class="now-pill">지금 여기</span>
+          <span class="now-stem"></span>
+          <span class="now-tip"></span>
+        </div>
+
+        <div class="stations">
+          <div class="st wip">
+            <div class="node">3/6</div>
+            <div class="st-id">E1</div>
+            <div class="st-lbl">저장소 · Copier</div>
+            <div class="st-bar"><i style="width:50%"></i></div>
+          </div>
+
+          <div class="st wip">
+            <div class="node">3/4</div>
+            <div class="st-id">E2</div>
+            <div class="st-lbl">상태 머신 코어</div>
+            <div class="st-bar"><i style="width:75%"></i></div>
+          </div>
+
+          <div class="st done">
+            <div class="node">4/4</div>
+            <div class="st-id">E7</div>
+            <div class="st-lbl">훅 · 에이전트 · 표준</div>
+            <div class="st-bar"><i style="width:100%"></i></div>
+          </div>
+
+          <div class="st wip now">
+            <div class="node">2/6</div>
+            <div class="st-id">E3</div>
+            <div class="st-lbl">flow 파이프라인</div>
+            <div class="st-bar"><i style="width:33%"></i></div>
+          </div>
+
+          <div class="st gate">
+            <div class="node"><span>◆</span></div>
+            <div class="st-id">CP1</div>
+            <div class="st-lbl">자체 하네스 전환</div>
+          </div>
+
+          <div class="st done">
+            <div class="node">3/3</div>
+            <div class="st-id">E5</div>
+            <div class="st-lbl">GitHub 이슈 앵커</div>
+            <div class="st-bar"><i style="width:100%"></i></div>
+          </div>
+
+          <div class="st todo">
+            <div class="node">0/5</div>
+            <div class="st-id">E4</div>
+            <div class="st-lbl">ContextStore · Mongo</div>
+            <div class="st-bar"><i style="width:0%"></i></div>
+          </div>
+
+          <div class="st gate locked">
+            <div class="node"><span>◆</span></div>
+            <div class="st-id">CP2</div>
+            <div class="st-lbl">병렬 story 운용</div>
+          </div>
+
+          <div class="st todo">
+            <div class="node">0/8</div>
+            <div class="st-id">E6·E8</div>
+            <div class="st-lbl">Codex 이원 · 개선 라인</div>
+            <div class="st-bar"><i style="width:0%"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-legend">
+        <span><i class="sw d"></i> 완료</span>
+        <span><i class="sw w"></i> 부분 완료</span>
+        <span><i class="sw t"></i> 미착수</span>
+        <span><i class="sw g"></i> 체크포인트</span>
+        <span><i class="sw n"></i> 현재 위치</span>
+        <span class="hint">카드에 커서를 올리면 확대</span>
+      </div>
+    </div>
+
+    <!-- ══ 현재 위치 3-카드 ══ -->
+    <div class="status">
+      <div class="s-card past">
+        <div class="s-k">방금 끝낸 것</div>
+        <div class="s-t">E5 이슈 앵커 3 story 전부</div>
+        <p class="s-d">epic umbrella 아래 story sub-issue 계층 + PR-closes-story 링크. 최근 머지는 <code>E5-S2-S3</code>(PR #39) — <code>gh 2.94.0</code> 네이티브 sub-issue 게이트 포함.</p>
+      </div>
+      <div class="s-card here">
+        <div class="s-k">지금 막힌 것 — CP1</div>
+        <div class="s-t">flow 실행·마무리 story 2건</div>
+        <ul class="s-list">
+          <li><a href="https://github.com/smalljiny/tack/issues/17">#17</a> E3-S4 — impl·review·verify + B6 2단 리뷰</li>
+          <li><a href="https://github.com/smalljiny/tack/issues/18">#18</a> E3-S5 — docs·pr·done + delta 적용</li>
+          <li>운영 자원 대기 없음 — 전부 코드 작업</li>
+        </ul>
+      </div>
+      <div class="s-card nextup">
+        <div class="s-k">병행 가능한 작업</div>
+        <div class="s-t">원장 정합 + E2-S3</div>
+        <ul class="s-list">
+          <li><a href="https://github.com/smalljiny/tack/issues/14">#14</a>·<a href="https://github.com/smalljiny/tack/issues/16">#16</a> 닫기 — 완료됐는데 열려 있음</li>
+          <li>미등록 story 이슈 mint (18건)</li>
+          <li><a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 config 스키마 + 위험 tier 필드</li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ 의존 관계 그래프 ══ -->
+  <section class="sec" aria-label="이슈 의존 관계">
+    <div class="sec-head">
+      <h2>이슈 의존 관계</h2>
+      <span class="sec-tag">dependency graph · 색 = 에픽</span>
+    </div>
+    <p class="sec-note">노드는 <strong>등록된 이슈</strong>, 색은 그 이슈가 속한 에픽입니다. 실선은 선행 관계(왼쪽이 먼저), 점선 테두리는 미착수입니다. 파란 <code>CP1</code>은 이슈가 아니라 자체 하네스 전환 관문이며, 그 앞의 <code>#17</code>·<code>#18</code>이 마지막 선행 조건입니다. <strong>노드에 커서를 올리면 제목이 뜨고, 클릭하면 GitHub 이슈로 이동</strong>합니다.</p>
+
+    <div class="graph-box">
+      <div class="graph-scroll">
+        <svg id="dep-graph" viewBox="0 0 770 430" role="img"
+             aria-label="이슈 의존 관계 그래프 — E1·E2·E7을 거쳐 E3 flow 파이프라인으로 모이고, CP1 관문 뒤로 E5·E4·E6·E8이 이어집니다."></svg>
+      </div>
+      <div class="g-legend">
+        <span><i class="ms-sw g0"></i> E1 저장소</span>
+        <span><i class="ms-sw g1"></i> E2 상태 머신</span>
+        <span><i class="ms-sw g2"></i> E7 환경</span>
+        <span><i class="ms-sw g3"></i> E3 flow</span>
+        <span><i class="ms-sw g4"></i> CP1 이후</span>
+        <span><i class="ms-sw g5"></i> E8 개선 라인</span>
+        <span><i class="ms-sw gg"></i> 체크포인트</span>
+        <span><i class="ms-sw gx"></i> 문서 부채</span>
+        <i class="div"></i>
+        <span><i class="st-sw"></i> 완료</span>
+        <span><i class="st-sw n"></i> 미착수 (점선 테두리)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 상세 타임라인 ══ -->
+  <section class="sec" aria-label="에픽 상세">
+    <div class="sec-head">
+      <h2>에픽 상세</h2>
+      <span class="sec-tag">epics · stories · gates</span>
+    </div>
+    <p class="sec-note">이슈의 열림/닫힘만으로는 판단할 수 없습니다 — <code>#14</code>·<code>#16</code>은 열려 있지만 완료됐고, E5·E7 일부는 완료됐지만 이슈가 없습니다. 아래는 <code>docs/_local/done/</code> 아카이브와 머지된 PR 기준입니다.</p>
+
+    <div class="track">
+
+      <div class="ms">
+        <div class="ms-head">
+          <span class="ms-id">E1</span>
+          <span class="ms-name">저장소 구조 &amp; Copier substrate</span>
+          <span class="ms-meta">story 3/6 · 루트는 아직 레퍼런스 레이아웃</span>
+        </div>
+        <div class="cards">
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E1-S1 Copier 템플릿 골격</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/9">#9</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v"><code>copier.yml</code> · <code>_skip_if_exists</code> init-once · <code>_subdirectory: template</code></span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E1-S2 도구-중립 base 레이아웃</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/10">#10</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v"><code>.claude</code>·<code>.codex</code>·<code>.tack</code> 3소비자 트리 · <code>docs/specs/base-layout.md</code></span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E1-S6 콘텐츠 경로 마이그레이션</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/22">#22</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v"><code>.harness/</code> → <code>.tack/</code> · 렌더 스모크 테스트</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E1-S3 · S4 · S5 배포 실검증</span>
+              <span class="card-num">이슈 미등록</span></div>
+            <div class="kv"><span class="k">범위</span><span class="v">dogfood <code>copier copy</code> · tracked <code>.copier-answers.yml</code> · <code>copier update</code> 3-way merge·롤백</span></div>
+            <div class="kv rest"><span class="k">현실</span><span class="v">저장소 루트에 <code>.copier-answers.yml</code>이 없고 <code>.harness/</code>가 남아 있습니다 — 로드맵의 ✅ 표기와 불일치</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ms">
+        <div class="ms-head">
+          <span class="ms-id">E2</span>
+          <span class="ms-name">상태 머신 &amp; dev-context 코어</span>
+          <span class="ms-meta">story 3/4 · Python 엔진 가동 중</span>
+        </div>
+        <div class="cards">
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E2-S1 7-phase 상태 머신 ★</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/11">#11</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v"><code>spec→plan→impl→review→docs→pr→done</code> 전환표 — 이후 flow 전부의 선행</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E2-S2 dev-context 엔진 Python port</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/12">#12</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">6 서브커맨드 CLI · 점경로 config · prototype 오염 방어 · 원자적 쓰기</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E2-S4 meta-dev-context 계약 스킬</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/14">#14</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">배포 스킬층 16개 콜러 Python 전환 (PR #30)</span></div>
+            <div class="kv rest"><span class="k">주의</span><span class="v">이슈가 <strong>아직 열려 있습니다</strong> — 닫기 누락</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E2-S3 config 스키마 + 위치</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/13">#13</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v">정적 config=레포 커밋 / 런타임 공유=Mongo / 휘발 캐시=로컬 · <strong>위험 tier 필드</strong></span></div>
+            <div class="kv"><span class="k">후속</span><span class="v">E8-S3 tier 라우팅이 이 필드에 걸려 있습니다</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ms closed">
+        <div class="ms-head">
+          <span class="ms-id">E7</span>
+          <span class="ms-name">훅 · 에이전트 로스터 · 컴포넌트 표준</span>
+          <span class="ms-meta">story 4/4 완료 · 이슈는 2건만 등록</span>
+        </div>
+        <div class="cards">
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E7-S2 에이전트 로스터</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/19">#19</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">11 에이전트 3-tier 배분 · architect=flow-review / code-reviewer=unit-review</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E7-S3 컴포넌트 작성 표준</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/27">#27</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">prompt-authoring 7규칙 · 모델 로스터 갱신 · meta-skill-creator</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E7-S1 훅 세트 Python port</span>
+              <span class="card-num">이슈 미등록 · PR #33</span></div>
+            <div class="kv"><span class="k">산출</span><span class="v">훅 8개 stdlib Python 이식 + Node 배선 전환</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E7-S4 stack-* 유지 정합</span>
+              <span class="card-num">이슈 미등록 · PR #38</span></div>
+            <div class="kv"><span class="k">산출</span><span class="v">stack-* 전량 유지 · registry 노출 점검 · commit-scopes 환경별 설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ms is-now">
+        <div class="ms-head">
+          <span class="ms-id">E3</span>
+          <span class="ms-name">flow 오케스트레이션 파이프라인</span>
+          <span class="ms-now">현재 작업</span>
+          <span class="ms-meta">story 2/6 · CP1을 여는 열쇠</span>
+        </div>
+        <div class="cards">
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E3-S1 5-tier 스킬 분류 체계</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/15">#15</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">flow/wf/adapter/stack/meta 경계 · <code>user-invocable</code> SSOT · command file 0</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E3-S2 hub 단계 flow-spec / flow-plan</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/16">#16</a></div>
+            <div class="kv"><span class="k">산출</span><span class="v">explore 스텝 · ADDED/MODIFIED/REMOVED delta · EARS+scenario · 위험 tier 산정 (PR #32)</span></div>
+            <div class="kv rest"><span class="k">주의</span><span class="v">이슈가 <strong>아직 열려 있습니다</strong> — 닫기 누락</span></div>
+          </div>
+          <div class="card w">
+            <div class="card-top"><span class="chip w">다음</span><span class="card-title">E3-S4 impl · review · verify</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/17">#17</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v"><code>scaffold</code> task type · 2단 리뷰 분리(architect lock → code-reviewer unit) · <code>--all</code> 배치</span></div>
+            <div class="kv rest"><span class="k">선행</span><span class="v">#15 · #16 · #19 — 전부 충족</span></div>
+          </div>
+          <div class="card w">
+            <div class="card-top"><span class="chip w">다음</span><span class="card-title">E3-S5 docs · pr · done</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/18">#18</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v">story delta를 <code>docs/specs/</code>에 적용(삽입·교체·삭제) · pr-body 템플릿 · 아카이브</span></div>
+            <div class="kv"><span class="k">선행</span><span class="v">#17</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E3-S3 세션 분리 · E3-S6 skill-registry</span>
+              <span class="card-num">이슈 미등록</span></div>
+            <div class="kv"><span class="k">범위</span><span class="v">worktree 프로비저닝(게이트=<code>spec:confirmed</code>) · per-worktree <code>docs/_local</code> · 태그 기반 스킬 발견</span></div>
+            <div class="kv"><span class="k">위치</span><span class="v">CP1 이후 단계 — 전환의 필요 조건 아님</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp is-now">
+        <div class="cp-head">
+          <span class="cp-mark">◆</span>
+          <span class="cp-id">CP1</span>
+          <span class="cp-title">자체 하네스 전환 — tack이 tack으로 개발</span>
+          <span class="ms-now">다음 관문</span>
+          <span class="cp-when">잔여 story 2</span>
+        </div>
+        <p class="cp-desc">레퍼런스 하네스(<code>reference/yoshi-saddle</code>)로 개발하다 tack 자신으로 갈아타는 부트스트랩 임계점입니다. 컴파일러 self-hosting과 같은 구조 — tack의 flow가 한 story를 spec부터 done까지 끝까지 돌릴 수 있어야 넘어갑니다.</p>
+        <div class="gates">
+          <span class="gate ok">✓ #15 5-tier 스킬 체계</span>
+          <span class="gate ok">✓ #16 hub spec·plan</span>
+          <span class="gate ok">✓ #19 에이전트 로스터</span>
+          <span class="gate open">#17 impl·review·verify</span>
+          <span class="gate open">#18 docs·pr·done</span>
+        </div>
+        <p class="cp-foot"><b>다섯 중 셋은 닫혔습니다.</b> 남은 둘은 운영 자원이 아니라 코드입니다 — 지금 바로 착수 가능하고, 다른 무엇도 기다리지 않습니다. worktree 격리(E3-S3)·Mongo·Codex 게이트는 전환 이후 계층이라 이 관문에 포함되지 않습니다.</p>
+      </div>
+
+      <div class="ms closed">
+        <div class="ms-head">
+          <span class="ms-id">E5</span>
+          <span class="ms-name">GitHub 이슈 모델 (epic/story 앵커)</span>
+          <span class="ms-meta">story 3/3 완료 · story 이슈 0건 등록</span>
+        </div>
+        <div class="cards">
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E5-S1 이슈 생성 · 라벨</span>
+              <span class="card-num">이슈 미등록 · PR #31</span></div>
+            <div class="kv"><span class="k">산출</span><span class="v"><code>adapter-github-issue</code> · <code>type:epic</code>/<code>type:story</code> · epic umbrella mint</span></div>
+          </div>
+          <div class="card d">
+            <div class="card-top"><span class="chip d">완료</span><span class="card-title">E5-S2 · S3 계층 &amp; PR 링크</span>
+              <span class="card-num">이슈 미등록 · PR #39</span></div>
+            <div class="kv"><span class="k">산출</span><span class="v">sub-issue 계층 · PR-closes-story 링크 · <code>gh 2.94.0</code> 네이티브 지원 게이트</span></div>
+            <div class="kv rest"><span class="k">역설</span><span class="v">이슈 계층을 만드는 기능인데, 정작 자기 story는 이슈로 등록되지 않았습니다</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ms">
+        <div class="ms-head">
+          <span class="ms-id">E4</span>
+          <span class="ms-name">ContextStore + Mongo shared registry</span>
+          <span class="ms-meta">story 0/5 · 스펙은 reference에 반입 완료</span>
+        </div>
+        <div class="cards">
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E4-S1 로컬 SoT 어댑터</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/4">epic #4</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v">port/adapter 인터페이스 + Local 어댑터(per-worktree hot path)</span></div>
+            <div class="kv"><span class="k">관계</span><span class="v">flow 파이프라인의 hot path — E3-S3와 함께 섭니다</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E4-S2 · S3 Mongo · lease</span>
+              <span class="card-num">이슈 미등록</span></div>
+            <div class="kv"><span class="k">범위</span><span class="v">Atlas shared registry(phase 스냅샷·소유 세션) · lease 획득/반납 · 충돌 인덱스</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E4-S4 · S5 대시보드 · 오프라인</span>
+              <span class="card-num">이슈 미등록</span></div>
+            <div class="kv"><span class="k">범위</span><span class="v"><code>tack dashboard</code> G2 코어 필드 · 재연결 복구 · secret 관리</span></div>
+            <div class="kv rest"><span class="k">현실</span><span class="v">로드맵은 E4-S4를 ✅로 표기하지만 <code>list_topics</code>/dashboard 진입점이 없습니다</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp">
+        <div class="cp-head">
+          <span class="cp-mark">◆</span>
+          <span class="cp-id">CP2</span>
+          <span class="cp-title">병렬 story 운용 가능</span>
+          <span class="cp-when">잠김 · CP1 이후</span>
+        </div>
+        <p class="cp-desc">여러 story를 격리된 worktree에서 동시에 굴리고, 장치·세션 간에 소유권이 충돌하지 않는 지점. 단일 흐름이 검증된 뒤에 오는 스케일링 계층입니다.</p>
+        <div class="gates">
+          <span class="gate open">CP1 통과</span>
+          <span class="gate open">E3-S3 worktree 세션 분리</span>
+          <span class="gate open">E4-S1 로컬 SoT</span>
+          <span class="gate open">E4-S3 lease · 충돌 인덱스</span>
+          <span class="gate open">#13 config 스키마 · 위험 tier</span>
+        </div>
+        <p class="cp-foot">허브↔worktree의 <b>dev-context 격리</b>가 여기서 닫힙니다 — 지금은 양쪽 상태가 서로 stale해질 수 있습니다.</p>
+      </div>
+
+      <div class="ms">
+        <div class="ms-head">
+          <span class="ms-id">E6 · E8</span>
+          <span class="ms-name">Codex 이원 통합 · 개선 라인</span>
+          <span class="ms-meta">story 0/8 · E8은 E3 스킬에 통합</span>
+        </div>
+        <div class="cards">
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E6 Codex 이원 통합</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/6">epic #6</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v">공유 계약 5종 · spec/plan-review 8-point 게이트 · 세션 감지 TTL · AGENTS.md 대칭</span></div>
+            <div class="kv"><span class="k">현재</span><span class="v">레퍼런스 자산으로 이미 동작 중 — tack 계약층으로 정본화하는 작업</span></div>
+          </div>
+          <div class="card t">
+            <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E8 delta · EARS · tier · skeleton-first</span>
+              <a class="card-num" href="https://github.com/smalljiny/tack/issues/8">epic #8</a></div>
+            <div class="kv"><span class="k">범위</span><span class="v">B1 delta · B2 EARS는 #16에서 선반영 · B3/B4 tier · B6 골격은 #17에서 반영</span></div>
+            <div class="kv"><span class="k">연기</span><span class="v">안정 ID+자동 병합 · mockist contract-lock · 함수별 병렬 worktree</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp">
+        <div class="cp-head">
+          <span class="cp-mark">◆</span>
+          <span class="cp-id">CP3</span>
+          <span class="cp-title">외부 프로젝트 배포 가능</span>
+          <span class="cp-when">잠김 · CP2 이후</span>
+        </div>
+        <p class="cp-desc">tack을 남의 저장소에 <code>uvx copier copy</code>로 심고, 이후 <code>copier update</code>로 안전하게 올릴 수 있는 지점. dogfood가 실증이 됩니다.</p>
+        <div class="gates">
+          <span class="gate open">E1-S3 dogfood 렌더</span>
+          <span class="gate open">E1-S4 tracked · 3-way merge 실검증</span>
+          <span class="gate open">E1-S5 update · 롤백 경로</span>
+          <span class="gate open">E6 Codex 계약층 정본화</span>
+          <span class="gate open">이슈 원장 · 로드맵 정합</span>
+        </div>
+        <p class="cp-foot">배포는 <b>버전 스트림</b>이 서야 성립합니다 — git 태그 첫 발행 시점(<code>v0.1.0</code>)이 여기서 정해집니다.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ 부채 ══ -->
+  <section class="sec" aria-label="원장·문서 부채">
+    <div class="sec-head">
+      <h2>원장 · 문서 부채</h2>
+      <span class="sec-tag">off-epic · gates</span>
+    </div>
+    <p class="sec-note">어느 에픽에도 속하지 않지만 체크포인트의 통과 조건으로 작동합니다. tack의 부채는 런타임 버그가 아니라 <strong>기록이 현실과 어긋나는 것</strong>입니다 — 다음 판단의 입력이 오염됩니다.</p>
+
+    <div class="debt-grid">
+      <div class="debt-card high">
+        <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">로드맵 ✅ 4건이 실제와 불일치</span>
+          <span class="debt-num">추적 없음</span></div>
+        <div class="debt-body"><code>docs/roadmap.md</code>가 E1-S3·E1-S4·E2-S3·E4-S4를 완료로 표기하지만 넷 다 미구현입니다. 또 완료된 E1-S6은 표에 행 자체가 없습니다.</div>
+        <div class="debt-gate">▸ CP3 게이트 · 이 문서가 정정본</div>
+      </div>
+      <div class="debt-card high">
+        <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">story 이슈 18건 미등록</span>
+          <span class="debt-num">추적 없음</span></div>
+        <div class="debt-body">미착수 13건(E1-S3/S4/S5 · E3-S3/S6 · E4×5 · E6×4 중 일부)과 <strong>이미 완료된 5건</strong>(E5-S1/S2/S3 · E7-S1 · E7-S4)이 이슈로 존재하지 않습니다. epic #4·#5·#6·#8은 sub-issue가 0건입니다.</div>
+        <div class="debt-gate">▸ CP3 게이트 · E5 기능으로 자동화 가능</div>
+      </div>
+      <div class="debt-card high">
+        <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">완료 story 2건이 OPEN 상태</span>
+          <span class="debt-num"><a href="https://github.com/smalljiny/tack/issues/14">#14</a> · <a href="https://github.com/smalljiny/tack/issues/16">#16</a></span></div>
+        <div class="debt-body">E2-S4(PR #30)·E3-S2(PR #32)는 머지·아카이브까지 끝났는데 이슈가 열려 있습니다. 이슈만 보면 진행률이 실제보다 낮게 읽힙니다.</div>
+        <div class="debt-gate">▸ 즉시 처리 가능 · 코드 변경 없음</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">문서</span><span class="debt-title">harness-guide 스킬 개수 불일치</span>
+          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/34">#34</a></div>
+        <div class="debt-body"><code>harness-guide.md</code>가 적어 둔 <code>stack-*</code>·<code>wf-*</code> 개수가 실제 트리와 다릅니다.</div>
+        <div class="debt-gate">▸ 게이트 없음 · 유지보수</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">문서</span><span class="debt-title">skill-registry Rule 6 ↔ stack-prompt 충돌</span>
+          <a class="debt-num" href="https://github.com/smalljiny/tack/issues/35">#35</a></div>
+        <div class="debt-body">Rule 6이 <code>stack-prompt</code>의 capabilities 생략(direct-load 예외)을 인가하지 못합니다. 규칙과 실물이 어긋납니다.</div>
+        <div class="debt-gate">▸ E3-S6 skill-registry와 함께</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">이월</span><span class="debt-title">트래커 밖 이월 항목</span>
+          <span class="debt-num">세션 메모리</span></div>
+        <div class="debt-body">Codex 스킬층 3파일 dev-context cutover · <code>wf-delta-spec</code> Grep 신뢰경계 · flow-done의 <code>explore.md</code> 미열거 · 세션 로그 경로 이관 · <code>config.gh.*</code> 참조표 배치.</div>
+        <div class="debt-gate">▸ 이슈로 승격 필요 · 현재는 기록만</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 다음 한 수 ══ -->
+  <section class="sec" aria-label="다음 한 수">
+    <div class="sec-head">
+      <h2>다음 한 수</h2>
+      <span class="sec-tag">recommended order</span>
+    </div>
+    <p class="sec-note">순서는 의존성과 되돌리기 비용 기준입니다.</p>
+    <div class="next">
+      <div class="next-card">
+        <div class="next-n">01</div>
+        <div class="next-t">#17을 먼저 연다</div>
+        <div class="next-d">CP1의 두 잔여 중 선행입니다. 선행 조건(#15·#16·#19)이 전부 닫혀 있어 지금 착수 가능하고, B6 골격·2단 리뷰가 여기서 처음 실물로 검증됩니다.</div>
+      </div>
+      <div class="next-card">
+        <div class="next-n">02</div>
+        <div class="next-t">#18로 관문을 닫고 전환한다</div>
+        <div class="next-d">docs·pr·done이 서면 story 하나가 spec에서 아카이브까지 tack만으로 완주합니다. 그 시점에 레퍼런스 하네스를 내려놓습니다 — 이후 모든 작업이 곧 회귀 테스트입니다.</div>
+      </div>
+      <div class="next-card">
+        <div class="next-n">03</div>
+        <div class="next-t">원장을 현실에 맞춘다 (병행)</div>
+        <div class="next-d">#14·#16 닫기, 미등록 story 18건 mint, 로드맵 ✅ 4건 정정. 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다 — 만든 도구의 첫 실사용이기도 합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>출처: GitHub 이슈 #1~#39 + sub-issue 계층 (2026-07-27)</span>
+    <span>설계 정본: docs/roadmap.md · docs/dossier/</span>
+    <span>구현 명세: docs/specs/</span>
+    <span>완료 판정: docs/_local/done/ 아카이브 + 머지된 PR</span>
+    <span>체크포인트 3종은 로드맵 §2.5·§2 착수 순서에서 도출한 판단</span>
+  </footer>
+</div>
+
+<div id="zoom-layer" aria-hidden="true"></div>
+<div id="gnote" role="tooltip" aria-hidden="true"></div>
+
+<script>
+/* ── 의존 관계 그래프 빌드 ─────────────────────────── */
+(function () {
+  var svg = document.getElementById("dep-graph");
+  if (!svg) return;
+  var NS = "http://www.w3.org/2000/svg";
+  var REPO = "https://github.com/smalljiny/tack/issues/";
+
+  // key, epic-color-index, status, x, y, title, role, label
+  var N = [
+    ["10", 0, "done", 55,  70,  "E1-S2 도구-중립 base 레이아웃", ".claude·.codex·.tack 3소비자 트리"],
+    ["9",  0, "done", 55,  145, "E1-S1 Copier 템플릿 골격", "copier.yml · init-once 보존"],
+    ["22", 0, "done", 55,  220, "E1-S6 콘텐츠 경로 마이그레이션", ".harness → .tack"],
+
+    ["11", 1, "done", 175, 70,  "E2-S1 7-phase 상태 머신 ★", "전환표 — 이후 flow 전부의 선행"],
+    ["12", 1, "done", 175, 145, "E2-S2 dev-context 엔진 Python port", "6 서브커맨드 CLI · 원자적 쓰기"],
+    ["14", 1, "done", 175, 220, "E2-S4 meta-dev-context 계약 스킬", "완료 · 이슈 닫기 누락"],
+    ["13", 1, "todo", 175, 295, "E2-S3 config 스키마 + 위치", "위험 tier 필드 — E8 선행"],
+
+    ["19", 2, "done", 300, 355, "E7-S2 에이전트 로스터", "11 에이전트 · 2단 리뷰 역할"],
+    ["27", 2, "done", 175, 370, "E7-S3 컴포넌트 작성 표준", "prompt-authoring 7규칙"],
+
+    ["15", 3, "done", 300, 70,  "E3-S1 5-tier 스킬 분류 체계", "flow/wf/adapter/stack/meta"],
+    ["16", 3, "done", 300, 145, "E3-S2 hub 단계 flow-spec/flow-plan", "완료 · 이슈 닫기 누락"],
+    ["17", 3, "todo", 300, 220, "E3-S4 impl · review · verify", "CP1 잔여 — 지금 착수 가능"],
+    ["18", 3, "todo", 300, 290, "E3-S5 docs · pr · done", "CP1 잔여 — #17 이후"],
+
+    ["CP1", 9, "gate", 430, 220, "CP1 자체 하네스 전환점", "tack이 tack으로 개발 시작"],
+
+    ["5",  4, "done", 570, 80,  "E5 GitHub 이슈 앵커 (epic)", "story 3/3 완료 · story 이슈 미등록"],
+    ["4",  4, "todo", 570, 165, "E4 ContextStore · Mongo (epic)", "0/5 · 로컬 SoT부터"],
+    ["6",  4, "todo", 570, 250, "E6 Codex 이원 통합 (epic)", "0/4 · 계약층 정본화"],
+    ["8",  5, "todo", 570, 335, "E8 delta·EARS·tier (epic)", "E3 스킬에 통합 · 꼬리는 연기"],
+
+    ["34", -1, "dbt", 690, 380, "harness-guide 스킬 개수 불일치", "문서 부채"],
+    ["35", -1, "dbt", 735, 380, "skill-registry Rule 6 ↔ stack-prompt", "문서 부채 · E3-S6과 함께"]
+  ];
+
+  var E = [
+    ["10","9"], ["9","22"], ["9","11"], ["11","12"], ["12","14"], ["12","13"],
+    ["9","27"], ["27","19"],
+    ["12","15"], ["15","16"], ["16","17"], ["19","17"], ["17","18"],
+    ["18","CP1"], ["19","CP1"],
+    ["16","5"], ["CP1","4"], ["CP1","6"], ["CP1","8"], ["13","8"]
+  ];
+
+  var MS_NAME = ["E1 저장소·Copier", "E2 상태 머신", "E7 환경", "E3 flow 파이프라인",
+                 "CP1 이후", "E8 개선 라인"];
+  var ST_NAME = { done: "완료", wip: "부분 완료", todo: "미착수", dbt: "문서 부채", gate: "체크포인트" };
+
+  var map = {};
+  N.forEach(function (n) {
+    map[n[0]] = { id: n[0], ms: n[1], st: n[2], x: n[3], y: n[4], t: n[5], role: n[6],
+                  r: n[1] === -1 ? 15 : (n[2] === "gate" ? 26 : 19) };
+  });
+
+  var defs = document.createElementNS(NS, "defs");
+  defs.innerHTML =
+    '<marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">' +
+      '<path d="M0.5 0.5 L7.5 4 L0.5 7.5 z" fill="currentColor"/></marker>';
+  svg.appendChild(defs);
+
+  var gEdges = document.createElementNS(NS, "g");
+  svg.appendChild(gEdges);
+
+  function line(a, b, cls) {
+    var A = map[a], B = map[b];
+    if (!A || !B) return;
+    var dx = B.x - A.x, dy = B.y - A.y;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var ux = dx / len, uy = dy / len;
+    var x1 = A.x + ux * (A.r + 3), y1 = A.y + uy * (A.r + 3);
+    var x2 = B.x - ux * (B.r + 8), y2 = B.y - uy * (B.r + 8);
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", "M" + x1.toFixed(1) + " " + y1.toFixed(1) + " L" + x2.toFixed(1) + " " + y2.toFixed(1));
+    p.setAttribute("class", cls);
+    p.setAttribute("marker-end", "url(#ah)");
+    p.setAttribute("color", cls.indexOf("debt") > -1 ? "var(--debt)" : "var(--line-strong)");
+    gEdges.appendChild(p);
+  }
+  E.forEach(function (e) { line(e[0], e[1], "edge"); });
+
+  function cap(x, y, txt, cls) {
+    var t = document.createElementNS(NS, "text");
+    t.setAttribute("class", cls || "g-cap");
+    t.setAttribute("x", x); t.setAttribute("y", y);
+    t.textContent = txt;
+    svg.appendChild(t);
+  }
+  cap(55, 28, "E1 저장소");
+  cap(175, 28, "E2 상태 머신");
+  cap(300, 28, "E3 flow");
+  cap(430, 168, "◆ 전환 관문");
+  cap(570, 38, "CP1 이후");
+  cap(660, 384, "게이트 외 →", "g-cap end");
+
+  N.forEach(function (raw) {
+    var n = map[raw[0]];
+    var host;
+    if (n.st === "gate") {
+      host = document.createElementNS(NS, "g");
+    } else {
+      host = document.createElementNS(NS, "a");
+      host.setAttribute("href", REPO + n.id);
+      host.setAttribute("target", "_blank");
+      host.setAttribute("rel", "noopener");
+      host.setAttribute("class", "gnode-link");
+      host.setAttribute("aria-label", "이슈 #" + n.id + " " + n.t);
+    }
+
+    var g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "gnode " +
+      (n.ms === -1 ? "dbt sm" : (n.st === "gate" ? "gate" : "m" + n.ms + " " + n.st)));
+    g.dataset.id = n.id;
+
+    var c = document.createElementNS(NS, "circle");
+    c.setAttribute("class", "body");
+    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y); c.setAttribute("r", n.r);
+    g.appendChild(c);
+
+    var t = document.createElementNS(NS, "text");
+    t.setAttribute("x", n.x); t.setAttribute("y", n.y + 0.5);
+    t.textContent = n.st === "gate" ? "CP1" : "#" + n.id;
+    g.appendChild(t);
+
+    host.appendChild(g);
+    svg.appendChild(host);
+  });
+
+  /* ── floating note ── */
+  var note = document.getElementById("gnote");
+  var shown = null;
+
+  function deps(id) {
+    var into = [], out = [];
+    E.forEach(function (e) {
+      if (e[1] === id) into.push(e[0] === "CP1" ? "CP1" : "#" + e[0]);
+      if (e[0] === id) out.push(e[1] === "CP1" ? "CP1" : "#" + e[1]);
+    });
+    var s = [];
+    if (into.length) s.push("선행 " + into.join(" · "));
+    if (out.length) s.push("후속 " + out.join(" · "));
+    return s.join("  |  ");
+  }
+
+  function place(x, y) {
+    var w = note.offsetWidth, h = note.offsetHeight, m = 12;
+    var left = x + 16, top = y + 16;
+    if (left + w + m > window.innerWidth) left = x - w - 16;
+    if (top + h + m > window.innerHeight) top = y - h - 16;
+    note.style.left = Math.max(m, left) + "px";
+    note.style.top = Math.max(m, top) + "px";
+  }
+
+  function open(g, x, y) {
+    var n = map[g.dataset.id];
+    if (!n) return;
+    var color = n.ms === -1 ? "var(--debt)" : (n.st === "gate" ? "var(--star)" : "var(--m" + n.ms + ")");
+    note.style.setProperty("--nc", color);
+    var d = deps(n.id);
+    note.innerHTML =
+      '<div class="n-num"></div>' +
+      '<div class="n-title"></div>' +
+      '<div class="n-meta"></div>' +
+      (d ? '<div class="n-dep"></div>' : "");
+    note.querySelector(".n-num").textContent = n.st === "gate" ? "CP1" : "#" + n.id;
+    note.querySelector(".n-title").textContent = n.t;
+    note.querySelector(".n-meta").textContent =
+      (n.ms === -1 ? "에픽 외" : (n.st === "gate" ? "전환 관문" : MS_NAME[n.ms])) +
+      " · " + ST_NAME[n.st] + " · " + n.role;
+    if (d) note.querySelector(".n-dep").textContent = d;
+    note.classList.add("on");
+    note.setAttribute("aria-hidden", "false");
+    place(x, y);
+    shown = g;
+  }
+
+  function close() {
+    if (!shown) return;
+    shown = null;
+    note.classList.remove("on");
+    note.setAttribute("aria-hidden", "true");
+  }
+
+  svg.addEventListener("pointerover", function (e) {
+    var g = e.target.closest ? e.target.closest(".gnode") : null;
+    if (!g) return;
+    open(g, e.clientX, e.clientY);
+  });
+  svg.addEventListener("pointermove", function (e) {
+    if (shown) place(e.clientX, e.clientY);
+  });
+  svg.addEventListener("pointerout", function (e) {
+    var g = e.target.closest ? e.target.closest(".gnode") : null;
+    if (!g) return;
+    if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".gnode") === g) return;
+    close();
+  });
+  svg.addEventListener("focusin", function (e) {
+    var t = e.target;
+    var g = (t.closest && t.closest(".gnode")) || (t.querySelector && t.querySelector(".gnode"));
+    if (!g) return;
+    var b = g.getBoundingClientRect();
+    open(g, b.left + b.width / 2, b.bottom - 8);
+  });
+  svg.addEventListener("focusout", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  window.addEventListener("scroll", close, { passive: true });
+  window.addEventListener("resize", close);
+})();
+</script>
+
+<script>
+(function () {
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+  var layer = document.getElementById("zoom-layer");
+  var SELECTOR = ".card, .cp, .debt-card, .next-card, .s-card";
+  var MAX_SCALE = 1.32, MIN_GAIN = 1.04, OPEN_DELAY = 130, margin = 14;
+  var current = null, openTimer = null;
+
+  function clear() {
+    if (openTimer) { clearTimeout(openTimer); openTimer = null; }
+    if (!current) return;
+    var clone = current.clone;
+    current = null;
+    layer.classList.remove("on");
+    clone.classList.remove("in");
+    var drop = function () { if (clone.parentNode) clone.parentNode.removeChild(clone); };
+    clone.addEventListener("transitionend", drop, { once: true });
+    setTimeout(drop, 400);
+  }
+
+  function show(el) {
+    var r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var scale = Math.min(MAX_SCALE,
+      (window.innerWidth - margin * 2) / r.width,
+      (window.innerHeight - margin * 2) / r.height);
+    if (scale < MIN_GAIN) return;
+
+    var clone = el.cloneNode(true);
+    clone.classList.add("zoom-clone");
+    clone.removeAttribute("id");
+    clone.setAttribute("aria-hidden", "true");
+    clone.style.left = r.left + "px";
+    clone.style.top = r.top + "px";
+    clone.style.width = r.width + "px";
+    clone.style.height = r.height + "px";
+    clone.style.setProperty("--s", scale);
+
+    var cw = r.width * scale, ch = r.height * scale;
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var tx = Math.min(Math.max(cx, cw / 2 + margin), window.innerWidth - cw / 2 - margin);
+    var ty = Math.min(Math.max(cy, ch / 2 + margin), window.innerHeight - ch / 2 - margin);
+    clone.style.setProperty("--dx", (tx - cx) + "px");
+    clone.style.setProperty("--dy", (ty - cy) + "px");
+
+    layer.appendChild(clone);
+    current = { el: el, clone: clone };
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (current && current.clone === clone) { clone.classList.add("in"); layer.classList.add("on"); }
+      });
+    });
+  }
+
+  function target(node) { return node && node.closest ? node.closest(SELECTOR) : null; }
+
+  document.addEventListener("pointerover", function (e) {
+    if (e.pointerType && e.pointerType !== "mouse") return;
+    var el = target(e.target);
+    if (!el || (current && current.el === el)) return;
+    clear();
+    openTimer = setTimeout(function () { openTimer = null; show(el); }, OPEN_DELAY);
+  });
+  document.addEventListener("pointerout", function (e) {
+    var el = target(e.target);
+    if (!el) return;
+    if (e.relatedTarget && target(e.relatedTarget) === el) return;
+    clear();
+  });
+  document.addEventListener("focusin", function (e) {
+    var el = target(e.target);
+    if (!el) { clear(); return; }
+    if (current && current.el === el) return;
+    clear(); show(el);
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") clear(); });
+  window.addEventListener("scroll", clear, { passive: true });
+  window.addEventListener("resize", clear);
+  window.addEventListener("blur", clear);
+})();
+</script>
