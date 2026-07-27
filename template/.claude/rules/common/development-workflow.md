@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 ---
 # Development Workflow
 
@@ -40,16 +40,20 @@ This rule extends the feature implementation workflow from git-workflow.md.
 - **Gate**: topic must be `plan:confirmed` — blocks if not met, shows plan-review command
 - Progress one Story at a time in order
 - First Story: transitions to `impl:in-progress`
+- Story Type branch: `scaffold` type Stories skip tdd-specialist — write signatures, types, call/event chain wiring, and throwing stubs, then judge completion by the language-specific static check plus an entry-module import smoke (canonical table: `.tack/contracts/implementation-plan.md` `### scaffold 완료 판정 (언어별)`)
 - 1. **tdd-specialist** auto-called → RED-GREEN-REFACTOR cycle
 - 2. Immediately after implementation, **code-reviewer** auto-called → instant feedback + fixes
 - 3. Commit
 
 ### 4. Final Review (`/flow-review`)
 
-- **Gate**: topic must be `impl:in-progress` — blocks if not met
-- Transitions to `review:in-progress` on start
-- **code-reviewer** + **security-reviewer** run in parallel
-- Quality review of full change scope
+- **Gate**: topic must be `impl:in-progress` (first entry) or `review:in-progress` (re-entry) — blocks otherwise
+- First entry transitions to `review:in-progress`; re-entry performs no transition and re-captures `SAVED_SHA`
+- `topicTier = max(per-Story **Risk Tier**)` decides the review depth (routing owner: `.claude/skills/wf-risk-routing/SKILL.md`)
+- `topicTier ∈ {low, normal}` — **code-reviewer** + **security-reviewer** run in parallel over the full change scope (unchanged)
+- `topicTier == high` — stage 1: **architect** judges structure against an 8-item rubric → `lock: locked|blocked`; stage 2 (only when `locked`): **code-reviewer** scoped to the changed-file list + **security-reviewer** in parallel
+- `lock: blocked` — stage 2 does not run; a stage-1-only review report is written and the topic stays `review:in-progress` until the structure is fixed and stage 1 re-runs
+- `topicTier == high` also auto-promotes adversarial review (still subject to the codex availability/auth gate) and adds a one-time human approval gate between the review report and the completion report
 
 ### 5. Verify (`/flow-verify`)
 
@@ -170,3 +174,5 @@ cmd ${arr[@]+"${arr[@]}"}
 | `review:in-progress` | `/flow-review` on start |
 | `docs:generated` | `/flow-docs` after commit |
 | `pr:created` | `/flow-pr` after PR creation |
+
+`review:in-progress` 재진입은 새 상태를 만들지 않는다 — `/flow-review`를 그 상태에서 다시 실행해도 상태 전환이 없고 `review → impl` 역전이도 없다. 재개 지점은 최신 review-report의 `lock` 값이 결정한다.

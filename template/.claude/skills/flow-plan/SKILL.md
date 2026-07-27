@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 name: flow-plan
 description: Create an implementation plan from a confirmed spec. Moves topic from backlog to active, updates paths in dev-context.json, and generates implementation-plan.md.
 origin: harness
@@ -272,7 +272,7 @@ See `.tack/contracts/implementation-plan.md` for the canonical format.
 ## Story List
 
 ### [ ] Story 1: <title>
-- **Type**: tdd | config | infra | refactor | prompt
+- **Type**: tdd | config | infra | refactor | prompt | scaffold
 - **Risk Tier**: low | normal | high  (판정 근거 한 줄)
 - **Goal**: [What this Story achieves]
 - **Tasks**:

@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 ---
 # Agent Coordination Rules
 
@@ -13,7 +13,7 @@ Located in `.claude/agents/`:
 | tdd-specialist | Test-driven development | New features, bug fixes |
 | code-reviewer | Code quality review | Immediately after writing code |
 | security-reviewer | Security vulnerability analysis | Before commits, sensitive code changes |
-| architect | System design | Architecture decisions, design reviews |
+| architect | System design | Architecture decisions, design reviews, `/flow-review` stage 1 (structural verdict on `high` tier topics) |
 | build-error-resolver | Build error resolution | Build/type errors |
 | doc-updater | Documentation sync | After implementation is complete |
 | refactor-cleaner | Dead code cleanup | Code maintenance |
@@ -26,7 +26,8 @@ Auto-activate in the following situations without user request:
 2. Immediately after writing/modifying code → **code-reviewer**
 3. New features or bug fixes → **tdd-specialist**
 4. Architecture decisions → **architect**
-5. Build/type errors → **build-error-resolver**
+5. `/flow-review` stage 1 on a `topicTier == high` topic → **architect** (structural verdict before unit review)
+6. Build/type errors → **build-error-resolver**
 
 ## Parallel Execution
 
