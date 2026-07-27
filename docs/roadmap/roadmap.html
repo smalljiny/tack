@@ -286,6 +286,7 @@
     transition: r .12s ease, stroke-width .12s ease;
   }
   .gnode.todo circle.body { fill: var(--panel-2); stroke-width: 1.8; stroke-dasharray: 4 3.2; }
+  .gnode.wip circle.body { fill: var(--panel-2); stroke-width: 3.4; }
   .gnode circle.inner { fill: none; stroke: var(--nc); stroke-width: 1.4; stroke-dasharray: 3 3.4; opacity: .8; }
   .gnode text {
     font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--nc);
@@ -517,9 +518,9 @@
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">tack · github issues → roadmap · 2026-07-27</p>
+    <p class="eyebrow">tack · github issues → roadmap · 2026-07-28</p>
     <h1>지금 어디에 있나 — tack 진행 궤도</h1>
-    <p class="lede">에픽 E1~E8과 등록된 story 이슈에서 파생한 현황입니다. <strong>flow 파이프라인 절반이 서 있고, 지금은 CP1(자체 하네스 전환) 관문 앞</strong>입니다. 막고 있는 것은 코드 story 두 건 — <a href="https://github.com/smalljiny/tack/issues/17">#17</a>·<a href="https://github.com/smalljiny/tack/issues/18">#18</a>입니다.</p>
+    <p class="lede">에픽 E1~E8과 등록된 story 이슈에서 파생한 현황입니다. <strong>flow 파이프라인 절반이 서 있고, 지금은 CP1(자체 하네스 전환) 관문 앞</strong>입니다. 막고 있는 것은 코드 story 두 건 — <a href="https://github.com/smalljiny/tack/issues/17">#17</a>은 격리 worktree에서 <code>impl</code> 진행 중이고, <a href="https://github.com/smalljiny/tack/issues/18">#18</a>이 그 뒤에 남아 있습니다.</p>
 
     <!-- ══ HERO 다이어그램 ══ -->
     <div class="orbit">
@@ -618,14 +619,14 @@
       <div class="s-card past">
         <div class="s-k">방금 끝낸 것</div>
         <div class="s-t">E5 이슈 앵커 3 story 전부</div>
-        <p class="s-d">epic umbrella 아래 story sub-issue 계층 + PR-closes-story 링크. 최근 머지는 <code>E5-S2-S3</code>(PR #39) — <code>gh 2.94.0</code> 네이티브 sub-issue 게이트 포함.</p>
+        <p class="s-d">epic umbrella 아래 story sub-issue 계층 + PR-closes-story 링크. story 기준 최근 머지는 <code>E5-S2-S3</code>(PR #39) — <code>gh 2.94.0</code> 네이티브 sub-issue 게이트 포함. 그 뒤 <a href="https://github.com/smalljiny/tack/pull/40">PR #40</a>은 story가 아니라 문서 부채(<a href="https://github.com/smalljiny/tack/issues/34">#34</a>) 정리입니다.</p>
       </div>
       <div class="s-card here">
-        <div class="s-k">지금 막힌 것 — CP1</div>
+        <div class="s-k">지금 진행 중 — CP1</div>
         <div class="s-t">flow 실행·마무리 story 2건</div>
         <ul class="s-list">
-          <li><a href="https://github.com/smalljiny/tack/issues/17">#17</a> E3-S4 — impl·review·verify + B6 2단 리뷰</li>
-          <li><a href="https://github.com/smalljiny/tack/issues/18">#18</a> E3-S5 — docs·pr·done + delta 적용</li>
+          <li><a href="https://github.com/smalljiny/tack/issues/17">#17</a> E3-S4 — <strong>impl 진행 중</strong> (worktree <code>E3-S4</code> · Story 8)</li>
+          <li><a href="https://github.com/smalljiny/tack/issues/18">#18</a> E3-S5 — docs·pr·done + delta 적용 (대기)</li>
           <li>운영 자원 대기 없음 — 전부 코드 작업</li>
         </ul>
       </div>
@@ -634,7 +635,7 @@
         <div class="s-t">원장 정합 + E2-S3</div>
         <ul class="s-list">
           <li>미등록 story 이슈 mint (18건)</li>
-          <li>로드맵 ✅ 4건 정정 (E1-S3·S4 · E2-S3 · E4-S4)</li>
+          <li>끊긴 <code>docs/roadmap.md</code> 참조 5곳 정리</li>
           <li><a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 config 스키마 + 위험 tier 필드</li>
         </ul>
       </div>
@@ -647,7 +648,7 @@
       <h2>이슈 의존 관계</h2>
       <span class="sec-tag">dependency graph · 색 = 에픽</span>
     </div>
-    <p class="sec-note">노드는 <strong>등록된 이슈</strong>, 색은 그 이슈가 속한 에픽입니다. 실선은 선행 관계(왼쪽이 먼저), 점선 테두리는 미착수입니다. 파란 <code>CP1</code>은 이슈가 아니라 자체 하네스 전환 관문이며, 그 앞의 <code>#17</code>·<code>#18</code>이 마지막 선행 조건입니다. <strong>노드에 커서를 올리면 제목이 뜨고, 클릭하면 GitHub 이슈로 이동</strong>합니다.</p>
+    <p class="sec-note">노드는 <strong>등록된 이슈</strong>, 색은 그 이슈가 속한 에픽입니다. 실선은 선행 관계(왼쪽이 먼저), 점선 테두리는 미착수, 굵은 테두리에 속이 빈 노드는 진행 중입니다. 파란 <code>CP1</code>은 이슈가 아니라 자체 하네스 전환 관문이며, 그 앞의 <code>#17</code>·<code>#18</code>이 마지막 선행 조건입니다. <strong>노드에 커서를 올리면 제목이 뜨고, 클릭하면 GitHub 이슈로 이동</strong>합니다.</p>
 
     <div class="graph-box">
       <div class="graph-scroll">
@@ -793,9 +794,10 @@
             <div class="kv rest"><span class="k">원장</span><span class="v">2026-07-27 <strong>이슈 닫힘</strong> — 누락 정합 완료</span></div>
           </div>
           <div class="card w">
-            <div class="card-top"><span class="chip w">다음</span><span class="card-title">E3-S4 impl · review · verify</span>
+            <div class="card-top"><span class="chip w">진행 중</span><span class="card-title">E3-S4 impl · review · verify</span>
               <a class="card-num" href="https://github.com/smalljiny/tack/issues/17">#17</a></div>
             <div class="kv"><span class="k">범위</span><span class="v"><code>scaffold</code> task type · 2단 리뷰 분리(architect lock → code-reviewer unit) · <code>--all</code> 배치</span></div>
+            <div class="kv"><span class="k">현재</span><span class="v">격리 worktree <code>E3-S4</code> · <code>impl:in-progress</code> · Story 8 (plan-review 통과)</span></div>
             <div class="kv rest"><span class="k">선행</span><span class="v">#15 · #16 · #19 — 전부 충족</span></div>
           </div>
           <div class="card w">
@@ -826,10 +828,10 @@
           <span class="gate ok">✓ #15 5-tier 스킬 체계</span>
           <span class="gate ok">✓ #16 hub spec·plan</span>
           <span class="gate ok">✓ #19 에이전트 로스터</span>
-          <span class="gate open">#17 impl·review·verify</span>
+          <span class="gate open">#17 impl·review·verify — 진행 중</span>
           <span class="gate open">#18 docs·pr·done</span>
         </div>
-        <p class="cp-foot"><b>다섯 중 셋은 닫혔습니다.</b> 남은 둘은 운영 자원이 아니라 코드입니다 — 지금 바로 착수 가능하고, 다른 무엇도 기다리지 않습니다. worktree 격리(E3-S3)·Mongo·Codex 게이트는 전환 이후 계층이라 이 관문에 포함되지 않습니다.</p>
+        <p class="cp-foot"><b>다섯 중 셋은 닫혔고, 넷째는 진행 중입니다.</b> 남은 둘은 운영 자원이 아니라 코드입니다 — 다른 무엇도 기다리지 않습니다. worktree 격리(E3-S3)·Mongo·Codex 게이트는 전환 이후 계층이라 이 관문에 포함되지 않습니다.</p>
       </div>
 
       <div class="ms closed">
@@ -950,11 +952,17 @@
     <p class="sec-note">어느 에픽에도 속하지 않지만 체크포인트의 통과 조건으로 작동합니다. tack의 부채는 런타임 버그가 아니라 <strong>기록이 현실과 어긋나는 것</strong>입니다 — 다음 판단의 입력이 오염됩니다.</p>
 
     <div class="debt-grid">
-      <div class="debt-card high">
-        <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">로드맵 ✅ 4건이 실제와 불일치</span>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">로드맵 ✅ 4건 불일치 — 원본 문서 대체로 해소</span>
+          <span class="debt-num">근거 <code>b7018c2</code></span></div>
+        <div class="debt-body">E1-S3·E1-S4·E2-S3·E4-S4를 완료로 표기하고 완료된 E1-S6은 행이 없던 <code>docs/roadmap.md</code>는 2026-07-27 이 페이지로 대체되며 삭제됐습니다. 잘못된 기록은 더 남아 있지 않습니다 — 네 건은 이제 <strong>미착수 backlog</strong>일 뿐입니다(E1-S3·E1-S4 · <a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 · E4-S4).</div>
+        <div class="debt-gate">▸ 2026-07-27 해소 · CP3 게이트는 story 이슈 미등록 건으로 계속 열림</div>
+      </div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">문서</span><span class="debt-title">삭제된 <code>docs/roadmap.md</code>를 가리키는 참조 5곳</span>
           <span class="debt-num">추적 없음</span></div>
-        <div class="debt-body"><code>docs/roadmap.md</code>가 E1-S3·E1-S4·E2-S3·E4-S4를 완료로 표기하지만 넷 다 미구현입니다. 또 완료된 E1-S6은 표에 행 자체가 없습니다.</div>
-        <div class="debt-gate">▸ CP3 게이트 · 이 문서가 정정본</div>
+        <div class="debt-body">위 대체로 경로가 사라졌지만 참조가 남았습니다 — <code>README.md:46</code>, <code>CLAUDE.md:11</code>·<code>AGENTS.md:7</code>(git-미추적 배포 사본), <code>harness-audit.js:325-328</code>(<code>template/</code>·루트 두 사본), 이 페이지 footer의 "설계 정본"(이번 갱신에서 수정). 감사 체크 <code>eval-roadmap</code>이 실패해 Eval Coverage에서 2점이 빠집니다(현재 8/10).</div>
+        <div class="debt-gate">▸ 이슈 승격 후보 · 경로를 <code>docs/roadmap/</code>로 정정하면 닫힘</div>
       </div>
       <div class="debt-card high">
         <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">story 이슈 18건 미등록</span>
@@ -999,8 +1007,8 @@
     <div class="next">
       <div class="next-card">
         <div class="next-n">01</div>
-        <div class="next-t">#17을 먼저 연다</div>
-        <div class="next-d">CP1의 두 잔여 중 선행입니다. 선행 조건(#15·#16·#19)이 전부 닫혀 있어 지금 착수 가능하고, B6 골격·2단 리뷰가 여기서 처음 실물로 검증됩니다.</div>
+        <div class="next-t">#17을 끝까지 민다</div>
+        <div class="next-d">CP1의 두 잔여 중 선행이며 이미 격리 worktree에서 <code>impl</code> Story 8까지 와 있습니다. B6 골격·2단 리뷰가 여기서 처음 실물로 검증됩니다 — 남은 것은 잔여 Story와 review·verify입니다.</div>
       </div>
       <div class="next-card">
         <div class="next-n">02</div>
@@ -1010,14 +1018,14 @@
       <div class="next-card">
         <div class="next-n">03</div>
         <div class="next-t">원장을 현실에 맞춘다 (병행)</div>
-        <div class="next-d">닫기 누락 4건(#14·#16·#5·#7)은 해소했습니다. 남은 것은 미등록 story 18건 mint와 로드맵 ✅ 4건 정정 — 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다. 만든 도구의 첫 실사용이기도 합니다.</div>
+        <div class="next-d">닫기 누락 4건(#14·#16·#5·#7)과 로드맵 ✅ 4건 표기는 해소됐고, 2026-07-28 재점검에서 <strong>완료됐는데 열린 채인 이슈는 없었습니다</strong>. 남은 것은 미등록 story 18건 mint와 끊긴 <code>docs/roadmap.md</code> 참조 정리 — 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다.</div>
       </div>
     </div>
   </section>
 
   <footer>
-    <span>출처: GitHub 이슈 #1~#39 + sub-issue 계층 (2026-07-27)</span>
-    <span>설계 정본: docs/roadmap.md · docs/dossier/</span>
+    <span>출처: GitHub 이슈 #1~#40 + sub-issue 계층 (2026-07-28 재점검)</span>
+    <span>설계 정본: docs/dossier/ · 진행 원장은 이 페이지</span>
     <span>구현 명세: docs/specs/</span>
     <span>완료 판정: docs/_local/done/ 아카이브 + 머지된 PR</span>
     <span>체크포인트 3종은 로드맵 §2.5·§2 착수 순서에서 도출한 판단</span>
@@ -1051,7 +1059,7 @@
 
     ["15", 3, "done", 300, 70,  "E3-S1 5-tier 스킬 분류 체계", "flow/wf/adapter/stack/meta"],
     ["16", 3, "done", 300, 145, "E3-S2 hub 단계 flow-spec/flow-plan", "완료"],
-    ["17", 3, "todo", 300, 220, "E3-S4 impl · review · verify", "CP1 잔여 — 지금 착수 가능"],
+    ["17", 3, "wip",  300, 220, "E3-S4 impl · review · verify", "CP1 잔여 — impl 진행 중"],
     ["18", 3, "todo", 300, 290, "E3-S5 docs · pr · done", "CP1 잔여 — #17 이후"],
 
     ["CP1", 9, "gate", 430, 220, "CP1 자체 하네스 전환점", "tack이 tack으로 개발 시작"],
@@ -1075,7 +1083,7 @@
 
   var MS_NAME = ["E1 저장소·Copier", "E2 상태 머신", "E7 환경", "E3 flow 파이프라인",
                  "CP1 이후", "E8 개선 라인"];
-  var ST_NAME = { done: "완료", wip: "부분 완료", todo: "미착수", dbt: "문서 부채", gate: "체크포인트" };
+  var ST_NAME = { done: "완료", wip: "진행 중", todo: "미착수", dbt: "문서 부채", gate: "체크포인트" };
 
   var map = {};
   N.forEach(function (n) {
