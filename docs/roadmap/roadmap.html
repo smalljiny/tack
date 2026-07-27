@@ -633,8 +633,8 @@
         <div class="s-k">병행 가능한 작업</div>
         <div class="s-t">원장 정합 + E2-S3</div>
         <ul class="s-list">
-          <li><a href="https://github.com/smalljiny/tack/issues/14">#14</a>·<a href="https://github.com/smalljiny/tack/issues/16">#16</a> 닫기 — 완료됐는데 열려 있음</li>
           <li>미등록 story 이슈 mint (18건)</li>
+          <li>로드맵 ✅ 4건 정정 (E1-S3·S4 · E2-S3 · E4-S4)</li>
           <li><a href="https://github.com/smalljiny/tack/issues/13">#13</a> E2-S3 config 스키마 + 위험 tier 필드</li>
         </ul>
       </div>
@@ -676,7 +676,7 @@
       <h2>에픽 상세</h2>
       <span class="sec-tag">epics · stories · gates</span>
     </div>
-    <p class="sec-note">이슈의 열림/닫힘만으로는 판단할 수 없습니다 — <code>#14</code>·<code>#16</code>은 열려 있지만 완료됐고, E5·E7 일부는 완료됐지만 이슈가 없습니다. 아래는 <code>docs/_local/done/</code> 아카이브와 머지된 PR 기준입니다.</p>
+    <p class="sec-note">이슈의 열림/닫힘만으로는 판단할 수 없습니다 — E5·E7 일부는 완료됐지만 story 이슈가 없습니다(<code>#14</code>·<code>#16</code>과 epic <code>#5</code>·<code>#7</code>의 닫기 누락은 2026-07-27 정합 완료). 아래는 <code>docs/_local/done/</code> 아카이브와 머지된 PR 기준입니다.</p>
 
     <div class="track">
 
@@ -732,7 +732,7 @@
             <div class="card-top"><span class="chip d">완료</span><span class="card-title">E2-S4 meta-dev-context 계약 스킬</span>
               <a class="card-num" href="https://github.com/smalljiny/tack/issues/14">#14</a></div>
             <div class="kv"><span class="k">산출</span><span class="v">배포 스킬층 16개 콜러 Python 전환 (PR #30)</span></div>
-            <div class="kv rest"><span class="k">주의</span><span class="v">이슈가 <strong>아직 열려 있습니다</strong> — 닫기 누락</span></div>
+            <div class="kv rest"><span class="k">원장</span><span class="v">2026-07-27 <strong>이슈 닫힘</strong> — 누락 정합 완료</span></div>
           </div>
           <div class="card t">
             <div class="card-top"><span class="chip t">미착수</span><span class="card-title">E2-S3 config 스키마 + 위치</span>
@@ -790,7 +790,7 @@
             <div class="card-top"><span class="chip d">완료</span><span class="card-title">E3-S2 hub 단계 flow-spec / flow-plan</span>
               <a class="card-num" href="https://github.com/smalljiny/tack/issues/16">#16</a></div>
             <div class="kv"><span class="k">산출</span><span class="v">explore 스텝 · ADDED/MODIFIED/REMOVED delta · EARS+scenario · 위험 tier 산정 (PR #32)</span></div>
-            <div class="kv rest"><span class="k">주의</span><span class="v">이슈가 <strong>아직 열려 있습니다</strong> — 닫기 누락</span></div>
+            <div class="kv rest"><span class="k">원장</span><span class="v">2026-07-27 <strong>이슈 닫힘</strong> — 누락 정합 완료</span></div>
           </div>
           <div class="card w">
             <div class="card-top"><span class="chip w">다음</span><span class="card-title">E3-S4 impl · review · verify</span>
@@ -962,11 +962,11 @@
         <div class="debt-body">미착수 13건(E1-S3/S4/S5 · E3-S3/S6 · E4×5 · E6×4 중 일부)과 <strong>이미 완료된 5건</strong>(E5-S1/S2/S3 · E7-S1 · E7-S4)이 이슈로 존재하지 않습니다. epic #4·#5·#6·#8은 sub-issue가 0건입니다.</div>
         <div class="debt-gate">▸ CP3 게이트 · E5 기능으로 자동화 가능</div>
       </div>
-      <div class="debt-card high">
-        <div class="debt-top"><span class="sev high">HIGH</span><span class="debt-title">완료 story 2건이 OPEN 상태</span>
-          <span class="debt-num"><a href="https://github.com/smalljiny/tack/issues/14">#14</a> · <a href="https://github.com/smalljiny/tack/issues/16">#16</a></span></div>
-        <div class="debt-body">E2-S4(PR #30)·E3-S2(PR #32)는 머지·아카이브까지 끝났는데 이슈가 열려 있습니다. 이슈만 보면 진행률이 실제보다 낮게 읽힙니다.</div>
-        <div class="debt-gate">▸ 즉시 처리 가능 · 코드 변경 없음</div>
+      <div class="debt-card">
+        <div class="debt-top"><span class="sev">해소</span><span class="debt-title">완료 story·epic 닫기 누락 — 정합 완료</span>
+          <span class="debt-num"><a href="https://github.com/smalljiny/tack/issues/14">#14</a> · <a href="https://github.com/smalljiny/tack/issues/16">#16</a> · <a href="https://github.com/smalljiny/tack/issues/5">#5</a> · <a href="https://github.com/smalljiny/tack/issues/7">#7</a></span></div>
+        <div class="debt-body">E2-S4(PR #30)·E3-S2(PR #32)와 story가 전부 완료된 epic E5·E7이 열려 있어 진행률이 실제보다 낮게 읽혔습니다. 2026-07-27 근거 PR을 코멘트로 남기고 4건 모두 닫았습니다.</div>
+        <div class="debt-gate">▸ 2026-07-27 해소 · 코드 변경 없음</div>
       </div>
       <div class="debt-card">
         <div class="debt-top"><span class="sev">문서</span><span class="debt-title">harness-guide 스킬 개수 불일치</span>
@@ -1010,7 +1010,7 @@
       <div class="next-card">
         <div class="next-n">03</div>
         <div class="next-t">원장을 현실에 맞춘다 (병행)</div>
-        <div class="next-d">#14·#16 닫기, 미등록 story 18건 mint, 로드맵 ✅ 4건 정정. 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다 — 만든 도구의 첫 실사용이기도 합니다.</div>
+        <div class="next-d">닫기 누락 4건(#14·#16·#5·#7)은 해소했습니다. 남은 것은 미등록 story 18건 mint와 로드맵 ✅ 4건 정정 — 코드 작업과 충돌하지 않고, E5 기능으로 대부분 자동화됩니다. 만든 도구의 첫 실사용이기도 합니다.</div>
       </div>
     </div>
   </section>
@@ -1043,14 +1043,14 @@
 
     ["11", 1, "done", 175, 70,  "E2-S1 7-phase 상태 머신 ★", "전환표 — 이후 flow 전부의 선행"],
     ["12", 1, "done", 175, 145, "E2-S2 dev-context 엔진 Python port", "6 서브커맨드 CLI · 원자적 쓰기"],
-    ["14", 1, "done", 175, 220, "E2-S4 meta-dev-context 계약 스킬", "완료 · 이슈 닫기 누락"],
+    ["14", 1, "done", 175, 220, "E2-S4 meta-dev-context 계약 스킬", "완료"],
     ["13", 1, "todo", 175, 295, "E2-S3 config 스키마 + 위치", "위험 tier 필드 — E8 선행"],
 
     ["19", 2, "done", 300, 355, "E7-S2 에이전트 로스터", "11 에이전트 · 2단 리뷰 역할"],
     ["27", 2, "done", 175, 370, "E7-S3 컴포넌트 작성 표준", "prompt-authoring 7규칙"],
 
     ["15", 3, "done", 300, 70,  "E3-S1 5-tier 스킬 분류 체계", "flow/wf/adapter/stack/meta"],
-    ["16", 3, "done", 300, 145, "E3-S2 hub 단계 flow-spec/flow-plan", "완료 · 이슈 닫기 누락"],
+    ["16", 3, "done", 300, 145, "E3-S2 hub 단계 flow-spec/flow-plan", "완료"],
     ["17", 3, "todo", 300, 220, "E3-S4 impl · review · verify", "CP1 잔여 — 지금 착수 가능"],
     ["18", 3, "todo", 300, 290, "E3-S5 docs · pr · done", "CP1 잔여 — #17 이후"],
 
