@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 name: flow-review
 description: Perform a final full code review. On high-tier topics, runs a stage-1 architect structural verdict that locks the layout before stage-2 code-reviewer and security-reviewer, auto-promotes adversarial review, and gates completion on user approval; otherwise runs both reviewers in parallel with adversarial review opt-in.
 origin: harness
@@ -184,7 +184,7 @@ architect 에이전트를 단독으로 호출한다. code-reviewer·security-rev
 
 **`lock == blocked`** → stage 2를 실행하지 않는다. 정지하기 **전에** Step 9의 형식으로 stage-1-only review-report를 작성한다 — Reviewers 표는 `architect (stage 1)` = `run`, `code-reviewer`·`security-reviewer`·`adversarial-review` = `skipped` (skipReason `stage-1 blocked`). 이 파일이 다음 실행의 재개 지점 입력이며, 보류 상태에서도 stage-1 원문과 lock 값이 보존돼 재실행 비용이 줄어든다.
 
-이 경로에서는 Step 6·7·8이 실행되지 않으므로 나머지 섹션은 다음과 같이 채운다: `## Code Review`·`## Security Review`·`## Adversarial Review` 본문은 각각 `skipped: stage-1 blocked`, `## 처리 내역` 표는 stage-1 FAIL 문항을 `reviewer` = `architect (stage 1)`, `severity` = `HIGH`, `status` = `deferred`로 채운다.
+이 경로에서는 Step 6·7·8이 실행되지 않으므로 나머지 섹션은 다음과 같이 채운다: `## Tier Notes`는 Step 4.5에서 산출한 노트를 그대로 적고 노트가 없으면 `—`를 적는다, `## Code Review`·`## Security Review`·`## Adversarial Review` 본문은 각각 `skipped: stage-1 blocked`, `## 처리 내역` 표는 stage-1 FAIL 문항을 `reviewer` = `architect (stage 1)`, `severity` = `HIGH`, `status` = `deferred`로 채운다.
 
 보고서를 쓴 뒤 다음을 출력하고 정지한다:
 
@@ -360,7 +360,7 @@ severity가 명시되지 않은 adversarial-review 이슈(설계 challenge 등)�
 ## Architecture Review (stage 1)
 <architect 원문 출력 — 8문항 판정 + 근거>
 
-lock: locked \| blocked
+lock: locked \| blocked        (`topicTier == high`인 보고서에만 적고, 그 외에는 이 라인을 생략한다)
 
 ## Tier Notes
 <tier 이상값·필드 부재 노트 한 줄씩, 없으면 "—">

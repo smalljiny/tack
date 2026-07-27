@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 name: flow-impl
 description: Execute Stories from the implementation plan. Supports `--all` for sequential batch execution of all remaining Stories. Invokes the Story-Type-appropriate agent (tdd-specialist, prompt-engineer, refactor-cleaner) and code-reviewer per Story. Stops after one Story by default; `--all` or `config.dev_impl.batch_mode=true` runs all remaining Stories sequentially.
 origin: harness
@@ -280,10 +280,11 @@ Immediately review the Story code:
   - 텍스트 검색: `grep`, `rg`, `head`, `tail`, `cat`, `wc`
   - Git read-only: `git diff`, `git log`, `git show`, `git status`, `git branch`
   - Criterion이 백틱 리터럴로 명시한 read-only 명령 (예: `node --test`, `bash -n`, `tsc --noEmit`, `mypy --cache-dir=/dev/null`, `node --check`). 호출 전 다음 mutating 토큰이 인자에 없는지 확인하고, 하나라도 발견되면 Bash 호출을 거부한다: `-delete`, `-exec`, `-execdir`, `-ok`, `>`, `>>`, `rm`, `mv`, `cp`, `chmod`, `chown`, `|` (외부 명령 파이프).
-  - entry 모듈 import 스모크는 아래 두 형태만 허용한다. 인터프리터 인라인 payload는 셸을 거치지 않아 위 mutating 토큰 검사가 닿지 않으므로, 토큰 대신 payload 형태를 제한한다.
-    - `python3 -c "import <module>"` — `<module>`은 `[A-Za-z_][A-Za-z0-9_.]*`에 일치하는 단일 모듈 경로.
-    - `node -e "import('<entry>').catch(e=>{console.error(e);process.exit(1)})"` — `<entry>`는 파일 경로 리터럴. `.catch` 없이 호출하면 import 실패가 unhandled rejection이 되어 종료 코드가 Node 버전에 따라 달라진다.
-    - payload에 `;`, 개행, `__import__`, `open(`, `exec`, `eval`, `require(` 중 하나라도 있으면 Bash 호출을 거부한다.
+  - entry 모듈 import 스모크는 아래 두 템플릿만 허용한다. 인터프리터 인라인 payload는 셸을 거치지 않아 위 mutating 토큰 검사가 닿지 않으므로, 토큰 대신 payload 형태를 제한한다. payload는 두 템플릿과 정확히 일치해야 하며 `<module>`·`<entry>` 치환 외의 변형을 허용하지 않는다.
+    - `python3 -c "import <module>"` — `<module>`은 `^[A-Za-z_][A-Za-z0-9_.]*$`에 전체 일치하는 단일 모듈 경로.
+    - `node -e "import('<entry>').catch(e=>{console.error(e);process.exit(1)})"` — `<entry>`는 `^[A-Za-z0-9_./-]+$`에 전체 일치하는 파일 경로 (leading `-`와 `..` 시퀀스는 거부). `.catch` 없이 호출하면 import 실패가 unhandled rejection이 되어 종료 코드가 Node 버전에 따라 달라진다.
+    - 1차 방어는 템플릿 일치 + 위 전체 일치 정규식이다. 치환값이 정규식에 전체 일치하지 않으면 Bash 호출을 거부한다.
+    - 2차 방어는 치환값 denylist다 — `<module>`·`<entry>` 치환값에 `;`, 개행, 백틱, `$(`, `"`, `'`, `__import__`, `open(`, `exec`, `eval`, `require(` 중 하나라도 있으면 Bash 호출을 거부한다. 이 검사는 치환값에만 적용하며 템플릿 리터럴 자체에는 적용하지 않는다.
 - **빌드·테스트 결과 재사용**: Step 5에서 실행된 빌드·테스트 명령(예: `npm test`, `npm run build`, `jest`, `pytest`, 그리고 `scaffold` Story의 정적 검사·entry 모듈 import 스모크)의 결과는 재실행하지 않고 Step 5 보고 메시지의 마지막 결과 라인(GREEN 확인 라인 / 종료 코드 / stdout 마지막 줄)을 인용해 판정한다.
 - **금지**: 파일·환경 변경, 패키지 설치, 네트워크 호출, 위 mutating 토큰을 포함하는 명령. 이들 명령이 필요한 Criterion은 Bash로 실행하지 않고 Read 도구 + Step 5 증거로 판정한다.
 - **판정 증거 부재**: Read 도구·Step 5 증거·허용 명령으로도 판정할 수 없으면 FAIL 처리하고 사유에 `evidence-not-available`을 명시한다.

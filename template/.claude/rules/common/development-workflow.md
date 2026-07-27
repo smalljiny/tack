@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 ---
 # Development Workflow
 
@@ -41,7 +41,7 @@ This rule extends the feature implementation workflow from git-workflow.md.
 - Progress one Story at a time in order
 - First Story: transitions to `impl:in-progress`
 - Story Type branch: `scaffold` type Stories skip tdd-specialist — write signatures, types, call/event chain wiring, and throwing stubs, then judge completion by the language-specific static check plus an entry-module import smoke (canonical table: `.tack/contracts/implementation-plan.md` `### scaffold 완료 판정 (언어별)`)
-- 1. **tdd-specialist** auto-called → RED-GREEN-REFACTOR cycle
+- 1. **tdd-specialist** auto-called on every non-`scaffold` Story Type → RED-GREEN-REFACTOR cycle
 - 2. Immediately after implementation, **code-reviewer** auto-called → instant feedback + fixes
 - 3. Commit
 

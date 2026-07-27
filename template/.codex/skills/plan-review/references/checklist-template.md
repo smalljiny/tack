@@ -61,7 +61,7 @@ Final decision rules:
   Story Type 값이 열거형 `tdd|config|infra|refactor|prompt|scaffold` 외 (`docs`·`feat`·`chore` 등 Commit type 포함)이면 즉시 FAIL.
   Mismatch between stated type and table trigger → FAIL.
 
-  `scaffold` carve-out — `high` tier `tdd`·`refactor` Story는 선행 `scaffold` Story 유무와 무관하게 골격 의례 위반으로 FAIL 처리하지 않는다.
+  `scaffold` carve-out — 선행 `scaffold` Story를 가진 `high` tier `tdd`·`refactor` Story는 골격 의례 충족으로 간주한다. 자기 자신의 scaffold Story가 없다는 이유로 FAIL 처리하지 않는다.
   또한 `Type: scaffold`로 선언된 Story는 위 표의 관계형 트리거(분해 산물)로 판정하며, 확장자 트리거(`tdd`/`refactor` 행)와의 mismatch만으로 FAIL 처리하지 않는다.
 
   For `prompt` type Stories — additional validation (spec §3.5):

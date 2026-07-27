@@ -34,7 +34,7 @@ The latest review report is determined by descending filename sort.
 ## Architecture Review (stage 1)
 <architect 원문 출력 — 8문항 판정 + 근거 한 줄, 또는 "skipped: <skipReason>">
 
-lock: locked \| blocked
+lock: locked \| blocked        (`topicTier == high`인 보고서에만 적고, 그 외에는 이 라인을 생략한다)
 
 ## Tier Notes
 <tier 이상값·필드 부재 노트 한 줄씩, 없으면 "—">
