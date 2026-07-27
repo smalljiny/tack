@@ -1,7 +1,7 @@
 ---
-version: 5
+version: 6
 name: flow-review
-description: Perform a final full code review. On high-tier topics, runs a stage-1 architect structural verdict that locks the layout before stage-2 code-reviewer and security-reviewer; otherwise runs both in parallel. Adversarial review follows sequentially (opt-in).
+description: Perform a final full code review. On high-tier topics, runs a stage-1 architect structural verdict that locks the layout before stage-2 code-reviewer and security-reviewer, auto-promotes adversarial review, and gates completion on user approval; otherwise runs both reviewers in parallel with adversarial review opt-in.
 origin: harness
 user-invocable: true
 ---
@@ -241,7 +241,11 @@ stage 1부터 재실행됩니다.
 
 CRITICAL·HIGH 수정이 완료된 후 실행한다 (정제된 상태를 대상으로 해야 adversarial 피드백이 유효).
 
-**활성화 조건** — 아래 순서로 평가하고 첫 매치만 적용 (미정의/빈값은 false로 취급):
+**활성화 조건**:
+
+```
+(topicTier == high OR adversarial_enabled == true) AND codex.available AND codex.authenticated
+```
 
 ```bash
 python3 .tack/scripts/dev_context.py read --field=config.review.adversarial_enabled
@@ -249,12 +253,16 @@ python3 .tack/scripts/dev_context.py read --field=config.codex.available
 python3 .tack/scripts/dev_context.py read --field=config.codex.authenticated
 ```
 
-1. `adversarial_enabled`이 false이거나 미정의 → `skipReason="disabled"` (조용히 skip, 경고 없음)
+아래 순서로 평가하고 첫 매치만 적용한다 (미정의/빈값은 false로 취급). `topicTier`는 Step 4.5에서 산출한 값이다.
+
+1. `topicTier != high` AND `adversarial_enabled`이 false이거나 미정의 → `skipReason="disabled"` (조용히 skip, 경고 없음)
 2. `codex.available`이 false이거나 미정의 → `skipReason="codex unavailable"` (경고 출력)
 3. `codex.authenticated`이 false이거나 미정의 → `skipReason="codex not authenticated"` (경고 출력)
-4. 모두 true → 아래 실행 흐름 진행
+4. 그 외 → 아래 실행 흐름 진행
 
-활성화 방법 (기본값 false, 명시적 opt-in 필요):
+`topicTier == high`이면 1번 항목을 통과하므로 adversarial 리뷰가 자동 승격된다. `config.review.adversarial_enabled`는 `low`·`normal` 토픽의 수동 승격 채널로 존속한다.
+
+`low`·`normal` 토픽의 활성화 방법 (기본값 false, 명시적 opt-in 필요):
 ```bash
 python3 .tack/scripts/dev_context.py set-field \
   --field=config.review.adversarial_enabled --value=true
@@ -371,6 +379,41 @@ lock: locked \| blocked
 | issue | severity | reviewer | status |
 |---|---|---|---|
 | <issueSummary> | <severity> | <reviewer> | <status> |
+```
+
+### 9.5. Human Gate (`topicTier == high`)
+
+`topicTier == high`인 토픽에서만, review-report 파일 작성(Step 9)을 마친 뒤 완료 보고(Step 10) 직전에 1회 실행한다. `topicTier ∈ {low, normal}`이면 이 단계를 건너뛰고 Step 10으로 진행한다. `/flow-impl`의 배치 루프와 무관한 단계이며, 리뷰 1회당 1회만 발동한다.
+
+`lock: blocked` 경로(Step 5-B)에서는 이 단계가 발동하지 않는다 — 그 경로는 stage-1-only 보고서를 쓴 뒤 Step 5-B에서 정지하며 Step 9·9.5·10에 도달하지 않는다.
+
+**호출 트리거**: 위 조건이 성립하면 `AskUserQuestion`을 다음 형태로 호출한다. 도구가 제공되지 않아 호출이 실패하면 아래 headless fail-safe 분기로 진행한다.
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "high tier 토픽의 리뷰가 완료됐습니다 (CRITICAL <N> / HIGH <N>, adversarial: <run|skipped(<skipReason>)>, 보고서: <path>). 다음 단계로 진행할까요?",
+    header: "리뷰 승인",
+    multiSelect: false,
+    options: [
+      { label: "승인 (Recommended)", description: "리뷰 결과를 승인하고 완료 보고를 출력합니다" },
+      { label: "보류", description: "review:in-progress 상태를 유지하고 여기서 정지합니다" }
+    ]
+  }]
+})
+```
+
+- **승인** → Step 10으로 진행한다.
+- **보류** → 토픽 상태를 `review:in-progress`로 유지하고 정지한다. 상태 전환을 실행하지 않는다.
+
+**headless·CI 환경 fail-safe**: `AskUserQuestion` 호출이 실패하면 승인 없이 진행하지 않는다. 다음을 출력하고 정지한다:
+
+```
+high tier 토픽은 완료 전 사용자 승인이 필요하지만 대화형 승인을 사용할 수 없는 환경입니다.
+보고서: .tack/local/active/<topic>/review-report-<YYMMDDHHmmss>.md
+
+보고서는 이미 작성돼 있으므로 대화형 세션에서 /flow-review를 다시 실행해도
+stage 1은 재실행되지 않습니다 (lock: locked 재사용). stage 2와 adversarial은 재실행됩니다.
 ```
 
 ### 10. Completion Report
