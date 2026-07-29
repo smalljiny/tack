@@ -335,7 +335,16 @@ function runScript(shell, script, dir = scratchDir()) {
  */
 function runBlock(
   block,
-  { shell, kind, seeds, creates, nestedCreates = null, execExit = 0, bindKind = true },
+  {
+    shell,
+    kind,
+    seeds,
+    creates,
+    nestedCreates = null,
+    execExit = 0,
+    bindKind = true,
+    bindCanon = true,
+  },
 ) {
   const dir = scratchDir()
   const canonPath = join(dir, 'spec.md')
@@ -358,8 +367,9 @@ function runBlock(
   // REVIEW_KIND는 스킬 Step 2가 바인딩하는 변수다. 여기서 주입해야 Parsing 블록의
   // `PATTERN` 파생이 두 phase 모두에서 검증된다. `bindKind: false`는 Step 2와 다른 셸
   // 호출로 이 블록을 실행한 상황을 재현한다 (셸 상태는 호출 간에 유지되지 않는다).
+  const canonLine = bindCanon ? `CANON_PATH=${JSON.stringify(canonPath)}\n` : ''
   const kindLine = bindKind ? `REVIEW_KIND=${JSON.stringify(kind)}\n` : ''
-  const preamble = `CANON_PATH=${JSON.stringify(canonPath)}\n${kindLine}`
+  const preamble = `${canonLine}${kindLine}`
   const script = `${preamble}${stubCodexExec(block, stubLines.join('\n'))}`
 
   return { ...runScript(shell, script, dir), newFilePath }
@@ -449,22 +459,23 @@ describe('codex 호출 지점은 한 곳이다', () => {
   // BEFORE 스냅샷이 Parsing 블록 안에서 찍히므로 `comm -13`은 여전히 1건을 돌려준다 —
   // 탐지 로직만으로는 이중 실행이 관측되지 않으므로 호출 지점 수를 직접 고정한다.
   test('자동 판정 플로우의 codex exec 호출은 Parsing 블록 안에만 있다', () => {
-    // `### Isolation via DEV_CONTEXT_PATH`는 fixture dev-context로 수동 실험할 때 쓰는
-    // 예시이고 호출자가 따르는 절 순서에 들어 있지 않으므로 스코프에서 뺀다.
+    // 제외는 **위치** 기준이다. 줄 내용으로 제외하면 정본 두 줄을 그대로 복사해 다른 절에
+    // 되붙이는 회귀 — 이 게이트가 막아야 할 가장 자연스러운 형태 — 가 통과해 버린다.
+    // `Isolation via DEV_CONTEXT_PATH`는 fixture dev-context로 수동 실험할 때 쓰는 예시이고
+    // Execution Sequence에 들어 있지 않으므로 스코프에서 뺀다.
     const text = read(CANON_SKILL)
-    const parsing = parsingBlock(text).split('\n')
-    const isolation = sectionUnderHeading(text, ISOLATION_ANCHOR)
-    assert.ok(isolation, '`### Isolation via DEV_CONTEXT_PATH` 절을 찾지 못했다')
-    const isolationLines = isolation.split('\n')
+    const ranges = [PARSING_ANCHOR, ISOLATION_ANCHOR].map((anchor) => {
+      const range = sectionRange(text, anchor)
+      assert.ok(range, `${anchor} 절을 찾지 못했다`)
+      return range
+    })
+    const inAllowedSection = (no) => ranges.some(({ start, end }) => no > start && no <= end)
 
     const callsOutside = allBashBlocks(text)
       .flatMap((block) => block.lines.map((line, i) => ({ line, no: block.startLine + i })))
-      .filter(
-        ({ line }) =>
-          isCodexExecCall(line) && !parsing.includes(line) && !isolationLines.includes(line),
-      )
+      .filter(({ line, no }) => isCodexExecCall(line) && !inAllowedSection(no))
 
-    assert.deepStrictEqual(callsOutside, [], `Parsing 블록 밖 호출: ${JSON.stringify(callsOutside)}`)
+    assert.deepStrictEqual(callsOutside, [], `허용 절 밖 호출: ${JSON.stringify(callsOutside)}`)
   })
 
   test('Parsing 블록의 호출은 TIMEOUT_BIN 분기 2줄뿐이고 -s workspace-write를 유지한다', () => {
@@ -514,25 +525,33 @@ describe('Step 2 phase 라우팅 블록 (REVIEW_KIND 생산자)', () => {
   }
 })
 
-describe('REVIEW_KIND 미바인딩은 조용히 실패하지 않는다', () => {
-  // Step 2와 Parsing 블록이 다른 Bash 호출로 실행되면 REVIEW_KIND가 비어 PATTERN이
-  // '-*.md'가 된다. 가드가 없으면 find가 아무것도 매치하지 않아 "No new review file found"로
-  // 끝나는데, 이는 이 토픽이 고치려던 버그와 증상·stderr가 동일하다.
-  for (const shell of ['zsh', 'bash']) {
-    test(`${shell} — unbound REVIEW_KIND는 즉시 실패한다`, () => {
-      const block = parsingBlock(read(CANON_SKILL))
-      const result = runBlock(block, {
-        shell,
-        kind: 'spec-review',
-        seeds: [],
-        creates: 'READY',
-        bindKind: false,
-      })
+describe('선행 단계 미바인딩은 조용히 실패하지 않는다', () => {
+  // Parsing 블록을 선행 절과 다른 Bash 호출로 실행하면 두 변수가 빈다. 가드가 없으면
+  // PATTERN이 '-*.md'가 되거나 REVIEW_DIR가 '.'가 되어 find가 0건을 돌려주고
+  // "No new review file found"로 끝나는데, 이는 이 토픽이 고치려던 버그와 증상·stderr가
+  // 동일하다. 두 변수 모두 대칭으로 통제한다.
+  const UNBOUND = [
+    { label: 'REVIEW_KIND', opts: { bindKind: false }, expect: /REVIEW_KIND/ },
+    { label: 'CANON_PATH', opts: { bindCanon: false }, expect: /CANON_PATH/ },
+  ]
 
-      assert.notStrictEqual(result.status, 0, `stdout: ${result.stdout}`)
-      assert.match(result.stderr, /REVIEW_KIND/)
-      assert.doesNotMatch(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
-    })
+  for (const shell of ['zsh', 'bash']) {
+    for (const { label, opts, expect } of UNBOUND) {
+      test(`${shell} — unbound ${label}는 즉시 실패한다`, () => {
+        const block = parsingBlock(read(CANON_SKILL))
+        const result = runBlock(block, {
+          shell,
+          kind: 'spec-review',
+          seeds: [],
+          creates: 'READY',
+          ...opts,
+        })
+
+        assert.notStrictEqual(result.status, 0, `stdout: ${result.stdout}`)
+        assert.match(result.stderr, expect)
+        assert.doesNotMatch(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
+      })
+    }
   }
 })
 

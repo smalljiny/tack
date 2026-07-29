@@ -1,11 +1,24 @@
 ---
-version: 22
+version: 23
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
 ---
 
 # adapter-codex-review
+
+## Execution Sequence
+
+절을 이 순서로 하나씩 따른다. 이 문서의 시퀀스 진술은 여기 한 곳뿐이며, 호출자도 이 순서를 그대로 인용한다.
+
+```
+Auto-Detect Entry Point §1 → §2 → §3 → Availability Gate → Path Validation → Parsing the Decision
+```
+
+- **§2를 건너뛰지 않는다** — `REVIEW_KIND`의 유일한 생산자이고, `Parsing the Decision`이 소비 직전에 검증해 미바인딩이면 codex를 부르기 전에 중단한다.
+- **codex 실행 지점은 `Parsing the Decision` 한 곳뿐이다** — 실행 전 파일 목록 스냅샷이 호출보다 먼저 찍혀야 새 리뷰 파일을 식별할 수 있어 두 단계를 분리하지 않는다. 다른 절에서 `codex exec`를 실행하면 리뷰 1회당 두 번 돌고 리뷰 파일도 두 개 생긴다.
+
+---
 
 ## Non-Goals
 
@@ -53,26 +66,13 @@ case "$PHASE:$STATUS" in
 esac
 ```
 
-`*)` arm은 표의 `기타` 행과 같은 판정이다 — 표에 있는 상태만 통과시키고 나머지는 여기서 끝난다.
-
-해당하지 않는 상태일 경우:
-```
-현재 상태 (<phase>:<status>)에서 adapter-codex-review를 실행할 수 없습니다.
-spec-review: /flow-spec에서 spec:reviewing 상태로 전환 후 실행하세요.
-plan-review: /flow-plan에서 plan:reviewing 상태로 전환 후 실행하세요.
-```
+`*)` arm은 표의 `기타` 행과 같은 판정이며, 그 메시지가 표에 해당하지 않는 상태에서 사용자에게 출력되는 전문이다. `REVIEW_KIND`는 이 블록에서만 만들어지고 `Parsing the Decision`이 소비하므로, 이 단계를 건너뛰면 그쪽 guard가 실행 전에 중단시킨다.
 
 ### 3. 경로 읽기·검증·정규화
 
-```bash
-# spec-review인 경우
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
+`Path Validation` 절의 명령을 phase에 맞는 `<field>`로 실행한다 (`spec-review` → `spec`, `plan-review` → `plan`).
 
-# plan-review인 경우
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
-```
-
-실패(비-0 exit) 시 즉시 중단. 성공 시 **사용자 확인 없이** Availability Gate → Invocation Pattern 순으로 바로 진행한다.
+실패(비-0 exit) 시 즉시 중단.
 
 ---
 
@@ -116,33 +116,18 @@ CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=<field
 # 오류 시 비-0 exit + stderr 출력
 ```
 
+| REVIEW_KIND | `--field` |
+|---|---|
+| `spec-review` | `spec` |
+| `plan-review` | `plan` |
+
 `$CANON_PATH`를 이후 `Parsing the Decision` 시퀀스의 `codex exec` 프롬프트와 `REVIEW_DIR` 계산에 사용한다.
 
 **Security scope**: 경로를 리포지터리 로컬로 제한. `workspace-write` 샌드박스가 `codex exec` 작업 범위를 추가로 제한한다.
 
 ---
 
-## Invocation Pattern
-
-이 절은 phase별 `CANON_PATH`만 해결한다. **`codex exec` 실행은 `Parsing the Decision`의 시퀀스가 수행하며, 이 문서에서 codex를 실행하는 지점은 그 한 곳뿐이다.** 실행 전 파일 목록 스냅샷이 `codex exec`보다 먼저 찍혀야 새 파일을 식별할 수 있으므로 두 단계를 분리하지 않는다. 이 절과 `Parsing the Decision`을 각각 실행하면 리뷰 1회당 codex가 두 번 돌아간다.
-
-### spec-review
-
-```bash
-# Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
-```
-
-### plan-review
-
-```bash
-# Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
-```
-
-`$CANON_PATH`를 이후 `Parsing the Decision` 시퀀스의 `codex exec` 프롬프트와 `REVIEW_DIR` 계산에 사용한다.
-
-### Isolation via DEV_CONTEXT_PATH
+## Isolation via DEV_CONTEXT_PATH
 
 To run experiments without mutating the active development topic, point `DEV_CONTEXT_PATH`
 to a fixture dev-context file inside the repo (e.g. `.tack/local/.../fixture/`):
@@ -191,7 +176,7 @@ codex exec 실행 전후로 파일 목록을 비교해 새로 생성된 리뷰 �
 # Guard: 선행 단계가 바인딩하는 두 변수를 소비 직전에 검증한다. 이 블록을 Step 2·Path
 # Validation과 다른 셸 호출로 실행하면 둘 다 비는데, 그 경우 PATTERN이 '-*.md'가 되거나
 # REVIEW_DIR가 '.'가 되어 매치 0건으로 끝난다 — 이 어댑터가 고쳐 온 버그와 증상이 같다.
-case "$REVIEW_KIND" in
+case "${REVIEW_KIND-}" in
   spec-review|plan-review) ;;
   *)
     echo "REVIEW_KIND must be spec-review or plan-review (got: '$REVIEW_KIND') — Step 2를 먼저 실행하세요" >&2

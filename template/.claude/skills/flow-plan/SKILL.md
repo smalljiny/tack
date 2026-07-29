@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 name: flow-plan
 description: Create an implementation plan from a confirmed spec. Moves topic from backlog to active, updates paths in dev-context.json, and generates implementation-plan.md.
 origin: harness
@@ -199,7 +199,7 @@ Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
 
 1. **Availability Gate**: read `config.codex.available` and `config.codex.authenticated` from `dev-context.json`. If either is not `true`: show **Manual Fallback** (below) and stop.
 
-2. Load `.claude/skills/adapter-codex-review/SKILL.md` and follow its Availability Gate → Path Validation → Invocation Pattern (plan-review) → Parsing the Decision sections. The skill reads the current phase/status from `dev-context.json` and invokes `codex exec -s workspace-write "plan-review 스킬을 실행해줘"`.
+2. Load `.claude/skills/adapter-codex-review/SKILL.md` and follow the sequence stated in its `## Execution Sequence` section. The skill reads the current phase/status from `dev-context.json`, derives `REVIEW_KIND=plan-review` from it, and invokes `codex exec -s workspace-write "plan-review 스킬로 <canon-path>를 리뷰해줘"` at its single call site.
 
    **If the skill exits without producing a new `plan-review-*.md`** (internal Availability Gate failure, `codex exec` non-zero exit, or sandbox-blocked write): show **Manual Fallback** (below) and stop.
 
