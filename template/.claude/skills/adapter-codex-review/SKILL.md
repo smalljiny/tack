@@ -1,5 +1,5 @@
 ---
-version: 17
+version: 18
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -193,14 +193,14 @@ PATTERN='spec-review-*.md'
 REVIEW_DIR="$(dirname "$CANON_PATH")"   # canonicalized file path → its containing dir
 
 # 1. 실행 전 파일 목록 기록
-BEFORE_FILES=$(ls "$REVIEW_DIR"/$PATTERN 2>/dev/null | sort)
+BEFORE_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 
 # 2. codex exec 실행
 codex exec "spec-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
 EXEC_EXIT=$?
 
 # 3. 실행 후 파일 목록과 비교 → 새 파일 = after - before
-AFTER_FILES=$(ls "$REVIEW_DIR"/$PATTERN 2>/dev/null | sort)
+AFTER_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 REVIEW_FILE=$(comm -13 <(echo "$BEFORE_FILES") <(echo "$AFTER_FILES") | tail -1)
 
 # Guard: 새 파일이 없으면 실패
@@ -217,6 +217,7 @@ grep -m1 "^- Decision:" "$REVIEW_FILE"
 - `/proc` 없이 macOS에서 동작 (타임스탬프 해상도 무관)
 - 파일 존재 여부 기반이므로 신뢰성 높음
 - `comm -13` = before에 없고 after에 있는 파일 = 이번 실행으로 새로 생성된 파일
+- 셸 글롭에 의존하지 않음 — `find`가 패턴을 인자로 받아 자체 매칭하므로, 변수 치환 결과를 글롭 확장하지 않는 zsh의 동작과 무관하다
 
 Decision line format (from existing review files): `- Decision: READY` / `- Decision: NOT READY` / `- Decision: READY WITH NOTE`
 
