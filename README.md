@@ -43,7 +43,7 @@ tack은 개발 워크플로우를 상태 머신으로 만든 **배포 가능한 
 |------|------|
 | `docs/specs/` | 배포 하네스의 권위 참조 문서 (레이아웃·Copier 골격·에이전트 로스터 등) |
 | `docs/dossier/` | tack의 방향 설정 자료 (용어·아키텍처·연구·핸드오프) |
-| `docs/roadmap.md` | Epic/Story 로드맵 (무엇을 어떤 순서로) |
+| `docs/roadmap/` | Epic/Story 로드맵 (무엇을 어떤 순서로) |
 | `template/` | Copier가 렌더할 배포 source 트리 |
 
 세부 사항은 각 `docs/specs/*.md`가 담당한다 — 이 README는 진입점일 뿐이다.

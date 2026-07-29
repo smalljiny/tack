@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: meta-harness-audit
 description: Run a deterministic harness health audit and return a prioritized scorecard. User-invocable via /meta-harness-audit.
 origin: harness
@@ -16,7 +16,7 @@ Scores the harness across 7 categories and lists the top actions to improve it.
 /meta-harness-audit [scope] [--format text|json]
 ```
 
-- `scope`: `repo` (default) · `hooks` · `skills` · `commands` · `agents`
+- `scope`: `repo` (default) · `hooks` · `skills` · `agents`
 - `--format`: `text` (default) · `json` for automation
 
 ## Execution

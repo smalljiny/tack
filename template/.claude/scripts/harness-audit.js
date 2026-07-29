@@ -6,7 +6,7 @@
  * Usage:
  *   node .claude/scripts/harness-audit.js [scope] [--format text|json] [--root path]
  *
- * Scope: repo (default) | hooks | skills | commands | agents
+ * Scope: repo (default) | hooks | skills | agents
  */
 
 import fs from 'node:fs';
@@ -58,7 +58,7 @@ function parseArgs(argv) {
 
 function normalizeScope(s) {
   const v = (s || 'repo').toLowerCase();
-  if (!['repo', 'hooks', 'skills', 'commands', 'agents'].includes(v))
+  if (!['repo', 'hooks', 'skills', 'agents'].includes(v))
     throw new Error(`Invalid scope: ${s}`);
   return v;
 }
@@ -206,31 +206,31 @@ function getChecks(root) {
       id: 'quality-verify-command',
       category: 'Quality Gates',
       points: 3,
-      scopes: ['repo', 'commands'],
-      path: '.claude/commands/dev/verify.md',
-      description: '/dev:verify command exists',
-      pass: exists(root, '.claude/commands/dev/verify.md'),
-      fix: 'Add .claude/commands/dev/verify.md as a pre-PR gate.',
+      scopes: ['repo', 'skills'],
+      path: '.claude/skills/flow-verify/SKILL.md',
+      description: '/flow-verify skill exists',
+      pass: exists(root, '.claude/skills/flow-verify/SKILL.md'),
+      fix: 'Add .claude/skills/flow-verify/SKILL.md as a pre-PR gate.',
     },
     {
       id: 'quality-review-command',
       category: 'Quality Gates',
       points: 2,
-      scopes: ['repo', 'commands'],
-      path: '.claude/commands/dev/review.md',
-      description: '/dev:review command exists',
-      pass: exists(root, '.claude/commands/dev/review.md'),
-      fix: 'Add .claude/commands/dev/review.md for code review workflow.',
+      scopes: ['repo', 'skills'],
+      path: '.claude/skills/flow-review/SKILL.md',
+      description: '/flow-review skill exists',
+      pass: exists(root, '.claude/skills/flow-review/SKILL.md'),
+      fix: 'Add .claude/skills/flow-review/SKILL.md for code review workflow.',
     },
     {
       id: 'quality-checkpoint-command',
       category: 'Quality Gates',
       points: 2,
-      scopes: ['repo', 'commands'],
-      path: '.claude/commands/dev/checkpoint.md',
-      description: '/dev:checkpoint command exists',
-      pass: exists(root, '.claude/commands/dev/checkpoint.md'),
-      fix: 'Add .claude/commands/dev/checkpoint.md for mid-session state snapshots.',
+      scopes: ['repo', 'skills'],
+      path: '.claude/skills/flow-checkpoint/SKILL.md',
+      description: '/flow-checkpoint skill exists',
+      pass: exists(root, '.claude/skills/flow-checkpoint/SKILL.md'),
+      fix: 'Add .claude/skills/flow-checkpoint/SKILL.md for mid-session state snapshots.',
     },
     {
       id: 'quality-testing-rules',
@@ -322,10 +322,10 @@ function getChecks(root) {
       category: 'Eval Coverage',
       points: 2,
       scopes: ['repo'],
-      path: 'docs/roadmap.md',
+      path: 'docs/roadmap.md | docs/roadmap/',
       description: 'Roadmap tracks component backlog',
-      pass: exists(root, 'docs/roadmap.md'),
-      fix: 'Add docs/roadmap.md to track planned harness improvements.',
+      pass: exists(root, 'docs/roadmap.md') || exists(root, 'docs/roadmap'),
+      fix: 'Add docs/roadmap.md or docs/roadmap/ to track planned harness improvements.',
     },
 
     // ── Security Guardrails ──────────────────────────────────────────────
@@ -472,7 +472,7 @@ function showHelp() {
   console.log(`
 Usage: node .claude/scripts/harness-audit.js [scope] [--format text|json] [--root path]
 
-Scopes: repo (default), hooks, skills, commands, agents
+Scopes: repo (default), hooks, skills, agents
 `);
   process.exit(0);
 }
