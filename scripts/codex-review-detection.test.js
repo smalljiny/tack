@@ -259,7 +259,9 @@ function patternValue(block, kind) {
   const raw = block.match(/^PATTERN=(?:'([^']*)'|"([^"]*)")/m)
   assert.ok(raw, '블록에서 `PATTERN=` 대입을 찾지 못했다')
   const value = raw[1] ?? raw[2]
-  return value.replace(/\$\{REVIEW_KIND\}|\$REVIEW_KIND\b/g, kind)
+  // `${REVIEW_KIND}`·`$REVIEW_KIND`뿐 아니라 `${REVIEW_KIND:?msg}` 같은 기본값 형태도
+  // 바인딩된 경우의 확장 결과로 해석한다.
+  return value.replace(/\$\{REVIEW_KIND[^}]*\}|\$REVIEW_KIND\b/g, kind)
 }
 
 /** 셸 글롭을 앵커된 정규식으로 변환한다 (파일명 shape 검증용). */
@@ -289,7 +291,10 @@ const SCRATCH_DIRS = []
  * @param nestedCreates 스텁이 하위 디렉토리에도 리뷰 파일을 만들게 한다 (깊이 경계 통제).
  * @returns {{status, stdout, stderr, dir, newFilePath}}
  */
-function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null, execExit = 0 }) {
+function runBlock(
+  block,
+  { shell, kind, seeds, creates, nestedCreates = null, execExit = 0, bindKind = true },
+) {
   const { path: shellPath, args } = SHELLS[shell]
   assert.ok(shellPath, `${shell}이 resolve되지 않았다`)
 
@@ -313,8 +318,10 @@ function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null, ex
   if (execExit !== 0) stubLines.push(`(exit ${execExit})`)
 
   // REVIEW_KIND는 스킬 Step 2가 바인딩하는 변수다. 여기서 주입해야 Parsing 블록의
-  // `PATTERN="${REVIEW_KIND}-*.md"` 파생이 두 phase 모두에서 검증된다.
-  const preamble = `CANON_PATH=${JSON.stringify(canonPath)}\nREVIEW_KIND=${JSON.stringify(kind)}\n`
+  // `PATTERN` 파생이 두 phase 모두에서 검증된다. `bindKind: false`는 Step 2와 다른 셸
+  // 호출로 이 블록을 실행한 상황을 재현한다 (셸 상태는 호출 간에 유지되지 않는다).
+  const kindLine = bindKind ? `REVIEW_KIND=${JSON.stringify(kind)}\n` : ''
+  const preamble = `CANON_PATH=${JSON.stringify(canonPath)}\n${kindLine}`
   const script = `${preamble}${stubCodexExec(block, stubLines.join('\n'))}\n`
   const scriptPath = join(dir, 'run.sh')
   writeFileSync(scriptPath, script)
@@ -407,6 +414,28 @@ describe('수정된 블록: C1·C2·C3 × zsh·bash × spec-review·plan-review'
         })
       }
     }
+  }
+})
+
+describe('REVIEW_KIND 미바인딩은 조용히 실패하지 않는다', () => {
+  // Step 2와 Parsing 블록이 다른 Bash 호출로 실행되면 REVIEW_KIND가 비어 PATTERN이
+  // '-*.md'가 된다. 가드가 없으면 find가 아무것도 매치하지 않아 "No new review file found"로
+  // 끝나는데, 이는 이 토픽이 고치려던 버그와 증상·stderr가 동일하다.
+  for (const shell of ['zsh', 'bash']) {
+    test(`${shell} — unbound REVIEW_KIND는 즉시 실패한다`, () => {
+      const block = parsingBlock(read(CANON_SKILL))
+      const result = runBlock(block, {
+        shell,
+        kind: 'spec-review',
+        seeds: [],
+        creates: 'READY',
+        bindKind: false,
+      })
+
+      assert.notStrictEqual(result.status, 0, `stdout: ${result.stdout}`)
+      assert.match(result.stderr, /REVIEW_KIND/)
+      assert.doesNotMatch(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
+    })
   }
 })
 

@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -199,14 +199,16 @@ codex exec 실행 전후로 파일 목록을 비교해 새로 생성된 리뷰 �
 ```bash
 # PATTERN은 Step 2가 바인딩한 REVIEW_KIND에서 파생된다
 # (spec-review → 'spec-review-*.md' / plan-review → 'plan-review-*.md')
-PATTERN="${REVIEW_KIND}-*.md"
+# 이 블록을 Step 2와 다른 셸 호출로 실행하면 REVIEW_KIND가 비어 PATTERN이 '-*.md'가 되고
+# 아무 파일도 매치하지 않는다. `:?`로 조용한 미탐 대신 즉시 실패시킨다.
+PATTERN="${REVIEW_KIND:?REVIEW_KIND must be bound by Step 2}-*.md"
 REVIEW_DIR="$(dirname "$CANON_PATH")"   # canonicalized file path → its containing dir
 
 # 1. 실행 전 파일 목록 기록
 BEFORE_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 
 # 2. codex exec 실행
-codex exec "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
+codex exec "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null   # -s workspace-write·timeout은 Invocation Pattern 참조
 EXEC_EXIT=$?
 
 # Guard: codex exec가 실패하면 리뷰 파일을 파싱하지 않는다.
