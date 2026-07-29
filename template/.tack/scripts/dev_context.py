@@ -51,6 +51,88 @@ def resolve_context_path():
     return os.environ.get("DEV_CONTEXT_PATH") or DEFAULT_CONTEXT_PATH
 
 
+def resolve_shared_config_path():
+    """DEV_CONFIG_PATH env override, 미설정 시 **해석된 local 경로**의 2-hop 상위.
+
+    `.tack/local/dev-context.json` → dirname 2회 → `.tack/` → `.tack/config.json`.
+
+    SCRIPT_DIR 기준으로 유도하지 않는다 — 그러면 DEV_CONTEXT_PATH로 격리된 호출자(테스트·
+    worktree)가 실제 저장소의 공유 파일을 읽고 쓰게 된다. 렌더 스모크 테스트는 env를
+    설정하지 않고 이 2-hop 유도에 의존하므로 hop 수를 바꾸지 않는다.
+    """
+    return os.environ.get("DEV_CONFIG_PATH") or os.path.normpath(
+        os.path.join(os.path.dirname(os.path.dirname(resolve_context_path())), "config.json")
+    )
+
+
+def _empty_shared_config():
+    return {"file_format": "1.0", "config": {}}
+
+
+def load_shared_config(path):
+    """공유 config 파일을 엄격하게 읽는다. `(ok, data_or_reason)`.
+
+    degrade 정책을 담지 않는다 — 부재는 `(True, 빈 층)`, 손상은 `(False, 사유)`로
+    구분해 돌려준다. 읽기 경로는 read_shared_config가 이 결과에 관대 정책을 씌우고,
+    쓰기 경로(Story 4의 read-modify-write)는 `ok=False`에서 멈춰 파싱하지 못한 tracked
+    파일을 단일 키로 덮어쓰지 않아야 한다.
+    """
+    if not os.path.exists(path):
+        return True, _empty_shared_config()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError, RecursionError) as e:
+        return False, f"읽을 수 없습니다 ({path}): {e}"
+    if not isinstance(data, dict) or not isinstance(data.get("config"), dict):
+        return False, f"형식이 올바르지 않습니다 ({path})."
+    return True, data
+
+
+def read_shared_config():
+    """tracked 공유 config(.tack/config.json)를 읽는다. 부재·손상 시 빈 층으로 degrade.
+
+    읽기는 관대하다 — 공유 파일이 없거나 깨져 있어도 die하지 않고 경고 1줄만 남긴 뒤
+    빈 층을 돌려준다. 공유 파일 하나가 워크플로 진입 전체를 막지 않게 하기 위함이다(G5).
+    """
+    ok, data = load_shared_config(resolve_shared_config_path())
+    if not ok:
+        sys.stderr.write(f"경고: 공유 config 파일을 {data} 빈 층으로 처리합니다.\n")
+        return _empty_shared_config()
+    return data
+
+
+# 미설정(양층 miss) 센티널. JSON null·빈 배열·false는 모두 유효한 local 값이므로
+# None을 miss 신호로 쓸 수 없다 — local hit(None)과 miss를 구분하려면 별도 센티널이 필요하다.
+_MISSING = object()
+
+
+def resolve_config_leaf(layers, ns, key):
+    """leaf 단위 병합: 우선순위 순 layer들을 훑어 첫 own property를 반환. 없으면 _MISSING.
+
+    `layers`는 우선순위 내림차순 iterable이다 (현재: local → shared). 값이 JSON
+    null·빈 배열·false여도 앞선 layer에 own property가 있으면 그 layer가 이긴다.
+    배열은 통째 교체이며 층을 concat하지 않는다.
+
+    iterable을 받는 이유는 스펙 §3.6의 E4 seam이다 — 런타임 공유 층(Mongo)은 tracked와
+    local 사이에 원소 하나로 삽입되며, 호출자는 generator를 넘겨 뒤쪽 layer의 획득을
+    지연시킨다(파일 열기·네트워크 호출을 앞선 layer가 답하면 수행하지 않는다).
+
+    Python dict는 상속 데이터 키가 없어 `in`이 곧 hasOwn 가드다. 예약 키는 호출 전
+    parse_config_path가 이미 거부하지만, layer는 모두 파일에서 온 신뢰 밖 데이터이므로
+    여기서도 동일하게 차단한다.
+    """
+    if ns in FORBIDDEN_CONFIG_SEGMENTS or key in FORBIDDEN_CONFIG_SEGMENTS:
+        return _MISSING
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        ns_obj = layer.get(ns)
+        if isinstance(ns_obj, dict) and key in ns_obj:
+            return ns_obj[key]
+    return _MISSING
+
+
 def _iso_now():
     """레퍼런스 new Date().toISOString()과 동일한 밀리초+Z ISO 문자열."""
     now = datetime.now(timezone.utc)
@@ -310,6 +392,31 @@ def _emit_scalar(val):
     sys.stdout.write(_js_string(val) + "\n")
 
 
+def _read_config_field(ctx, field):
+    """config 점 경로 읽기: 경로 검증 → 우선순위 층 병합 → 출력."""
+    parsed = parse_config_path(field)
+    if not parsed["ok"]:
+        # 경로 검증이 공유 파일 읽기보다 먼저다 — 깊이·예약 키 위반이 손상된 공유
+        # 파일 경고를 앞세우지 않게 한다.
+        die(f"read: {parsed['reason']}")
+    # generator로 넘겨 뒤쪽 층의 획득을 지연시킨다 — local이 답하는 읽기에서는 공유
+    # 파일을 열지 않아, 손상된 공유 파일의 경고가 무관한 읽기마다 스킬층 stdout 캡처
+    # 옆으로 반복 출력되지 않는다.
+    layers = (layer() for layer in (lambda: ctx.get("config"), lambda: read_shared_config()["config"]))
+    val = resolve_config_leaf(layers, parsed["ns"], parsed["key"])
+    if val is _MISSING:
+        # 미설정은 빈 출력이다 — 스키마 default를 합성하지 않는다 (G6).
+        val = None
+    if isinstance(val, list):
+        # 빈 배열은 join 시맨틱상 그대로 빈 줄이 되므로 미설정과 같은 출력이다.
+        # 원소를 _js_string으로 통과시켜 레퍼런스 val.join('\n')과 파리티를 맞춘다 —
+        # JS join은 비-문자열을 강제 변환하고 null을 빈 문자열로 만든다. 손으로 편집되는
+        # tracked 공유 파일에 비-문자열 원소가 들어와도 read가 exit 1로 죽지 않아야 한다.
+        sys.stdout.write("\n".join(_js_string(v) for v in val) + "\n")
+    else:
+        _emit_scalar(val)
+
+
 def cmd_read(args):
     field = args.get("field")
     topic = args.get("topic")
@@ -336,18 +443,7 @@ def cmd_read(args):
     if field == "config" or field.startswith("config."):
         if topic:
             die("read: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
-        parsed = parse_config_path(field)
-        if not parsed["ok"]:
-            die(f"read: {parsed['reason']}")
-        # Python dict는 상속 데이터 키가 없어 `in`이 곧 hasOwn 가드다.
-        config = ctx.get("config")
-        ns_obj = config.get(parsed["ns"]) if isinstance(config, dict) else None
-        val = ns_obj.get(parsed["key"]) if isinstance(ns_obj, dict) else None
-        if isinstance(val, list):
-            # 빈 배열과 미설정은 모두 빈 출력(빈 줄)을 낸다.
-            sys.stdout.write(("\n".join(val) + "\n") if len(val) > 0 else "\n")
-        else:
-            _emit_scalar(val)
+        _read_config_field(ctx, field)
         return
 
     if not topic:
