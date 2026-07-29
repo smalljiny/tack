@@ -25,7 +25,11 @@ Final decision rules:
   Evidence: (verify each Story can be executed and committed independently.
   Check: does completing Story N require partially-complete state from Story M where M > N?
   Hidden shared state, build-breaking intermediate steps → FAIL.
-  Documented sequential dependencies with clear rationale → acceptable.)
+  Documented sequential dependencies with clear rationale → acceptable.
+
+  `scaffold` carve-out — `scaffold` Story는 독립 실행·커밋 가능 기준은 충족하되, 독립 배포 가능 기준은
+  동일 PR 내 후속 구현 Story와 묶인 PR 단위에서 평가한다. `scaffold` Story가 단독으로 배포 가능하지
+  않다는 이유로 FAIL 처리하지 않는다.)
 
 - [ ] 4. 완료 기준 명확성 (Completion Criteria Verifiable)
   Evidence: (verify every Story's Completion Criteria are objectively verifiable.
@@ -52,9 +56,13 @@ Final decision rules:
 | `infra` | `scripts/`, build/deploy tooling, executable Bash/Node CLI |
 | `refactor` | `.ts`/`.js`/`.py` restructuring with existing test coverage |
 | `prompt` | Eval Case가 명시적으로 존재할 때만 `prompt`. .md 파일 변경이라도 Eval Case가 없으면 `config`. |
+| `scaffold` | `Risk Tier == high`인 `tdd`/`refactor` Story의 분해 산물 — 시그니처·타입/인터페이스·호출·이벤트 체인 배선·throwing stub. Completion Criteria는 언어별 정적 검사 + entry 모듈 import 스모크. |
 
-  Story Type 값이 열거형 `tdd|config|infra|refactor|prompt` 외 (`docs`·`feat`·`chore` 등 Commit type 포함)이면 즉시 FAIL.
+  Story Type 값이 열거형 `tdd|config|infra|refactor|prompt|scaffold` 외 (`docs`·`feat`·`chore` 등 Commit type 포함)이면 즉시 FAIL.
   Mismatch between stated type and table trigger → FAIL.
+
+  `scaffold` carve-out — 선행 `scaffold` Story를 가진 `high` tier `tdd`·`refactor` Story는 골격 의례 충족으로 간주한다. 자기 자신의 scaffold Story가 없다는 이유로 FAIL 처리하지 않는다.
+  또한 `Type: scaffold`로 선언된 Story는 위 표의 관계형 트리거(분해 산물)로 판정하며, 확장자 트리거(`tdd`/`refactor` 행)와의 mismatch만으로 FAIL 처리하지 않는다.
 
   For `prompt` type Stories — additional validation (spec §3.5):
   - Eval Case count < 2 → NOTE

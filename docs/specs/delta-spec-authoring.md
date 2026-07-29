@@ -63,6 +63,8 @@ spec 계약의 필수 섹션 8은 4개 서브섹션을 이 순서로 포함한�
 
 Risk tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 `<low|normal|high>`로 기록한다.
 
+**tier의 소비처는 이 파이프라인 밖에 있다** — 이 문서는 tier **산정**만 다루고, 기록된 tier가 무엇을 바꾸는지(골격 의례·리뷰 깊이 라우팅)는 `template/.claude/skills/wf-risk-routing/SKILL.md`가 소유한다. 판정표(무엇이 `high`인가)와 라우팅표(그래서 무엇이 달라지는가)는 서로 다른 소유처를 갖는다 — 전자는 `implementation-plan.md` 계약, 후자는 `wf-risk-routing` 스킬이다. 라우팅 동작은 risk-tier-routing 참조.
+
 ## 동작
 
 ### flow-spec — explore 선행 저작

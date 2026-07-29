@@ -23,7 +23,7 @@
 ## Story List
 
 ### [ ] Story 1: <title>
-- **Type**: tdd | config | infra | refactor | prompt
+- **Type**: tdd | config | infra | refactor | prompt | scaffold
 - **Risk Tier**: low | normal | high  (판정 근거를 괄호로 한 줄 병기 — 예: `normal (규칙 4 — MODIFIED 1건, affected domains 1개)`)
 - **Goal**: [What this Story achieves — one sentence]
 - **Tasks**:
@@ -55,7 +55,7 @@
 
 ## Story Type Definitions
 
-> **Story Type ≠ Commit Type.** Story Type은 아래 5종만 허용 (`tdd|config|infra|refactor|prompt`).
+> **Story Type ≠ Commit Type.** Story Type은 아래 6종만 허용 (`tdd|config|infra|refactor|prompt|scaffold`).
 > Conventional Commits 타입(`feat|fix|docs|refactor|test|chore|perf|ci`)은 `**Commit**` 필드에서만 사용한다.
 > `refactor`는 양쪽에 등장하지만 서로 다른 개념이다. 본 절은 **Story Type**의 `refactor`를 정의한다.
 
@@ -66,6 +66,19 @@
 | `infra` | 스크립트·툴링 (비즈니스 로직 아님) | `scripts/`, CI 워크플로우, deploy 스크립트 |
 | `refactor` | **실행 코드 파일 (`.ts`/`.js`/`.py` 등)** 재구조화 (테스트 커버리지 존재) | 코드 파일 재구조화. **markdown·yaml·json 변경은 `config`** |
 | `prompt` | LLM 프롬프트 작성/개선 + Eval Case 평가 | 프롬프트 본문 개선 + PROPOSE→EVAL→REFINE 사이클 필요 |
+| `scaffold` | 시그니처 + 타입/인터페이스 + 호출·이벤트 체인 배선 + throwing stub 작성 (함수 본문 로직 없음) | `Risk Tier == high` AND `Type ∈ {tdd, refactor}`인 Story의 분해 산물. planner가 plan 저작 시 1회만 생성한다 |
+
+### scaffold 완료 판정 (언어별)
+
+`scaffold` Story의 완료는 언어별 정적 검사 + entry 모듈 import 스모크로 판정한다. 이 표가 완료 판정의 canonical 출처다 — `flow-impl`·다른 스킬은 이 표를 축자 복제하지 않고 이 절을 인용한다.
+
+| 언어 | 정적 검사 | import 스모크 |
+|------|----------|--------------|
+| TypeScript | `tsc --noEmit` 통과 | entry 모듈 import 성공 |
+| Python | `mypy` 통과 | `import <module>` 성공 |
+| JavaScript | `node --check` 통과 | dynamic `import()` 성공 |
+
+공통 조건: 모든 미구현 함수가 throwing stub으로 배선돼 있다. 정적 검사만으로는 배선이 실제로 로드되는지 확인되지 않으므로 import 스모크를 함께 요구한다.
 
 ## Prompt Task Eval Schema
 
@@ -183,7 +196,7 @@ first-match 순서 규칙. Story 단위로 그 Story가 접촉하는 delta 항�
 | 5 | Affected domains ≥ 3 (ADDED만이어도) | normal |
 | 6 | 그 외 (ADDED만 + affected domains ≤ 2) | low |
 
-tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다. 이 계약은 tier 값에 따른 어떤 분기도 정의하지 않는다 — 리뷰 깊이·design ceremony·골격 의례 라우팅은 이 계약의 범위 밖이다.
+tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다. 이 계약은 tier 값에 따른 어떤 분기도 정의하지 않는다 — 리뷰 깊이·design ceremony·골격 의례 라우팅은 이 계약의 범위 밖이다. 그 라우팅의 소유자는 `.claude/skills/wf-risk-routing/SKILL.md`이며, tier 값을 읽어 골격 의례와 리뷰 깊이를 결정하는 주체는 그 스킬과 그 스킬을 로드하는 planner·`/flow-impl`·`/flow-review`다. `## Story Type Definitions`의 `scaffold` 행이 기술하는 것은 그 Story Type의 발동 조건이며, 라우팅 실행 규칙은 아니다.
 
 **Backward compatibility**: `**Risk Tier**` 필드가 없는 plan은 실패로 처리하지 않는다. `plan-review`는 필드 부재를 warning 없이 통과시킨다 — 필드는 기대값이며 강제 대상이 아니다.
 
@@ -198,6 +211,7 @@ spec `## 8. Delta`의 각 GIVEN/WHEN/THEN scenario 1개는 그 Story의 Completi
 ## Key Constraints
 
 - Each Story must be independently executable and committable
+  - **`scaffold` carve-out**: `scaffold` Story는 독립 실행·커밋 가능 기준은 충족하되, **독립 배포 가능** 기준은 동일 PR 내 후속 구현 Story와 묶인 PR 단위에서 평가한다
 - Completion Criteria must be verifiable (runnable command, observable output, or checkable file)
 - Story ordering must respect dependency relationships
 - Stories must not implement anything outside the spec scope

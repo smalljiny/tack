@@ -19,7 +19,7 @@ tack의 flow 파이프라인은 전문 서브에이전트를 호출한다 — `f
 | planner | 구현 계획 수립 (task=커밋 분해) | opus | flow-plan |
 | tdd-specialist | RED-GREEN-REFACTOR, 80%+ 커버리지 | opus | flow-impl |
 | code-reviewer | 코드 품질·보안·유지보수 리뷰. B6 unit-review(함수별) | opus | flow-impl Story 완료마다, flow-review |
-| architect | 아키텍처 결정. B6 flow-review(구조·flow 판정 → lock) | opus | 아키텍처 결정 시, flow-review 1단 |
+| architect | 아키텍처 결정. B6 flow-review(구조·flow 판정 → lock) | opus | 아키텍처 결정 시, flow-review stage 1 (`topicTier == high`) |
 | prompt-engineer | 프롬프트 타입 Story의 PROPOSE→EVAL→REFINE | opus | prompt-type Story |
 | security-reviewer | 보안 취약점 탐지 | sonnet | flow-review, 커밋 전 |
 | refactor-cleaner | 데드 코드 제거·품질 개선 | sonnet | 유지보수·리팩토링 |
@@ -45,7 +45,11 @@ tack의 flow 파이프라인은 전문 서브에이전트를 호출한다 — `f
 
 ### B6 2단 리뷰 매핑
 
-flow-review는 2단으로 갈린다: **1단 flow-review = architect**가 구조·배치·flow 완결성을 판정하고 **lock**한 뒤, **2단 unit-review = code-reviewer**가 함수별 정확성·보안을 검사한다. security-reviewer는 code-reviewer와 병렬로 커밋 전 보안을 본다. 이 역할은 각 에이전트의 `description` 필드에 명시된다.
+2단 분리는 **`topicTier == high`인 토픽에서만** 발동한다. `topicTier ∈ {low, normal}`이면 code-reviewer와 security-reviewer가 전체 변경 범위를 병렬로 보는 단일 단계 리뷰이며, stage 구분·lock·human gate가 적용되지 않는다. `topicTier`는 plan의 per-Story `**Risk Tier**` 필드의 최대값이고, 라우팅 소유자는 `template/.claude/skills/wf-risk-routing/SKILL.md`다 (risk-tier-routing 참조).
+
+`high` 토픽에서 flow-review는 2단으로 갈린다: **stage 1 = architect**가 구조·배치·flow 완결성을 8문항 rubric으로 판정하고 **lock**한 뒤, **stage 2 = code-reviewer**가 변경 파일 목록에 스코프를 한정해 함수별 정확성·보안을 검사한다. security-reviewer는 stage 2에서 code-reviewer와 병렬로 돈다. `lock: blocked`(rubric FAIL 1건 이상)면 stage 2를 실행하지 않는다.
+
+이 역할은 각 에이전트의 `description` 필드와 **본문 프로세스 절**(`architect.md`의 stage-1 판정 절, `code-reviewer.md`의 stage-2 unit 스코프 절) 양쪽에 정의된다. lock 판정을 파일에 기록하는 주체는 `/flow-review`이며 architect의 `tools`(`Read, Grep, Glob`)는 확장하지 않는다.
 
 ## 제약사항
 
