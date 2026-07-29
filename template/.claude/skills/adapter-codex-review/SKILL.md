@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -208,6 +208,14 @@ BEFORE_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sor
 # 2. codex exec 실행
 codex exec "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
 EXEC_EXIT=$?
+
+# Guard: codex exec가 실패하면 리뷰 파일을 파싱하지 않는다.
+# Failure Handling 표의 `codex exec ... exits non-zero` 행과 같은 정책 — 실패한 실행이
+# 남긴 부분 파일에 `- Decision:` 줄이 있으면 그것이 유효한 판정으로 통과할 수 있다.
+if [ "$EXEC_EXIT" -ne 0 ]; then
+  echo "codex exec failed (exit=$EXEC_EXIT) — Manual fallback을 사용하세요" >&2
+  exit 1
+fi
 
 # 3. 실행 후 파일 목록과 비교 → 새 파일 = after - before
 AFTER_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)

@@ -289,7 +289,7 @@ const SCRATCH_DIRS = []
  * @param nestedCreates 스텁이 하위 디렉토리에도 리뷰 파일을 만들게 한다 (깊이 경계 통제).
  * @returns {{status, stdout, stderr, dir, newFilePath}}
  */
-function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null }) {
+function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null, execExit = 0 }) {
   const { path: shellPath, args } = SHELLS[shell]
   assert.ok(shellPath, `${shell}이 resolve되지 않았다`)
 
@@ -309,6 +309,8 @@ function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null }) 
       writeReview(`$REVIEW_DIR/${NESTED_DIR}/${newFile}`, nestedCreates),
     )
   }
+  // 서브셸로 종료 코드만 설정한다 — 스크립트를 끝내지 않으면서 `EXEC_EXIT=$?`가 받는다.
+  if (execExit !== 0) stubLines.push(`(exit ${execExit})`)
 
   // REVIEW_KIND는 스킬 Step 2가 바인딩하는 변수다. 여기서 주입해야 Parsing 블록의
   // `PATTERN="${REVIEW_KIND}-*.md"` 파생이 두 phase 모두에서 검증된다.
@@ -405,6 +407,31 @@ describe('수정된 블록: C1·C2·C3 × zsh·bash × spec-review·plan-review'
         })
       }
     }
+  }
+})
+
+describe('실패한 codex exec는 판정으로 통과하지 않는다', () => {
+  // Failure Handling 표는 `codex exec ... exits non-zero`에 manual fallback을 규정한다.
+  // 가드가 없으면 실패한 실행이 남긴 부분 파일의 `- Decision:` 줄이 유효 판정으로 통과한다 —
+  // 새 파일이 **존재하므로** "새 파일 없음" 가드로는 걸러지지 않는다.
+  for (const shell of ['zsh', 'bash']) {
+    test(`${shell} — 파일을 남기고 실패한 실행은 exit 1 + 판정 미출력`, () => {
+      const block = parsingBlock(read(CANON_SKILL))
+      const result = runBlock(block, {
+        shell,
+        kind: 'spec-review',
+        seeds: [],
+        creates: 'READY',
+        execExit: 1,
+      })
+
+      assert.notStrictEqual(result.status, 0, `stdout: ${result.stdout}`)
+      assert.doesNotMatch(result.stdout, /- Decision:/)
+      assert.ok(
+        existsSync(result.newFilePath),
+        '스텁이 파일을 남기지 않았다 — 이 케이스가 "새 파일 없음" 가드와 구분되지 않는다',
+      )
+    })
   }
 })
 
