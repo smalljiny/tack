@@ -5,7 +5,26 @@
 // 때문이다 — zsh는 변수 치환 결과를 글롭 확장하지 않아 `ls "$DIR"/$PATTERN`이 리터럴
 // 파일명을 찾고 실패한다. bash에서는 같은 줄이 정상 동작하므로 두 셸 매트릭스가 필수다.
 //
+// 두 번째 층은 전수 스캔 게이트다 — 같은 유형의 변수-글롭이 template 스킬 문서 전체에서
+// 0건임을 강제한다.
+//
+// 스캔 범위: `template/.claude/skills/**/SKILL.md`의 `bash` 코드 펜스 **안쪽**만. 확장하지
+// 않는다. 넓은 범위(`agents/*.md`, `*.sh` 포함) 사전 조사에서 실제 위반 0건, false positive
+// 2건(`learned/bash-set-u-empty-array/SKILL.md` 산문, `stack-backend/SKILL.md` JS 템플릿
+// 리터럴)만 나왔다 — 확장은 위반 커버리지를 늘리지 않고 오탐 억제 작업만 늘린다. 펜스 바깥
+// 산문을 제외하는 이유도 같다: 좁은 범위에서도 `learned/` 산문 줄이 오탐으로 걸린다.
+//
+// 강제 술어의 실제 경계: "**같은 bash 펜스 블록 안에서 리터럴 따옴표 대입으로 선언된**
+// 글롭-값 변수의 unquoted 확장". 범위 밖 — 따옴표 없는 대입(`PATTERN=*.md`), 블록 간 참조
+// (블록 A에서 대입, 블록 B에서 사용), 명령 치환 대입(`PATTERN=$(cat globs.txt)`), 배열
+// (`PATTERNS=('*.md')` + `${PATTERNS[0]}`). 현재 코퍼스에 이 shape의 실제 사례는 없다.
+// `stripQuotedSpans`도 escape(`\"`)·같은 종류의 중첩 따옴표·heredoc 본문을 해석하지 않아
+// `VAR="$(cmd "$G")"` 형태와 주석 줄의 `$G` 언급은 오탐 방향으로 걸린다.
+//
 // 실행: node --test scripts/codex-review-detection.test.js
+// 이 명령이 유일한 실행법이다. `wf-verification` Gate 4에는 등록하지 않는다 — Gate 4는
+// `pnpm test`/`pnpm test:coverage`를 실행하는데 이 저장소에 루트 `package.json`이 없어
+// 실행 자체가 불가하다.
 // 경로는 cwd가 아니라 이 파일의 위치를 기준으로 해석하므로 어느 디렉토리에서 호출해도 동작한다.
 //
 // Node 요구 사항: `import.meta.dirname`(≥20.11)과 package.json 없는 `.js`의 ESM 자동
@@ -28,7 +47,7 @@
 
 import { test, describe, after } from 'node:test'
 import assert from 'node:assert'
-import { readFileSync, writeFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdtempSync, existsSync, rmSync, globSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -38,6 +57,11 @@ const FIXTURE_DIR = `${import.meta.dirname}/fixtures/codex-review-detection`
 
 const CANON_SKILL = `${REPO_ROOT}/template/.claude/skills/adapter-codex-review/SKILL.md`
 const PRE_FIX_FIXTURE = `${FIXTURE_DIR}/pre-fix-section.md`
+
+// 전수 스캔의 유일한 수집 경로. `scripts/fixtures/` 하위는 이 glob에 포함되지 않으며,
+// fixture는 `PRE_FIX_FIXTURE`를 직접 읽는 별개 진입점으로 탐지기에 들어간다.
+const SKILL_GLOB = `${REPO_ROOT}/template/.claude/skills/**/SKILL.md`
+const NEGATIVE_CONTROL_SKILL = `${REPO_ROOT}/template/.claude/skills/learned/bash-set-u-empty-array/SKILL.md`
 
 const PARSING_ANCHOR = /^#{1,6}\s+Parsing the Decision\s*$/
 
@@ -83,12 +107,8 @@ function sectionUnderHeading(text, anchor) {
 
 /** 텍스트 안의 첫 번째 ```bash 펜스 블록 본문. 없으면 null. */
 function firstBashBlock(text) {
-  const lines = text.split('\n')
-  const open = lines.findIndex((line) => /^\s*```bash\s*$/.test(line))
-  if (open === -1) return null
-  const close = lines.findIndex((line, i) => i > open && /^\s*```\s*$/.test(line))
-  if (close === -1) return null
-  return lines.slice(open + 1, close).join('\n')
+  const block = allBashBlocks(text)[0]
+  return block ? block.lines.join('\n') : null
 }
 
 /** `## Parsing the Decision` 절의 첫 bash 블록을 꺼낸다. */
@@ -98,6 +118,107 @@ function parsingBlock(markdown) {
   const block = firstBashBlock(section)
   assert.ok(block, '`## Parsing the Decision` 절에 bash 코드 펜스 블록이 없다')
   return block
+}
+
+/**
+ * 텍스트 안의 모든 ```bash 펜스 블록을 원문 줄 번호와 함께 돌려준다.
+ * @returns {{lines: string[], startLine: number}[]} startLine은 블록 첫 줄의 1-based 원문 줄 번호
+ */
+function allBashBlocks(text) {
+  const lines = text.split('\n')
+  const blocks = []
+  let open = -1
+  for (let i = 0; i < lines.length; i += 1) {
+    if (open === -1) {
+      if (/^\s*```bash\s*$/.test(lines[i])) open = i
+      continue
+    }
+    if (/^\s*```\s*$/.test(lines[i])) {
+      blocks.push({ lines: lines.slice(open + 1, i), startLine: open + 2 })
+      open = -1
+    }
+  }
+  return blocks
+}
+
+// --- 변수-글롭 탐지기 (Story 2) ----------------------------------------------
+//
+// 정의는 spec §3.3의 "확장 직후 글롭 메타문자" 문구를 쓰지 않는다 — 그 정의는 정작 이번
+// 버그(`ls "$REVIEW_DIR"/$PATTERN`)를 매치하지 못한다. 소스 텍스트에는 확장에 인접한 글롭
+// 메타문자가 없고, `$PATTERN`이 *담고 있는 값*이 글롭이기 때문이다. 대신 대입값을 본다.
+
+const GLOB_METACHARS = /[*?[]/
+
+/** 줄에서 single·double quoted span을 제거한다. 줄 단위로만 처리한다. */
+function stripQuotedSpans(line) {
+  let out = ''
+  let quote = null
+  for (const ch of line) {
+    if (quote) {
+      if (ch === quote) quote = null
+      continue
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch
+      continue
+    }
+    out += ch
+  }
+  return out
+}
+
+const GLOB_ASSIGNMENT = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(?:'([^']*)'|"([^"]*)")/
+
+/** 한 블록에서 글롭 메타문자를 값에 담은 따옴표 대입의 변수명 집합 G. */
+function globValuedVars(blockLines) {
+  const globVars = new Set()
+  for (const line of blockLines) {
+    const assignment = line.match(GLOB_ASSIGNMENT)
+    if (!assignment) continue
+    const value = assignment[2] ?? assignment[3]
+    if (GLOB_METACHARS.test(value)) globVars.add(assignment[1])
+  }
+  return globVars
+}
+
+/**
+ * 글롭 값을 담은 변수가 따옴표 없이 확장되는 위치를 찾는다.
+ *
+ * 3단계 — (1) 입력에서 bash 펜스 블록만 취한다 (펜스 바깥 산문은 대상이 아니다).
+ * (2) 블록마다 글롭 메타문자를 값에 포함한 따옴표 대입 `VAR='…'` / `VAR="…"`의 변수명
+ * 집합 G를 만든다. 대입 인식은 줄 앞(선택적 `export `)에 앵커해 주석 줄이 G를 오염시키지
+ * 못하게 한다. (3) 같은 블록의 각 줄에서 quoted span을 **줄 단위로** 제거한 뒤 남은
+ * 텍스트에 `$VAR`·`${VAR}` (VAR ∈ G)가 있으면 위반이다. 제거를 블록 단위로 하면 한 줄의
+ * 미종결 따옴표가 뒤따르는 줄들을 통째로 삼킨다.
+ *
+ * @param {string} markdown bash 펜스를 포함한 문서 텍스트
+ * @returns {{line: number, varName: string}[]} line은 1-based 원문 줄 번호
+ */
+function detectViolations(markdown) {
+  const violations = []
+  for (const block of allBashBlocks(markdown)) {
+    const globVars = globValuedVars(block.lines)
+    if (globVars.size === 0) continue
+
+    // varName은 `[A-Za-z_][A-Za-z0-9_]*`에 갇혀 있어 정규식 메타문자가 들어올 수 없다.
+    const matchers = [...globVars].map((varName) => [
+      varName,
+      new RegExp(`\\$\\{?${varName}\\}?(?![A-Za-z0-9_])`),
+    ])
+
+    block.lines.forEach((line, i) => {
+      const bare = stripQuotedSpans(line)
+      for (const [varName, expansion] of matchers) {
+        if (expansion.test(bare)) violations.push({ line: block.startLine + i, varName })
+      }
+    })
+  }
+  return violations
+}
+
+/** 탐지기가 실제로 stage 3까지 검사하는 블록 수 (G가 비지 않은 블록). */
+function scannedBlockCount(markdown) {
+  return allBashBlocks(markdown).filter((block) => globValuedVars(block.lines).size > 0).length
 }
 
 // --- 실행 하네스 -------------------------------------------------------------
@@ -310,4 +431,71 @@ describe('anti-vacuity: 수정 전 fixture 블록', () => {
       assert.strictEqual(result.stdout.trim(), testCase.expect)
     })
   }
+})
+
+describe('변수-글롭 전수 스캔', () => {
+  test('template 스킬 문서 전체에서 위반 0건', () => {
+    const files = globSync(SKILL_GLOB).sort()
+    assert.ok(files.length > 0, `수집된 SKILL.md가 0건 — glob이 매칭에 실패했다: ${SKILL_GLOB}`)
+
+    // 검사 표면이 0이면 "위반 0건"과 "아무것도 검사하지 않았다"가 구분되지 않는다. 파싱된
+    // 블록 수가 아니라 **G가 비지 않아 stage 3까지 도달한 블록 수**를 센다 — 파싱 수는
+    // 대부분의 블록이 stage 2에서 단락되는 사실을 가려 실제보다 넓은 커버리지를 주장한다.
+    let blockCount = 0
+    let scanned = 0
+    const found = []
+    for (const file of files) {
+      const text = read(file)
+      blockCount += allBashBlocks(text).length
+      scanned += scannedBlockCount(text)
+      for (const violation of detectViolations(text)) found.push({ file, ...violation })
+    }
+
+    assert.ok(blockCount > 0, '수집된 bash 블록이 0건 — glob이 매칭에 실패했다')
+    assert.ok(scanned > 0, '글롭-값 변수를 가진 bash 블록이 0건 — 검사 표면이 비었다')
+    assert.deepStrictEqual(
+      found,
+      [],
+      `글롭 값을 담은 변수의 unquoted 확장: ${JSON.stringify(found, null, 2)}`,
+    )
+  })
+
+  test('anti-vacuity — 수정 전 fixture에서 정확히 2건을 잡는다', () => {
+    // 합성 `$VAR*` 케이스가 아니라 실제 `ls "$REVIEW_DIR"/$PATTERN` 두 줄로 탐지기를 통제한다.
+    const text = read(PRE_FIX_FIXTURE)
+    const violations = detectViolations(text)
+
+    assert.strictEqual(violations.length, 2, JSON.stringify(violations))
+    const lines = text.split('\n')
+    const targets = violations.map((v) => lines[v.line - 1])
+    assert.match(targets[0], /^BEFORE_FILES=/)
+    assert.match(targets[1], /^AFTER_FILES=/)
+    for (const violation of violations) assert.strictEqual(violation.varName, 'PATTERN')
+  })
+
+  test('과탐 통제 — set -u 빈 배열 패턴은 위반이 아니다', () => {
+    // `${arr[@]+"${arr[@]}"}`는 글롭-값 대입을 갖지 않으므로 stage 2에서 단락된다. 이 통제가
+    // 고정하는 것은 **stage 2의 폭**이다 — 대입 인식이 `[`를 담은 확장까지 G에 넣도록
+    // 넓어지면 red가 된다. stage 3(`$VAR` 매처)의 폭은 이 파일이 stage 3에 도달하지 않으므로
+    // 고정하지 않는다.
+    const text = read(NEGATIVE_CONTROL_SKILL)
+    assert.ok(allBashBlocks(text).length > 0, '통제 대상 파일에 bash 블록이 없다')
+    assert.strictEqual(scannedBlockCount(text), 0)
+    assert.deepStrictEqual(detectViolations(text), [])
+  })
+
+  test('quoted span 제거는 줄 단위다 — 미종결 따옴표가 뒤 줄을 삼키지 않는다', () => {
+    // plan이 명시한 결정이지만 실제 코퍼스의 G-블록에는 미종결 따옴표 줄이 없어, 이 통제가
+    // 없으면 블록 단위 제거로 바꿔도 전수 스캔이 green으로 남는다.
+    const markdown = [
+      '```bash',
+      "PATTERN='*.md'",
+      'echo "미종결 따옴표가 여기서 시작한다',
+      'ls "$DIR"/$PATTERN',
+      '```',
+    ].join('\n')
+
+    const violations = detectViolations(markdown)
+    assert.deepStrictEqual(violations, [{ line: 4, varName: 'PATTERN' }])
+  })
 })
