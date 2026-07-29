@@ -1,5 +1,5 @@
 ---
-version: 18
+version: 19
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -37,6 +37,15 @@ STATUS=$(python3 .tack/scripts/dev_context.py read --topic="$TOPIC" --field=stat
 | `spec:reviewing` | spec-review | `spec` |
 | `plan:reviewing` | plan-review | `plan` |
 | 기타 | 실행 불가 — 아래 메시지 출력 후 종료 |  |
+
+표가 정한 실행 스킬 이름을 `REVIEW_KIND`에 바인딩한다. `Parsing the Decision`의 `PATTERN`과 `codex exec` 대상이 이 값에서 파생되므로, 두 phase가 같은 블록을 그대로 쓴다.
+
+```bash
+case "$PHASE:$STATUS" in
+  spec:reviewing) REVIEW_KIND=spec-review ;;
+  plan:reviewing) REVIEW_KIND=plan-review ;;
+esac
+```
 
 해당하지 않는 상태일 경우:
 ```
@@ -188,15 +197,16 @@ codex exec 실행 전후로 파일 목록을 비교해 새로 생성된 리뷰 �
 `-newer` 방식은 macOS에서 타임스탬프 해상도 문제로 신뢰할 수 없으므로 사용하지 않는다.
 
 ```bash
-# Set pattern: spec-review → 'spec-review-*.md' / plan-review → 'plan-review-*.md'
-PATTERN='spec-review-*.md'
+# PATTERN은 Step 2가 바인딩한 REVIEW_KIND에서 파생된다
+# (spec-review → 'spec-review-*.md' / plan-review → 'plan-review-*.md')
+PATTERN="${REVIEW_KIND}-*.md"
 REVIEW_DIR="$(dirname "$CANON_PATH")"   # canonicalized file path → its containing dir
 
 # 1. 실행 전 파일 목록 기록
 BEFORE_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 
 # 2. codex exec 실행
-codex exec "spec-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
+codex exec "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
 EXEC_EXIT=$?
 
 # 3. 실행 후 파일 목록과 비교 → 새 파일 = after - before

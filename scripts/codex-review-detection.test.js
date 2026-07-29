@@ -236,25 +236,30 @@ const SHELLS = {
   bash: { path: resolveShell('bash'), args: ['--noprofile', '--norc'] },
 }
 
-const NEW_FILE = 'spec-review-260729120000.md'
+// 어댑터는 spec-review·plan-review 두 phase가 같은 Parsing 블록을 공유한다. 한쪽만 검증하면
+// `PATTERN`이 한 phase로 하드코딩돼도 green으로 남으므로 매트릭스를 두 kind로 돌린다.
+const REVIEW_KINDS = ['spec-review', 'plan-review']
 
-// seed 세 번째는 `NEW_FILE`보다 **뒤로** 정렬된다 (LC_ALL=C). 이 seed가 없으면 `comm -13`을
+const newFileFor = (kind) => `${kind}-260729120000.md`
+
+// seed 세 번째는 새 파일보다 **뒤로** 정렬된다 (LC_ALL=C). 이 seed가 없으면 `comm -13`을
 // 통째로 없애고 `tail -1` of AFTER만 써도 C2가 통과해, 케이스가 diff 의미론을 고정하지 못한다.
-const SEED_FILES = [
-  'spec-review-260101000000.md',
-  'spec-review-260102000000.md',
-  'spec-review-269999999999.md',
+const seedFilesFor = (kind) => [
+  `${kind}-260101000000.md`,
+  `${kind}-260102000000.md`,
+  `${kind}-269999999999.md`,
 ]
 
-// `NEW_FILE`보다 뒤로 정렬되는 하위 디렉토리 이름. `-maxdepth 1`이 풀리면 `tail -1`이 이쪽
-// 파일을 집으므로 깊이 경계가 관측된다.
+// 새 파일보다 뒤로 정렬되는 하위 디렉토리 이름 (`spec-`·`plan-` 둘 다 `z`보다 앞선다).
+// `-maxdepth 1`이 풀리면 `tail -1`이 이쪽 파일을 집으므로 깊이 경계가 관측된다.
 const NESTED_DIR = 'zz-nested'
 
-/** 코드 블록의 `PATTERN='…'` 대입값. */
-function patternValue(block) {
-  const value = block.match(/^PATTERN='([^']*)'/m)?.[1]
-  assert.ok(value, '블록에서 `PATTERN=` 대입을 찾지 못했다')
-  return value
+/** 코드 블록의 `PATTERN=` 대입값. `$REVIEW_KIND` 확장은 `kind`로 치환해 해석한다. */
+function patternValue(block, kind) {
+  const raw = block.match(/^PATTERN=(?:'([^']*)'|"([^"]*)")/m)
+  assert.ok(raw, '블록에서 `PATTERN=` 대입을 찾지 못했다')
+  const value = raw[1] ?? raw[2]
+  return value.replace(/\$\{REVIEW_KIND\}|\$REVIEW_KIND\b/g, kind)
 }
 
 /** 셸 글롭을 앵커된 정규식으로 변환한다 (파일명 shape 검증용). */
@@ -284,7 +289,7 @@ const SCRATCH_DIRS = []
  * @param nestedCreates 스텁이 하위 디렉토리에도 리뷰 파일을 만들게 한다 (깊이 경계 통제).
  * @returns {{status, stdout, stderr, dir, newFilePath}}
  */
-function runBlock(block, { shell, seeds, creates, nestedCreates = null }) {
+function runBlock(block, { shell, kind, seeds, creates, nestedCreates = null }) {
   const { path: shellPath, args } = SHELLS[shell]
   assert.ok(shellPath, `${shell}이 resolve되지 않았다`)
 
@@ -294,18 +299,21 @@ function runBlock(block, { shell, seeds, creates, nestedCreates = null }) {
   writeFileSync(canonPath, '# spec\n')
   for (const [name, decision] of seeds) writeFileSync(join(dir, name), `- Decision: ${decision}\n`)
 
-  const newFilePath = join(dir, NEW_FILE)
+  const newFile = newFileFor(kind)
+  const newFilePath = join(dir, newFile)
   const writeReview = (path, decision) => `printf '%s\\n' '- Decision: ${decision}' > "${path}"`
-  const stubLines =
-    creates === null ? ['true'] : [writeReview(`$REVIEW_DIR/${NEW_FILE}`, creates)]
+  const stubLines = creates === null ? ['true'] : [writeReview(`$REVIEW_DIR/${newFile}`, creates)]
   if (nestedCreates !== null) {
     stubLines.unshift(
       `mkdir -p "$REVIEW_DIR/${NESTED_DIR}"`,
-      writeReview(`$REVIEW_DIR/${NESTED_DIR}/${NEW_FILE}`, nestedCreates),
+      writeReview(`$REVIEW_DIR/${NESTED_DIR}/${newFile}`, nestedCreates),
     )
   }
 
-  const script = `CANON_PATH=${JSON.stringify(canonPath)}\n${stubCodexExec(block, stubLines.join('\n'))}\n`
+  // REVIEW_KIND는 스킬 Step 2가 바인딩하는 변수다. 여기서 주입해야 Parsing 블록의
+  // `PATTERN="${REVIEW_KIND}-*.md"` 파생이 두 phase 모두에서 검증된다.
+  const preamble = `CANON_PATH=${JSON.stringify(canonPath)}\nREVIEW_KIND=${JSON.stringify(kind)}\n`
+  const script = `${preamble}${stubCodexExec(block, stubLines.join('\n'))}\n`
   const scriptPath = join(dir, 'run.sh')
   writeFileSync(scriptPath, script)
 
@@ -327,17 +335,18 @@ function runBlock(block, { shell, seeds, creates, nestedCreates = null }) {
 // C2의 새 파일 decision 텍스트는 seed와 다르다 — "새 파일을 골랐다"와 "아무 파일이나
 // 골랐다"가 구분되지 않으면 어느 쪽이든 통과하는 공허한 assertion이 된다.
 
-const READY_SEEDS = SEED_FILES.map((name) => [name, 'READY'])
-
-const CASES = {
-  C1: { label: '기존 0개 → 새 파일 1개', seeds: [], creates: 'READY', expect: '- Decision: READY' },
-  C2: {
-    label: '기존 3개(READY) → 새 파일 1개(NOT READY)',
-    seeds: READY_SEEDS,
-    creates: 'NOT READY',
-    expect: '- Decision: NOT READY',
-  },
-  C3: { label: '새 파일 생성 없음', seeds: READY_SEEDS, creates: null, expect: null },
+const casesFor = (kind) => {
+  const readySeeds = seedFilesFor(kind).map((name) => [name, 'READY'])
+  return {
+    C1: { label: '기존 0개 → 새 파일 1개', seeds: [], creates: 'READY', expect: '- Decision: READY' },
+    C2: {
+      label: '기존 3개(READY) → 새 파일 1개(NOT READY)',
+      seeds: readySeeds,
+      creates: 'NOT READY',
+      expect: '- Decision: NOT READY',
+    },
+    C3: { label: '새 파일 생성 없음', seeds: readySeeds, creates: null, expect: null },
+  }
 }
 
 const NO_NEW_FILE_MESSAGE = 'No new review file found'
@@ -356,28 +365,45 @@ describe('셸 resolve', () => {
 })
 
 describe('스텁 파일명이 PATTERN에 매칭된다', () => {
-  test('새 파일·seed 파일명이 모두 블록의 PATTERN shape를 만족한다', () => {
-    const re = globToRegExp(patternValue(parsingBlock(read(CANON_SKILL))))
-    assert.match(NEW_FILE, re)
-    for (const name of SEED_FILES) assert.match(name, re)
+  for (const kind of REVIEW_KINDS) {
+    test(`${kind} — 새 파일·seed 파일명이 모두 블록의 PATTERN shape를 만족한다`, () => {
+      const re = globToRegExp(patternValue(parsingBlock(read(CANON_SKILL)), kind))
+      assert.match(newFileFor(kind), re)
+      for (const name of seedFilesFor(kind)) assert.match(name, re)
+    })
+  }
+
+  test('PATTERN이 한 phase로 하드코딩돼 있지 않다', () => {
+    // 두 kind의 PATTERN이 같으면 블록이 한 phase 전용이라는 뜻이다. 이 어댑터는
+    // spec-review·plan-review가 같은 블록을 공유하므로 kind마다 달라져야 한다.
+    const block = parsingBlock(read(CANON_SKILL))
+    const patterns = REVIEW_KINDS.map((kind) => patternValue(block, kind))
+    assert.deepStrictEqual(patterns, ['spec-review-*.md', 'plan-review-*.md'])
   })
 })
 
-describe('수정된 블록: C1·C2·C3 × zsh·bash', () => {
-  for (const shell of ['zsh', 'bash']) {
-    for (const [id, testCase] of Object.entries(CASES)) {
-      test(`${shell} / ${id} — ${testCase.label}`, () => {
-        const block = parsingBlock(read(CANON_SKILL))
-        const result = runBlock(block, { shell, seeds: testCase.seeds, creates: testCase.creates })
+describe('수정된 블록: C1·C2·C3 × zsh·bash × spec-review·plan-review', () => {
+  for (const kind of REVIEW_KINDS) {
+    for (const shell of ['zsh', 'bash']) {
+      for (const [id, testCase] of Object.entries(casesFor(kind))) {
+        test(`${kind} / ${shell} / ${id} — ${testCase.label}`, () => {
+          const block = parsingBlock(read(CANON_SKILL))
+          const result = runBlock(block, {
+            shell,
+            kind,
+            seeds: testCase.seeds,
+            creates: testCase.creates,
+          })
 
-        if (testCase.expect === null) {
-          assert.strictEqual(result.status, 1, `stderr: ${result.stderr}`)
-          assert.match(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
-          return
-        }
-        assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
-        assert.strictEqual(result.stdout.trim(), testCase.expect)
-      })
+          if (testCase.expect === null) {
+            assert.strictEqual(result.status, 1, `stderr: ${result.stderr}`)
+            assert.match(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
+            return
+          }
+          assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
+          assert.strictEqual(result.stdout.trim(), testCase.expect)
+        })
+      }
     }
   }
 })
@@ -385,13 +411,14 @@ describe('수정된 블록: C1·C2·C3 × zsh·bash', () => {
 describe('탐지 깊이 경계: -maxdepth 1', () => {
   // `-maxdepth 1`이 없으면 find가 하위 디렉토리까지 훑는다. 리뷰 디렉토리 하위에 `fixture/`
   // 같은 서브디렉토리를 두는 토픽이 실재하므로 경계가 풀리면 중첩 파일이 탐지 대상이 된다.
-  // `NESTED_DIR`가 `NEW_FILE`보다 뒤로 정렬되므로 경계가 풀리면 `tail -1`이 중첩 파일을 집어
+  // `NESTED_DIR`가 새 파일보다 뒤로 정렬되므로 경계가 풀리면 `tail -1`이 중첩 파일을 집어
   // stdout이 달라진다.
   for (const shell of ['zsh', 'bash']) {
     test(`${shell} — 하위 디렉토리의 리뷰 파일은 선택되지 않는다`, () => {
       const block = parsingBlock(read(CANON_SKILL))
       const result = runBlock(block, {
         shell,
+        kind: 'spec-review',
         seeds: [],
         creates: 'READY',
         nestedCreates: 'NOT READY',
@@ -408,12 +435,23 @@ describe('anti-vacuity: 수정 전 fixture 블록', () => {
   // 함께 assert한다. 이것이 없으면 "새 파일이 없어서 올바르게 실패했다"(수정된 블록의 C3)와
   // "존재하는 파일을 못 봐서 실패했다"(수정 전 블록의 C1·C2)가 동일한 exit 1 + 동일한
   // stderr로 구분되지 않는다.
+  // fixture는 수정 전 원문이라 `PATTERN='spec-review-*.md'`를 그대로 담는다 — `REVIEW_KIND`
+  // 파생 이전 상태다. 따라서 kind는 spec-review 하나로 고정한다.
+  const FIXTURE_KIND = 'spec-review'
+  const fixtureCases = casesFor(FIXTURE_KIND)
+
   for (const id of ['C1', 'C2']) {
-    const testCase = CASES[id]
+    const testCase = fixtureCases[id]
+    const runFixture = (shell) =>
+      runBlock(parsingBlock(read(PRE_FIX_FIXTURE)), {
+        shell,
+        kind: FIXTURE_KIND,
+        seeds: testCase.seeds,
+        creates: testCase.creates,
+      })
 
     test(`zsh / ${id} — 버그를 재현한다 (exit 1 + 파일은 디스크에 존재)`, () => {
-      const block = parsingBlock(read(PRE_FIX_FIXTURE))
-      const result = runBlock(block, { shell: 'zsh', seeds: testCase.seeds, creates: testCase.creates })
+      const result = runFixture('zsh')
 
       assert.strictEqual(result.status, 1, `stdout: ${result.stdout}`)
       assert.match(result.stderr, new RegExp(NO_NEW_FILE_MESSAGE))
@@ -424,8 +462,7 @@ describe('anti-vacuity: 수정 전 fixture 블록', () => {
     })
 
     test(`bash / ${id} — 원래 동작대로 통과한다`, () => {
-      const block = parsingBlock(read(PRE_FIX_FIXTURE))
-      const result = runBlock(block, { shell: 'bash', seeds: testCase.seeds, creates: testCase.creates })
+      const result = runFixture('bash')
 
       assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
       assert.strictEqual(result.stdout.trim(), testCase.expect)
