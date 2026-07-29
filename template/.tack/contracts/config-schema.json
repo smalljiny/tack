@@ -1,0 +1,172 @@
+{
+  "file_format": "1.0",
+  "description": "config 키의 기계 판독 SSOT. Claude와 Codex가 공용으로 참조한다. set-field는 이 선언으로 알 수 없는 네임스페이스·키, 타입 불일치, layer 위반을 거부하고, 쓰기 대상 파일(shared/local)을 결정한다. read는 이 스키마를 조회하지 않는다.",
+  "layer_semantics": {
+    "shared": "팀 공유 프로젝트 설정. 기본 쓰기 대상은 tracked 파일 .tack/config.json이며 커밋 대상이다. 개인 사정이 있는 값은 --layer=local로 개인 층에 덮어쓸 수 있고, read가 local을 우선하므로 그 값이 이긴다.",
+    "local": "개인 취향 설정. 쓰기 대상은 .tack/local/dev-context.json(ignored)이다. --layer=shared 승격은 거부한다 — 개인 설정이 팀에 강요되지 않도록 구조로 막는다.",
+    "cache": "머신 로컬 감지 결과·휘발 실행 상태. 쓰기 대상은 .tack/local/dev-context.json(ignored)이다. --layer=shared 승격은 거부한다 — 커밋되면 다른 머신에서 거짓 가용성으로 읽힌다."
+  },
+  "default_semantics": "각 키의 default는 선언 메타데이터이며 런타임 폴백이 아니다. read는 미설정 키에 대해 default를 합성하지 않고 빈 출력을 유지한다 — 빈 출력이 곧 '미설정' 의미이며, 이 동작은 기존 소비처와 동일하다. 소비처는 종전대로 빈 출력을 자신의 기본 동작으로 해석한다.",
+  "type_values": ["string", "boolean", "integer", "array"],
+  "layer_values": ["shared", "local", "cache"],
+  "namespaces": {
+    "git": {
+      "pushRemote": {
+        "type": "string",
+        "layer": "shared",
+        "default": "origin",
+        "description": "브랜치를 push할 remote 이름."
+      },
+      "pullRemote": {
+        "type": "string",
+        "layer": "shared",
+        "default": "origin",
+        "description": "base branch를 pull할 remote 이름. fork 사용자는 --layer=local로 upstream을 개인 층에 둔다."
+      },
+      "baseBranch": {
+        "type": "string",
+        "layer": "shared",
+        "default": "main",
+        "description": "PR base branch 이름."
+      },
+      "branchPattern": {
+        "type": "string",
+        "layer": "shared",
+        "default": "^(feature|fix|chore)/",
+        "description": "유효 브랜치 이름을 판정하는 정규식 문자열."
+      }
+    },
+    "docs": {
+      "sourceFilter": {
+        "type": "array",
+        "layer": "shared",
+        "default": [],
+        "description": "참조 문서 생성 시 변경 파일을 선별하는 경로 prefix 목록. 빈 배열은 필터 없음을 뜻한다."
+      }
+    },
+    "graphify": {
+      "targets": {
+        "type": "array",
+        "layer": "shared",
+        "default": [],
+        "description": "graphify 분석 대상 디렉토리 목록. 빈 배열이면 풀 빌드를 거부하고 명시 설정을 요구한다."
+      }
+    },
+    "dev_impl": {
+      "auto_start": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 Story 착수 전 사용자 승인을 건너뛴다."
+      },
+      "auto_commit": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 Story 완료 후 승인 없이 즉시 commit한다."
+      },
+      "batch_mode": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 명시 Story 인자가 없을 때 남은 Story를 순차 일괄 실행한다."
+      },
+      "currentBatchRunning": {
+        "type": "boolean",
+        "layer": "cache",
+        "default": false,
+        "description": "배치 실행 진행 중 여부. 비정상 종료된 배치를 다음 호출에서 감지·재개하기 위한 휘발 실행 상태다."
+      },
+      "currentBatchTopic": {
+        "type": "string",
+        "layer": "cache",
+        "default": "",
+        "description": "진행 중인 배치의 토픽 이름. 빈 문자열은 배치 미실행을 뜻하며 reset 값으로도 쓴다. 성격은 휘발 실행 상태지만 경로 문자열 불변을 위해 네임스페이스는 dev_impl을 유지한다."
+      }
+    },
+    "review": {
+      "adversarial_enabled": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 최종 리뷰에서 adversarial review 단계를 추가로 실행한다."
+      }
+    },
+    "spec": {
+      "auto_review": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 스펙 작성 후 Codex spec-review 루프를 자동 실행한다."
+      }
+    },
+    "plan": {
+      "auto_review": {
+        "type": "boolean",
+        "layer": "local",
+        "default": false,
+        "description": "true면 플랜 작성 후 Codex plan-review 루프를 자동 실행한다."
+      }
+    },
+    "codex": {
+      "available": {
+        "type": "boolean",
+        "layer": "cache",
+        "default": false,
+        "description": "codex CLI 설치 감지 결과."
+      },
+      "authenticated": {
+        "type": "boolean",
+        "layer": "cache",
+        "default": false,
+        "description": "codex CLI 인증 상태 감지 결과."
+      },
+      "version": {
+        "type": "string",
+        "layer": "cache",
+        "default": "",
+        "description": "감지된 codex CLI 버전 문자열. 미감지 시 빈 문자열."
+      },
+      "checked_at": {
+        "type": "string",
+        "layer": "cache",
+        "default": "",
+        "description": "codex 감지 시각 ISO8601 문자열. TTL 판정 기준이다."
+      }
+    },
+    "gh": {
+      "available": {
+        "type": "boolean",
+        "layer": "cache",
+        "default": false,
+        "description": "gh CLI 설치 감지 결과."
+      },
+      "native_subissue": {
+        "type": "boolean",
+        "layer": "cache",
+        "default": false,
+        "description": "감지된 gh 버전이 네이티브 sub-issue 명령을 지원하는 2.94.0 이상인지 여부."
+      },
+      "version": {
+        "type": "string",
+        "layer": "cache",
+        "default": "",
+        "description": "감지된 gh CLI semver 문자열. 파싱 실패 시 빈 문자열."
+      },
+      "checked_at": {
+        "type": "string",
+        "layer": "cache",
+        "default": "",
+        "description": "gh 감지 시각 ISO8601 문자열. 네 필드 중 마지막에 기록되므로 부분 실패 판별 기준이 된다."
+      }
+    },
+    "risk": {
+      "high_gate_enabled": {
+        "type": "boolean",
+        "layer": "shared",
+        "default": true,
+        "description": "high tier 토픽의 최종 리뷰에 붙는 human approval gate를 켤지 여부. Story 위험 tier 값의 SSOT는 plan 문서의 per-Story **Risk Tier** 필드이며, 판정 규칙은 contracts/implementation-plan.md의 ## Risk Tier 절이 소유한다. 이 키는 high tier human gate의 on/off 정책만 제어하고 tier 값을 담지 않는다. 무인 실행이 필요한 개인은 --layer=local로 끌 수 있다."
+      }
+    }
+  }
+}
