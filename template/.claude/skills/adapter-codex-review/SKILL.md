@@ -1,5 +1,5 @@
 ---
-version: 23
+version: 24
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
@@ -129,6 +129,8 @@ CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=<field
 
 ## Isolation via DEV_CONTEXT_PATH
 
+**이 절은 `Execution Sequence`에 포함되지 않는다 — fixture dev-context로 수동 실험할 때만 쓴다.** 아래 블록의 `codex exec`는 그 실험용 호출이며, 자동 판정 경로에서 실행하지 않는다.
+
 To run experiments without mutating the active development topic, point `DEV_CONTEXT_PATH`
 to a fixture dev-context file inside the repo (e.g. `.tack/local/.../fixture/`):
 
@@ -179,7 +181,7 @@ codex exec 실행 전후로 파일 목록을 비교해 새로 생성된 리뷰 �
 case "${REVIEW_KIND-}" in
   spec-review|plan-review) ;;
   *)
-    echo "REVIEW_KIND must be spec-review or plan-review (got: '$REVIEW_KIND') — Step 2를 먼저 실행하세요" >&2
+    echo "REVIEW_KIND must be spec-review or plan-review (got: '${REVIEW_KIND-}') — Step 2를 먼저 실행하세요" >&2
     exit 1
     ;;
 esac

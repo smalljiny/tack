@@ -454,10 +454,10 @@ describe('수정된 블록: C1·C2·C3 × zsh·bash × spec-review·plan-review'
 })
 
 describe('codex 호출 지점은 한 곳이다', () => {
-  // 호출자는 `Invocation Pattern → Parsing the Decision` 순서로 두 절을 따르라고 지시한다.
-  // 두 절이 각각 codex를 실행하면 리뷰 1회당 두 번 돌고 리뷰 파일도 2개 생긴다. 그런데
-  // BEFORE 스냅샷이 Parsing 블록 안에서 찍히므로 `comm -13`은 여전히 1건을 돌려준다 —
-  // 탐지 로직만으로는 이중 실행이 관측되지 않으므로 호출 지점 수를 직접 고정한다.
+  // 호출자는 `## Execution Sequence`가 진술한 순서를 따른다. 어느 절이든 codex를 한 번 더
+  // 실행하면 리뷰 1회당 두 번 돌고 리뷰 파일도 2개 생긴다. 그런데 BEFORE 스냅샷이 Parsing
+  // 블록 안에서 찍히므로 `comm -13`은 여전히 1건을 돌려준다 — 탐지 로직만으로는 이중 실행이
+  // 관측되지 않으므로 호출 지점 수를 직접 고정한다.
   test('자동 판정 플로우의 codex exec 호출은 Parsing 블록 안에만 있다', () => {
     // 제외는 **위치** 기준이다. 줄 내용으로 제외하면 정본 두 줄을 그대로 복사해 다른 절에
     // 되붙이는 회귀 — 이 게이트가 막아야 할 가장 자연스러운 형태 — 가 통과해 버린다.
@@ -478,8 +478,14 @@ describe('codex 호출 지점은 한 곳이다', () => {
     assert.deepStrictEqual(callsOutside, [], `허용 절 밖 호출: ${JSON.stringify(callsOutside)}`)
   })
 
-  test('Parsing 블록의 호출은 TIMEOUT_BIN 분기 2줄뿐이고 -s workspace-write를 유지한다', () => {
-    const calls = parsingBlock(read(CANON_SKILL)).split('\n').filter(isCodexExecCall)
+  test('Parsing 절의 호출은 TIMEOUT_BIN 분기 2줄뿐이고 -s workspace-write를 유지한다', () => {
+    // 절의 **모든** 펜스를 센다. 첫 펜스만 세면 같은 절 말미에 새 펜스로 붙인 복사본이
+    // 위치 게이트(절 범위 허용)와 이 카운트를 동시에 빠져나간다.
+    const text = read(CANON_SKILL)
+    const range = sectionRange(text, PARSING_ANCHOR)
+    assert.ok(range, '`## Parsing the Decision` 절을 찾지 못했다')
+    const section = range.lines.slice(range.start, range.end).join('\n')
+    const calls = allBashBlocks(section).flatMap((block) => block.lines.filter(isCodexExecCall))
 
     // if/else 두 분기 — 실행 시 한쪽만 돈다.
     assert.strictEqual(calls.length, 2, JSON.stringify(calls))
