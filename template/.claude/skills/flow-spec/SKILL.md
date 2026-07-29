@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 name: flow-spec
 description: Write a spec for a new topic. Registers the topic in dev-context.json, writes a spec draft using the brainstorming skill, runs the Codex review loop, and confirms the spec before planning.
 origin: harness
@@ -226,7 +226,7 @@ Then run the auto-review loop (`attempt=1`, `max_attempts=3`):
 
 1. **Availability Gate**: read `config.codex.available` and `config.codex.authenticated` from `dev-context.json`. If either is not `true`: show **Manual Fallback** (below) and stop.
 
-2. Load `.claude/skills/adapter-codex-review/SKILL.md` and follow its Availability Gate → Path Validation → Invocation Pattern (spec-review) → Parsing the Decision sections. The skill reads the current phase/status from `dev-context.json` and invokes `codex exec -s workspace-write "spec-review 스킬로 <canon-path>를 리뷰해줘"`.
+2. Load `.claude/skills/adapter-codex-review/SKILL.md` and follow the sequence stated in its `## Execution Sequence` section. The skill reads the current phase/status from `dev-context.json`, derives `REVIEW_KIND=spec-review` from it, and invokes `codex exec -s workspace-write "spec-review 스킬로 <canon-path>를 리뷰해줘"` at its single call site.
 
    **If the skill exits without producing a new `spec-review-*.md`** (internal Availability Gate failure, `codex exec` non-zero exit, or sandbox-blocked write): show **Manual Fallback** (below) and stop.
 

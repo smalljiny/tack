@@ -1,11 +1,24 @@
 ---
-version: 17
+version: 24
 name: adapter-codex-review
 description: Run a single Codex spec-review or plan-review via `codex exec` and return the parsed Decision. Phase auto-detected from `dev-context.json`. Loop control is owned by the calling command, not this skill.
 origin: harness
 ---
 
 # adapter-codex-review
+
+## Execution Sequence
+
+절을 이 순서로 하나씩 따른다. 이 문서의 시퀀스 진술은 여기 한 곳뿐이며, 호출자도 이 순서를 그대로 인용한다.
+
+```
+Auto-Detect Entry Point §1 → §2 → §3 → Availability Gate → Path Validation → Parsing the Decision
+```
+
+- **§2를 건너뛰지 않는다** — `REVIEW_KIND`의 유일한 생산자이고, `Parsing the Decision`이 소비 직전에 검증해 미바인딩이면 codex를 부르기 전에 중단한다.
+- **codex 실행 지점은 `Parsing the Decision` 한 곳뿐이다** — 실행 전 파일 목록 스냅샷이 호출보다 먼저 찍혀야 새 리뷰 파일을 식별할 수 있어 두 단계를 분리하지 않는다. 다른 절에서 `codex exec`를 실행하면 리뷰 1회당 두 번 돌고 리뷰 파일도 두 개 생긴다.
+
+---
 
 ## Non-Goals
 
@@ -38,24 +51,28 @@ STATUS=$(python3 .tack/scripts/dev_context.py read --topic="$TOPIC" --field=stat
 | `plan:reviewing` | plan-review | `plan` |
 | 기타 | 실행 불가 — 아래 메시지 출력 후 종료 |  |
 
-해당하지 않는 상태일 경우:
+표가 정한 실행 스킬 이름을 `REVIEW_KIND`에 바인딩한다. `Parsing the Decision`의 `PATTERN`과 `codex exec` 대상이 이 값에서 파생되므로, 두 phase가 같은 블록을 그대로 쓴다.
+
+```bash
+case "$PHASE:$STATUS" in
+  spec:reviewing) REVIEW_KIND=spec-review ;;
+  plan:reviewing) REVIEW_KIND=plan-review ;;
+  *)
+    echo "현재 상태 ($PHASE:$STATUS)에서 adapter-codex-review를 실행할 수 없습니다." >&2
+    echo "spec-review: /flow-spec에서 spec:reviewing 상태로 전환 후 실행하세요." >&2
+    echo "plan-review: /flow-plan에서 plan:reviewing 상태로 전환 후 실행하세요." >&2
+    exit 1
+    ;;
+esac
 ```
-현재 상태 (<phase>:<status>)에서 adapter-codex-review를 실행할 수 없습니다.
-spec-review: /flow-spec에서 spec:reviewing 상태로 전환 후 실행하세요.
-plan-review: /flow-plan에서 plan:reviewing 상태로 전환 후 실행하세요.
-```
+
+`*)` arm은 표의 `기타` 행과 같은 판정이며, 그 메시지가 표에 해당하지 않는 상태에서 사용자에게 출력되는 전문이다. `REVIEW_KIND`는 이 블록에서만 만들어지고 `Parsing the Decision`이 소비하므로, 이 단계를 건너뛰면 그쪽 guard가 실행 전에 중단시킨다.
 
 ### 3. 경로 읽기·검증·정규화
 
-```bash
-# spec-review인 경우
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
+`Path Validation` 절의 명령을 phase에 맞는 `<field>`로 실행한다 (`spec-review` → `spec`, `plan-review` → `plan`).
 
-# plan-review인 경우
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
-```
-
-실패(비-0 exit) 시 즉시 중단. 성공 시 **사용자 확인 없이** Availability Gate → Invocation Pattern 순으로 바로 진행한다.
+실패(비-0 exit) 시 즉시 중단.
 
 ---
 
@@ -99,50 +116,20 @@ CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=<field
 # 오류 시 비-0 exit + stderr 출력
 ```
 
-`$CANON_PATH`를 이후 `codex exec` 호출과 `Parsing the Decision`의 `REVIEW_DIR` 계산에 사용한다.
+| REVIEW_KIND | `--field` |
+|---|---|
+| `spec-review` | `spec` |
+| `plan-review` | `plan` |
+
+`$CANON_PATH`를 이후 `Parsing the Decision` 시퀀스의 `codex exec` 프롬프트와 `REVIEW_DIR` 계산에 사용한다.
 
 **Security scope**: 경로를 리포지터리 로컬로 제한. `workspace-write` 샌드박스가 `codex exec` 작업 범위를 추가로 제한한다.
 
 ---
 
-## Invocation Pattern
+## Isolation via DEV_CONTEXT_PATH
 
-### spec-review
-
-```bash
-# Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=spec)
-
-# -s workspace-write: 리뷰 파일을 workdir 내에 쓸 수 있도록 명시적으로 허용.
-# 프로젝트 codex.toml에 workspace-write가 없어도 동작하도록 항상 붙인다.
-# macOS: gtimeout (brew coreutils) preferred; falls back to timeout (Linux); no-op if absent
-# < /dev/null: bash 복합 명령 안에서 실행 시 codex가 stdin을 읽으려 대기하는 문제 방지.
-TIMEOUT_BIN=$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null || true)
-if [ -n "$TIMEOUT_BIN" ]; then
-  "$TIMEOUT_BIN" 120 codex exec -s workspace-write "spec-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
-else
-  codex exec -s workspace-write "spec-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
-fi
-```
-
-### plan-review
-
-```bash
-# Path Validation → CANON_PATH 획득 (단일 node 호출, Bash(node:*) 허용)
-CANON_PATH=$(node .tack/scripts/validate-path.js --topic="$TOPIC" --field=plan)
-
-# < /dev/null: bash 복합 명령 안에서 실행 시 codex가 stdin을 읽으려 대기하는 문제 방지.
-TIMEOUT_BIN=$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null || true)
-if [ -n "$TIMEOUT_BIN" ]; then
-  "$TIMEOUT_BIN" 120 codex exec -s workspace-write "plan-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
-else
-  codex exec -s workspace-write "plan-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
-fi
-```
-
-`$CANON_PATH`를 이후 `Parsing the Decision`의 `REVIEW_DIR` 계산에 사용한다.
-
-### Isolation via DEV_CONTEXT_PATH
+**이 절은 `Execution Sequence`에 포함되지 않는다 — fixture dev-context로 수동 실험할 때만 쓴다.** 아래 블록의 `codex exec`는 그 실험용 호출이며, 자동 판정 경로에서 실행하지 않는다.
 
 To run experiments without mutating the active development topic, point `DEV_CONTEXT_PATH`
 to a fixture dev-context file inside the repo (e.g. `.tack/local/.../fixture/`):
@@ -188,19 +175,50 @@ codex exec 실행 전후로 파일 목록을 비교해 새로 생성된 리뷰 �
 `-newer` 방식은 macOS에서 타임스탬프 해상도 문제로 신뢰할 수 없으므로 사용하지 않는다.
 
 ```bash
-# Set pattern: spec-review → 'spec-review-*.md' / plan-review → 'plan-review-*.md'
-PATTERN='spec-review-*.md'
+# Guard: 선행 단계가 바인딩하는 두 변수를 소비 직전에 검증한다. 이 블록을 Step 2·Path
+# Validation과 다른 셸 호출로 실행하면 둘 다 비는데, 그 경우 PATTERN이 '-*.md'가 되거나
+# REVIEW_DIR가 '.'가 되어 매치 0건으로 끝난다 — 이 어댑터가 고쳐 온 버그와 증상이 같다.
+case "${REVIEW_KIND-}" in
+  spec-review|plan-review) ;;
+  *)
+    echo "REVIEW_KIND must be spec-review or plan-review (got: '${REVIEW_KIND-}') — Step 2를 먼저 실행하세요" >&2
+    exit 1
+    ;;
+esac
+: "${CANON_PATH:?CANON_PATH must be bound by Path Validation}"
+
+# PATTERN은 REVIEW_KIND에서 파생된다
+# (spec-review → 'spec-review-*.md' / plan-review → 'plan-review-*.md')
+PATTERN="${REVIEW_KIND}-*.md"
 REVIEW_DIR="$(dirname "$CANON_PATH")"   # canonicalized file path → its containing dir
 
-# 1. 실행 전 파일 목록 기록
-BEFORE_FILES=$(ls "$REVIEW_DIR"/$PATTERN 2>/dev/null | sort)
+# 1. 실행 전 파일 목록 기록 — codex exec보다 반드시 먼저 찍는다
+BEFORE_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 
-# 2. codex exec 실행
-codex exec "spec-review 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
+# 2. codex exec 실행 — 이 문서에서 codex를 실행하는 유일한 지점이다.
+# -s workspace-write: 리뷰 파일을 workdir 내에 쓸 수 있도록 명시적으로 허용.
+# 프로젝트 codex.toml에 workspace-write가 없어도 동작하도록 항상 붙인다.
+# macOS: gtimeout (brew coreutils) preferred; falls back to timeout (Linux); no-op if absent
+# < /dev/null: 복합 명령 안에서 실행 시 codex가 stdin을 읽으려 대기하는 문제 방지.
+TIMEOUT_BIN=$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null || true)
+if [ -n "$TIMEOUT_BIN" ]; then
+  "$TIMEOUT_BIN" 120 codex exec -s workspace-write "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
+else
+  codex exec -s workspace-write "${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘" < /dev/null
+fi
 EXEC_EXIT=$?
 
+# Guard: codex exec가 실패하면 리뷰 파일을 파싱하지 않는다.
+# Failure Handling 표의 `codex exec ... exits non-zero` 행과 같은 정책 — 실패한 실행이
+# 남긴 부분 파일에 `- Decision:` 줄이 있으면 그것이 유효한 판정으로 통과할 수 있다.
+if [ "$EXEC_EXIT" -ne 0 ]; then
+  echo "codex exec failed (exit=$EXEC_EXIT) — 아래 Manual fallback을 사용하세요:" >&2
+  echo "  codex \"${REVIEW_KIND} 스킬로 ${CANON_PATH}를 리뷰해줘\"" >&2
+  exit 1
+fi
+
 # 3. 실행 후 파일 목록과 비교 → 새 파일 = after - before
-AFTER_FILES=$(ls "$REVIEW_DIR"/$PATTERN 2>/dev/null | sort)
+AFTER_FILES=$(find "$REVIEW_DIR" -maxdepth 1 -name "$PATTERN" 2>/dev/null | sort)
 REVIEW_FILE=$(comm -13 <(echo "$BEFORE_FILES") <(echo "$AFTER_FILES") | tail -1)
 
 # Guard: 새 파일이 없으면 실패
@@ -217,6 +235,7 @@ grep -m1 "^- Decision:" "$REVIEW_FILE"
 - `/proc` 없이 macOS에서 동작 (타임스탬프 해상도 무관)
 - 파일 존재 여부 기반이므로 신뢰성 높음
 - `comm -13` = before에 없고 after에 있는 파일 = 이번 실행으로 새로 생성된 파일
+- 셸 글롭에 의존하지 않음 — `find`가 패턴을 인자로 받아 자체 매칭하므로, 변수 치환 결과를 글롭 확장하지 않는 zsh의 동작과 무관하다
 
 Decision line format (from existing review files): `- Decision: READY` / `- Decision: NOT READY` / `- Decision: READY WITH NOTE`
 
