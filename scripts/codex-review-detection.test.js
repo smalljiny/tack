@@ -64,6 +64,8 @@ const SKILL_GLOB = `${REPO_ROOT}/template/.claude/skills/**/SKILL.md`
 const NEGATIVE_CONTROL_SKILL = `${REPO_ROOT}/template/.claude/skills/learned/bash-set-u-empty-array/SKILL.md`
 
 const PARSING_ANCHOR = /^#{1,6}\s+Parsing the Decision\s*$/
+const PHASE_ROUTING_ANCHOR = /^#{1,6}\s+2\.\s+phase:status/
+const ISOLATION_ANCHOR = /^#{1,6}\s+Isolation via DEV_CONTEXT_PATH\s*$/
 
 const read = (path) => readFileSync(path, 'utf8')
 
@@ -111,14 +113,22 @@ function firstBashBlock(text) {
   return block ? block.lines.join('\n') : null
 }
 
-/** `## Parsing the Decision` 절의 첫 bash 블록을 꺼낸다. */
-function parsingBlock(markdown) {
-  const section = sectionUnderHeading(markdown, PARSING_ANCHOR)
-  assert.ok(section, '`## Parsing the Decision` 절을 찾지 못했다')
+/** 지정 절의 첫 bash 블록을 꺼낸다. */
+function sectionBlock(markdown, anchor, label) {
+  const section = sectionUnderHeading(markdown, anchor)
+  assert.ok(section, `${label} 절을 찾지 못했다`)
   const block = firstBashBlock(section)
-  assert.ok(block, '`## Parsing the Decision` 절에 bash 코드 펜스 블록이 없다')
+  assert.ok(block, `${label} 절에 bash 코드 펜스 블록이 없다`)
   return block
 }
+
+/** `## Parsing the Decision` 절의 첫 bash 블록. */
+const parsingBlock = (markdown) =>
+  sectionBlock(markdown, PARSING_ANCHOR, '`## Parsing the Decision`')
+
+/** `### 2. phase:status → 실행 스킬 결정` 절의 첫 bash 블록 (REVIEW_KIND 생산자). */
+const phaseRoutingBlock = (markdown) =>
+  sectionBlock(markdown, PHASE_ROUTING_ANCHOR, '`### 2. phase:status`')
 
 /**
  * 텍스트 안의 모든 ```bash 펜스 블록을 원문 줄 번호와 함께 돌려준다.
@@ -270,21 +280,53 @@ function globToRegExp(glob) {
   return new RegExp(`^${escaped.replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')}$`)
 }
 
+// 따옴표 span을 지운 뒤 판정한다 — `echo "… after codex exec (exit=…)"` 같은 **메시지 안의**
+// `codex exec`를 호출로 오인해 에러 출력을 스텁으로 덮어쓰지 않기 위해서다.
+const isCodexExecCall = (line) =>
+  !/^\s*#/.test(line) && /(^|\s)codex exec\s/.test(stripQuotedSpans(line))
+
 /**
- * `codex exec …` 호출 한 줄만 스텁으로 치환한다.
- * 뒤따르는 `EXEC_EXIT=$?`가 스텁의 종료 코드를 그대로 받는다.
+ * `codex exec …` 호출 줄을 **전부** 스텁으로 치환한다. 블록은 `TIMEOUT_BIN` 유무로 갈리는
+ * if/else 두 분기를 갖고, 실행 시 정확히 한 분기만 돈다 — 양쪽을 같은 스텁으로 바꿔야
+ * 어느 환경에서도 스텁이 한 번 실행된다. 뒤따르는 `EXEC_EXIT=$?`가 종료 코드를 받는다.
  * 주석 줄(`# 2. codex exec 실행`)은 치환 대상이 아니다.
  */
 function stubCodexExec(block, stub) {
   const lines = block.split('\n')
-  const idx = lines.findIndex((line) => /^\s*codex exec\s/.test(line))
-  assert.notStrictEqual(idx, -1, '블록에서 `codex exec` 호출 줄을 찾지 못했다')
-  return [...lines.slice(0, idx), stub, ...lines.slice(idx + 1)].join('\n')
+  assert.ok(lines.some(isCodexExecCall), '블록에서 `codex exec` 호출 줄을 찾지 못했다')
+  return lines.map((line) => (isCodexExecCall(line) ? stub : line)).join('\n')
 }
 
 // 생성된 tmpdir. anti-vacuity 케이스가 실행 **후** 디스크 존재를 assert하므로 즉시 지울 수
 // 없다. 전체 실행이 끝난 뒤 한 번에 정리한다.
 const SCRATCH_DIRS = []
+
+const scratchDir = () => {
+  const dir = mkdtempSync(join(tmpdir(), 'codex-review-detection-'))
+  SCRATCH_DIRS.push(dir)
+  return dir
+}
+
+/** 스크립트 텍스트를 격리된 셸로 실행한다. rcfile·로케일 격리는 여기 한 곳에서 건다. */
+function runScript(shell, script, dir = scratchDir()) {
+  const { path: shellPath, args } = SHELLS[shell]
+  assert.ok(shellPath, `${shell}이 resolve되지 않았다`)
+
+  const scriptPath = join(dir, 'run.sh')
+  writeFileSync(scriptPath, `${script}\n`)
+
+  const env = { ...process.env, LC_ALL: 'C' }
+  delete env.BASH_ENV
+  delete env.ENV
+  delete env.ZDOTDIR
+
+  const result = spawnSync(shellPath, [...args, scriptPath], {
+    encoding: 'utf8',
+    env,
+    timeout: 10_000,
+  })
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr, dir }
+}
 
 /**
  * 블록을 격리된 tmpdir에서 지정 셸로 실행한다.
@@ -295,11 +337,7 @@ function runBlock(
   block,
   { shell, kind, seeds, creates, nestedCreates = null, execExit = 0, bindKind = true },
 ) {
-  const { path: shellPath, args } = SHELLS[shell]
-  assert.ok(shellPath, `${shell}이 resolve되지 않았다`)
-
-  const dir = mkdtempSync(join(tmpdir(), 'codex-review-detection-'))
-  SCRATCH_DIRS.push(dir)
+  const dir = scratchDir()
   const canonPath = join(dir, 'spec.md')
   writeFileSync(canonPath, '# spec\n')
   for (const [name, decision] of seeds) writeFileSync(join(dir, name), `- Decision: ${decision}\n`)
@@ -322,21 +360,9 @@ function runBlock(
   // 호출로 이 블록을 실행한 상황을 재현한다 (셸 상태는 호출 간에 유지되지 않는다).
   const kindLine = bindKind ? `REVIEW_KIND=${JSON.stringify(kind)}\n` : ''
   const preamble = `CANON_PATH=${JSON.stringify(canonPath)}\n${kindLine}`
-  const script = `${preamble}${stubCodexExec(block, stubLines.join('\n'))}\n`
-  const scriptPath = join(dir, 'run.sh')
-  writeFileSync(scriptPath, script)
+  const script = `${preamble}${stubCodexExec(block, stubLines.join('\n'))}`
 
-  const env = { ...process.env, LC_ALL: 'C' }
-  delete env.BASH_ENV
-  delete env.ENV
-  delete env.ZDOTDIR
-
-  const result = spawnSync(shellPath, [...args, scriptPath], {
-    encoding: 'utf8',
-    env,
-    timeout: 10_000,
-  })
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr, dir, newFilePath }
+  return { ...runScript(shell, script, dir), newFilePath }
 }
 
 // --- 케이스 정의 -------------------------------------------------------------
@@ -413,6 +439,77 @@ describe('수정된 블록: C1·C2·C3 × zsh·bash × spec-review·plan-review'
           assert.strictEqual(result.stdout.trim(), testCase.expect)
         })
       }
+    }
+  }
+})
+
+describe('codex 호출 지점은 한 곳이다', () => {
+  // 호출자는 `Invocation Pattern → Parsing the Decision` 순서로 두 절을 따르라고 지시한다.
+  // 두 절이 각각 codex를 실행하면 리뷰 1회당 두 번 돌고 리뷰 파일도 2개 생긴다. 그런데
+  // BEFORE 스냅샷이 Parsing 블록 안에서 찍히므로 `comm -13`은 여전히 1건을 돌려준다 —
+  // 탐지 로직만으로는 이중 실행이 관측되지 않으므로 호출 지점 수를 직접 고정한다.
+  test('자동 판정 플로우의 codex exec 호출은 Parsing 블록 안에만 있다', () => {
+    // `### Isolation via DEV_CONTEXT_PATH`는 fixture dev-context로 수동 실험할 때 쓰는
+    // 예시이고 호출자가 따르는 절 순서에 들어 있지 않으므로 스코프에서 뺀다.
+    const text = read(CANON_SKILL)
+    const parsing = parsingBlock(text).split('\n')
+    const isolation = sectionUnderHeading(text, ISOLATION_ANCHOR)
+    assert.ok(isolation, '`### Isolation via DEV_CONTEXT_PATH` 절을 찾지 못했다')
+    const isolationLines = isolation.split('\n')
+
+    const callsOutside = allBashBlocks(text)
+      .flatMap((block) => block.lines.map((line, i) => ({ line, no: block.startLine + i })))
+      .filter(
+        ({ line }) =>
+          isCodexExecCall(line) && !parsing.includes(line) && !isolationLines.includes(line),
+      )
+
+    assert.deepStrictEqual(callsOutside, [], `Parsing 블록 밖 호출: ${JSON.stringify(callsOutside)}`)
+  })
+
+  test('Parsing 블록의 호출은 TIMEOUT_BIN 분기 2줄뿐이고 -s workspace-write를 유지한다', () => {
+    const calls = parsingBlock(read(CANON_SKILL)).split('\n').filter(isCodexExecCall)
+
+    // if/else 두 분기 — 실행 시 한쪽만 돈다.
+    assert.strictEqual(calls.length, 2, JSON.stringify(calls))
+    for (const call of calls) assert.match(call, /codex exec -s workspace-write /)
+    assert.ok(
+      calls.some((call) => /"\$TIMEOUT_BIN" 120 /.test(call)),
+      'timeout 래퍼 분기가 없다',
+    )
+  })
+})
+
+describe('Step 2 phase 라우팅 블록 (REVIEW_KIND 생산자)', () => {
+  // Parsing 블록(소비자)만 실행하고 생산자를 정적으로 두면, 이 토픽이 세운 원칙
+  // ("문서 블록은 추출해 실제로 실행한다")이 새로 추가된 블록에 적용되지 않는다.
+  const ROUTING = [
+    { phase: 'spec', status: 'reviewing', expect: 'spec-review' },
+    { phase: 'plan', status: 'reviewing', expect: 'plan-review' },
+    { phase: 'impl', status: 'in-progress', expect: null },
+    { phase: '', status: '', expect: null },
+  ]
+
+  for (const shell of ['zsh', 'bash']) {
+    for (const { phase, status, expect } of ROUTING) {
+      test(`${shell} — ${phase || '(빈값)'}:${status || '(빈값)'} → ${expect ?? '실행 불가'}`, () => {
+        const block = phaseRoutingBlock(read(CANON_SKILL))
+        const result = runScript(shell, [
+          `PHASE=${JSON.stringify(phase)}`,
+          `STATUS=${JSON.stringify(status)}`,
+          block,
+          'printf %s "$REVIEW_KIND"',
+        ].join('\n'))
+
+        if (expect === null) {
+          // 표의 `기타` 행 — 조용히 빠져나가면 소비자가 원인과 무관한 메시지를 낸다.
+          assert.notStrictEqual(result.status, 0, `stdout: ${result.stdout}`)
+          assert.match(result.stderr, /adapter-codex-review를 실행할 수 없습니다/)
+          return
+        }
+        assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
+        assert.strictEqual(result.stdout, expect)
+      })
     }
   }
 })
