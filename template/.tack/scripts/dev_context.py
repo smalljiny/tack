@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 # 런타임 검증은 is_valid_transition/allowed_transitions(update-state)와
 # STATE_ORDER/is_known_state/is_forward_jump(force-state)로 라우팅한다.
 # VALID_TRANSITIONS는 seam 배선(plan T1.3의 6-심볼 요구)으로 import하되 직접 참조는 없다.
+import config_schema
 from state_machine import (
     VALID_TRANSITIONS,  # noqa: F401 — seam 배선용, 직접 참조 없음(위 주석 참조)
     STATE_ORDER,
@@ -37,6 +38,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # 레퍼런스 JS: join(__dirname, '../../.tack/local/dev-context.json') (normalize 포함)
 DEFAULT_CONTEXT_PATH = os.path.normpath(
     os.path.join(SCRIPT_DIR, "..", "..", ".tack", "local", "dev-context.json")
+)
+# config 키 계약(.tack/contracts/config-schema.json). local 경로와 달리 SCRIPT_DIR 기준으로
+# 유도한다 — 스키마는 배포 산출물의 일부라 DEV_CONTEXT_PATH 격리와 함께 움직이지 않는다.
+DEFAULT_CONFIG_SCHEMA_PATH = os.path.normpath(
+    os.path.join(SCRIPT_DIR, "..", "contracts", "config-schema.json")
 )
 
 # phase/status 설정 금지 필드
@@ -63,6 +69,14 @@ def resolve_shared_config_path():
     return os.environ.get("DEV_CONFIG_PATH") or os.path.normpath(
         os.path.join(os.path.dirname(os.path.dirname(resolve_context_path())), "config.json")
     )
+
+
+def resolve_config_schema_path():
+    """DEV_CONFIG_SCHEMA_PATH env override, 미설정 시 스크립트 상대 계약 경로.
+
+    DEV_CONTEXT_PATH 선례를 따르는 테스트·격리 seam이다.
+    """
+    return os.environ.get("DEV_CONFIG_SCHEMA_PATH") or DEFAULT_CONFIG_SCHEMA_PATH
 
 
 def _empty_shared_config():
@@ -162,17 +176,25 @@ def read_context():
     return ctx
 
 
-def write_context(ctx):
-    path = resolve_context_path()
-    ctx["updatedAt"] = _iso_now()
+def atomic_write_json(path, data):
+    """JSON을 원자적으로 기록한다 — 임시 파일에 쓴 뒤 rename.
+
+    쓰기 목적지가 둘(local dev-context.json · tracked config.json)이므로 관용구를 여기
+    한 곳에 둔다. `updatedAt` 스탬핑은 이 함수가 하지 않는다 — tracked 파일은 매 쓰기가
+    diff 노이즈가 되므로 타임스탬프를 갖지 않으며, 스탬핑은 write_context의 책임이다.
+    """
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    # 원자적 쓰기: 임시 파일에 쓴 뒤 rename
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(json.dumps(ctx, indent=2, ensure_ascii=False) + "\n")
+        f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     os.replace(tmp, path)
+
+
+def write_context(ctx):
+    ctx["updatedAt"] = _iso_now()
+    atomic_write_json(resolve_context_path(), ctx)
 
 
 def parse_args(argv):
@@ -243,6 +265,74 @@ def coerce_config_value(value):
             )
         return parsed
     return value
+
+
+def _candidate_hint(name, candidates):
+    """오타 후보 문구. 근접 후보가 없으면 전체 후보를 나열한다.
+
+    difflib cutoff에 걸리지 않는 입력('bogus' 등)에서 빈 문구를 내보내면 사용자가 다음
+    행동을 알 수 없다 — 후보 집합이 유한하고 작으므로 전체를 보여주는 편이 낫다.
+    """
+    close = config_schema.suggest(name, candidates)
+    if close:
+        return "가까운 후보: " + ", ".join(close)
+    return "사용 가능: " + ", ".join(candidates)
+
+
+def load_config_schema():
+    """config 키 계약을 fail-closed로 읽는다 — 부재·손상이면 해석된 경로를 담아 die.
+
+    env override 경로에도 같은 정책을 적용한다(프로덕션/테스트 동작 분기를 만들지 않는다).
+    이 경로는 config **쓰기**에서만 호출된다 — read는 스키마를 조회하지 않으므로 스키마
+    한 파일이 워크플로 진입 전체를 막지 않는다(스펙 §3.4).
+    """
+    try:
+        return config_schema.load_schema(resolve_config_schema_path())
+    except config_schema.SchemaError as e:
+        die(f"set-field: {e}")
+
+
+def validate_config_write(schema, ns, key, value):
+    """스키마 대조 후 저장할 값을 반환한다. 위반은 die.
+
+    순서: (1) 네임스페이스 조회 → (2) 키 조회 → (3) 타입 추론 → (4) 타입 검사.
+    경로 깊이·예약 키 검사(parse_config_path)는 호출 전에 끝나 있어야 한다 — 그 메시지가
+    스키마 조회 메시지보다 먼저 나와야 기존 계약이 유지된다.
+
+    `schema`를 인자로 받는다 — 로드는 호출자(I/O 층)가 하고 이 함수는 판정만 한다.
+    layer 라우팅도 같은 schema 객체를 소비하므로, 한 번의 로드로 검증과 목적지 결정이
+    같은 지점에서 이어진다 (스펙 §3.3·§3.4가 한 시퀀스로 규정한 검사 순서).
+    """
+    if ns not in config_schema.namespaces(schema):
+        die(
+            f"set-field: 알 수 없는 config 네임스페이스 '{ns}' — "
+            f"{_candidate_hint(ns, config_schema.namespaces(schema))}"
+        )
+    entry = config_schema.lookup(schema, ns, key)
+    if entry is None:
+        die(
+            f"set-field: 알 수 없는 config 키 '{ns}.{key}' — "
+            f"{_candidate_hint(key, config_schema.keys_of(schema, ns))}"
+        )
+
+    coerced = coerce_config_value(value)
+    declared = entry.get("type")
+    if not config_schema.check_type(declared, coerced):
+        if not isinstance(value, str):
+            # 등호 없는 bare `--value`는 parse_args가 True로 만든다. 사용자가 입력한
+            # 문자열이 아니므로 '입력: true' 표기만으로는 원인이 드러나지 않는다.
+            shown = "등호 없는 '--value' 플래그"
+            hint = " 값을 주려면 '--value=<값>' 형태를 사용합니다."
+        else:
+            shown = f"입력값: '{value}'"
+            # 'false'·'2026' 같은 문자열은 타입 추론이 bool·int로 바꾼다. 빈 문자열
+            # 저장은 등호를 붙인 `--value=` 형태여야 한다.
+            hint = " 빈 문자열을 저장하려면 '--value=' 형태를 사용합니다." if declared == "string" else ""
+        die(
+            f"set-field: config.{ns}.{key} 키는 {declared} 타입이지만 입력이 "
+            f"{config_schema.type_name(coerced)} 타입으로 해석됐습니다 ({shown}).{hint}"
+        )
+    return coerced
 
 
 def cmd_register_topic(args):
@@ -318,6 +408,27 @@ def cmd_update_state(args):
     write_context(ctx)
 
 
+def _set_config_field(field, value):
+    """config 점 경로 쓰기: 경로 검증 → 스키마 검증 → 목적지 파일 갱신.
+
+    스키마는 여기서 한 번 로드해 검증에 넘긴다. layer 라우팅(Story 4)도 같은 객체를
+    소비하므로 목적지 결정이 검증과 같은 지점에서 이어진다.
+    """
+    parsed = parse_config_path(field)
+    if not parsed["ok"]:
+        die(f"set-field: {parsed['reason']}")
+    ns = parsed["ns"]
+    key = parsed["key"]
+    schema = load_config_schema()
+    # 검증이 read-modify-write보다 앞선다 — 거부된 쓰기는 파일을 만들지도 건드리지도 않는다.
+    coerced = validate_config_write(schema, ns, key, value)
+    ctx = read_context()
+    if not isinstance(ctx["config"].get(ns), dict):
+        ctx["config"][ns] = {}
+    ctx["config"][ns][key] = coerced
+    write_context(ctx)
+
+
 def cmd_set_field(args):
     field = args.get("field")
     topic = args.get("topic")
@@ -340,15 +451,7 @@ def cmd_set_field(args):
     if field == "config" or field.startswith("config."):
         if topic:
             die("set-field: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
-        parsed = parse_config_path(field)
-        if not parsed["ok"]:
-            die(f"set-field: {parsed['reason']}")
-        ctx = read_context()
-        ns = parsed["ns"]
-        if not isinstance(ctx["config"].get(ns), dict):
-            ctx["config"][ns] = {}
-        ctx["config"][ns][parsed["key"]] = coerce_config_value(value)
-        write_context(ctx)
+        _set_config_field(field, value)
         return
 
     if not topic:

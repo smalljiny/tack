@@ -7,6 +7,7 @@ test_dev_context.py는 CLI 계약(exit code·stdout·stderr)을 검증하려고 
 `--cov` 미사용(일반 배포 프로젝트의 pytest 실행)에서는 아무것도 하지 않는다.
 """
 
+import json
 import os
 import pathlib
 import tempfile
@@ -18,6 +19,34 @@ import pytest
 def ctx_path(tmp_path):
     """테스트별 독립 tmp 파일 경로 (파일은 생성하지 않음). 모든 test_*.py가 공유."""
     return str(tmp_path / "dev-context.json")
+
+
+# 타입 추론 plumbing 전용 합성 스키마. 실사용 인벤토리에는 `integer` 타입 키가 하나도
+# 없으므로, `^-?[0-9]+$ → int` 규칙을 실제 키로 검증할 수단이 없다. tracked 계약 파일을
+# 테스트 편의로 부풀리는 대신 픽스처 스키마를 tmp에 기록한다 (배포 산출물 불변).
+#
+# 소비되는 필드만 담는다 — `load_schema`는 `namespaces`만, 검증은 `type`만, 쓰기 라우팅은
+# `layer`만 읽는다. 실사용 스키마의 나머지 필드(`type_values`·`layer_values`·`default`·
+# 각종 설명)를 여기 복제하면 vocabulary parity 계약에 참여하는 것처럼 보이지만 실제로는
+# 아무도 읽지 않는다 — parity 가드는 실사용 스키마만 대상으로 한다.
+# layer는 전부 `local`이다 — 이 픽스처를 쓰는 쓰기 단언이 local 파일을 가리켜야 하며,
+# Story 4의 shared 라우팅 도입 후에도 목적지가 바뀌지 않는다.
+FIXTURE_SCHEMA = {
+    "namespaces": {
+        "some": {
+            "count": {"type": "integer", "layer": "local"},
+            "label": {"type": "string", "layer": "local"},
+        }
+    },
+}
+
+
+@pytest.fixture
+def fixture_schema_path(tmp_path):
+    """`some.*` 합성 네임스페이스를 선언하는 테스트 전용 스키마 파일 경로."""
+    path = tmp_path / "fixture-config-schema.json"
+    path.write_text(json.dumps(FIXTURE_SCHEMA, ensure_ascii=False), encoding="utf-8")
+    return str(path)
 
 
 def pytest_configure(config):
@@ -36,7 +65,7 @@ def pytest_configure(config):
     rc.write_text(
         "[run]\n"
         "parallel = true\n"
-        "include = */dev_context.py\n"
+        "include = */dev_context.py,*/config_schema.py\n"
         f"data_file = {data_file}\n",
         encoding="utf-8",
     )

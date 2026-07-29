@@ -20,6 +20,10 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(SCRIPT_DIR, "dev_context.py")
 NODE_SCRIPT = os.path.join(SCRIPT_DIR, "dev-context.js")
+# 실사용 config 스키마. 경로를 재유도하지 않고 프로덕션 상수를 그대로 쓴다 — 계약 파일이
+# 옮겨지면 프로덕션과 함께 움직여야 vocabulary parity 가드가 엉뚱한 파일을 검증하지 않는다.
+# dev_context는 __main__ 가드가 있어 import 부작용이 없다.
+from dev_context import DEFAULT_CONFIG_SCHEMA_PATH as SCHEMA_PATH  # noqa: E402
 # 공유 config 봉투의 포맷 버전. dev_context._empty_shared_config()와 같은 값을 쓴다.
 FILE_FORMAT = "1.0"
 # ISO 타임스탬프(밀리초+Z) 정규화 — createdAt/updatedAt만 런타임마다 달라진다.
@@ -36,13 +40,21 @@ def shared_config_path(ctx_path):
     return os.path.join(os.path.dirname(os.path.abspath(ctx_path)), "config.json")
 
 
-def run_raw(ctx_path, *args):
-    """성공/실패 무관하게 CompletedProcess 반환 (실패 케이스용)."""
+def run_raw(ctx_path, *args, schema_path=None):
+    """성공/실패 무관하게 CompletedProcess 반환 (실패 케이스용).
+
+    `schema_path`를 주면 DEV_CONFIG_SCHEMA_PATH로 주입한다 — `some.*` 같은 합성
+    네임스페이스를 쓰는 plumbing 테스트가 픽스처 스키마로 실행되기 위한 seam이다.
+    미지정이면 env에서 제거해 **실사용 스키마**로 해석되게 한다 (상속된 env 누출 차단).
+    """
     env = {
         **os.environ,
         "DEV_CONTEXT_PATH": ctx_path,
         "DEV_CONFIG_PATH": shared_config_path(ctx_path),
     }
+    env.pop("DEV_CONFIG_SCHEMA_PATH", None)
+    if schema_path is not None:
+        env["DEV_CONFIG_SCHEMA_PATH"] = schema_path
     return subprocess.run(
         [sys.executable, SCRIPT, *args],
         capture_output=True,
@@ -52,9 +64,9 @@ def run_raw(ctx_path, *args):
     )
 
 
-def run(ctx_path, *args):
+def run(ctx_path, *args, schema_path=None):
     """서브커맨드를 실행하고 성공(exit 0)을 단언한 뒤 CompletedProcess 반환."""
-    result = run_raw(ctx_path, *args)
+    result = run_raw(ctx_path, *args, schema_path=schema_path)
     assert result.returncode == 0, (
         f"expected success, got exit {result.returncode}: {result.stderr}"
     )

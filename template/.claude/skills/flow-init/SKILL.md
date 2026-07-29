@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 name: flow-init
 description: Initialize or update project section of CLAUDE.md and AGENTS.md. Detects the gh CLI version, records config.gh.*, and blocks the harness bootstrap when native sub-issue support (gh >= 2.94.0) is unavailable.
 origin: harness
@@ -214,7 +214,7 @@ python3 .tack/scripts/dev_context.py set-field \
 ```
 출력: `일반 프로젝트로 감지: config.docs.sourceFilter를 빈 배열로 설정했습니다 (필터 없음).`
 
-**수동 재설정**: 자동 감지값으로 강제 초기화하려면 사용자가 직접 빈 값으로 reset한 뒤 `/flow-init`을 재실행하거나, `dev_context.py set-field`로 임의 값을 지정한다:
+**수동 재설정**: 자동 감지값으로 강제 초기화하려면 사용자가 직접 빈 배열(`--value='[]'`)로 reset한 뒤 `/flow-init`을 재실행하거나, `dev_context.py set-field`로 임의 값을 지정한다. `sourceFilter`는 `array` 타입 키라 `--value=`(빈 문자열)는 타입 불일치로 거부된다:
 ```bash
 python3 .tack/scripts/dev_context.py set-field \
   --field=config.docs.sourceFilter --value='["src/","lib/"]'
