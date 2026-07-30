@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 ---
 # Git Workflow
 
@@ -78,6 +78,8 @@ python3 .tack/scripts/dev_context.py set-field \
   --field=config.dev_impl.auto_commit --value=true
 ```
 
+`config.dev_impl.auto_commit`은 `local` layer이므로 git-ignored `.tack/local/dev-context.json`에 기록된다 — 커밋되지 않으며 이 머신에만 적용된다. 무인 실행 선호는 개인 설정이라 `--layer=shared`로 공유 층에 승격하려 하면 `set-field`가 거부한다.
+
 ## Review-fix Commit
 
 `/flow-review`에서 발생한 수정은 **별도 commit으로 분리**한다.
@@ -116,17 +118,21 @@ PR 생성은 `/flow-docs → /flow-pr → /flow-done` 순서로 진행한다:
 
 ## git config: Remote 설정
 
-| Config 필드 | 기본값 | 설명 |
-|---|---|---|
-| `config.git.pushRemote` | `origin` | 브랜치를 push할 remote |
-| `config.git.pullRemote` | `origin` | base branch를 pull할 remote (fork 사용 시 `upstream`) |
-| `config.git.baseBranch` | `main` | PR base branch |
-| `config.git.branchPattern` | `^(feature\|fix\|chore)/` | 유효 브랜치 패턴 |
+| Config 필드 | 기본값 | 저장 층 | 저장 파일 | 설명 |
+|---|---|---|---|---|
+| `config.git.pushRemote` | `origin` | `shared` | `.tack/config.json` (tracked) | 브랜치를 push할 remote |
+| `config.git.pullRemote` | `origin` | `shared` | `.tack/config.json` (tracked) — 확정값이 `upstream`이면 개인 층 | base branch를 pull할 remote (fork 사용 시 `upstream`) |
+| `config.git.baseBranch` | `main` | `shared` | `.tack/config.json` (tracked) | PR base branch |
+| `config.git.branchPattern` | `^(feature\|fix\|chore)/` | `shared` | `.tack/config.json` (tracked) | 유효 브랜치 패턴 |
+
+네 키 모두 `shared` layer이므로 기본 라우팅(플래그 없음)에서 `set-field`가 tracked `.tack/config.json`에 기록한다 — 커밋 대상이며 팀 전체가 공유한다. 예외는 `pullRemote` 하나다: `/flow-setup git`은 확정값이 `upstream`일 때 그 키만 `--layer=local`로 개인 층에 기록한다.
 
 **Private Fork 설정 예시:**
 ```bash
-python3 .tack/scripts/dev_context.py set-field --field=config.git.pullRemote --value=upstream
+python3 .tack/scripts/dev_context.py set-field --field=config.git.pullRemote --layer=local --value=upstream
 ```
+
+`--layer=local`을 붙여 git-ignored `.tack/local/dev-context.json`에 기록한다. fork를 쓰는 것은 그 사용자의 사정이므로 공유 층을 오염시키지 않는다 — tracked 파일에 `upstream`이 들어가면 fork를 쓰지 않는 팀원이 그 값을 상속해 PR diff 기준이 어긋난다. `read`는 local을 먼저 보므로 이 개인 값이 팀 값을 가린다. `/flow-setup git` 재실행은 `pushRemote`·`baseBranch`·`branchPattern`의 공유 층만 갱신하지만 `pullRemote`은 예외다 — 확정값이 `upstream`이면 그 스킬이 개인 층에 직접 쓰므로 이 값이 갱신된다.
 
 ## Feature Implementation Workflow
 
