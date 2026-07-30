@@ -83,7 +83,7 @@ Codex는 @import를 지원하지 않아 공유 코딩 규칙을 인라인해야 
 
 ## 제약사항
 
-- **물리적 배포 실행은 범위 밖**: `copier copy`/`update`로 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행은 E1-S3 소관이다. 이 문서가 확정하는 것은 배선(정적 아티팩트)이지 물리 배포가 아니다. 콘텐츠 경로는 `.tack/` 배포 레이아웃(`.tack/scripts/`·`.tack/local/`)으로 정합돼 있고, `scripts/render-smoke-test.sh`가 disposable dest에 렌더해 (a) 첫 dev-context 명령 동작 (b) stale 참조 0 (c) `.tack/local/` gitignore 강제를 검증한다.
+- **물리적 배포 실행은 범위 밖**: `copier copy`/`update`로 repo 루트에 materialize + `.tack/local/` 스캐폴드 실행은 E1-S3 소관이다. 이 문서가 확정하는 것은 배선(정적 아티팩트)이지 물리 배포가 아니다. 콘텐츠 경로는 `.tack/` 배포 레이아웃(`.tack/scripts/`·`.tack/local/`)으로 정합돼 있고, `scripts/render-smoke-test.sh`가 disposable dest에 렌더해 (a) 첫 dev-context 명령 동작 (a2) Python 쓰기 서브커맨드 (a3) dev-context.js 엔진 파리티 잔존 (a4) 스킬층 stale inline 호출 0건 (a5) config 스키마 존재·파싱 (a6) shared 층 쓰기 + `.tack/config.json` 생성 + read-back (a7) `cache` 키의 `--layer=shared` 승격 거부 (b) stale 참조 0 (c) `.tack/local/` gitignore 강제 + `.tack/config.json` non-ignore를 검증한다. (a6)는 `DEV_CONFIG_PATH`를 설정하지 않고 렌더 dest의 경로 유도에 의존하므로, 배포 형태 그대로의 shared 층 동작을 검증한다.
 - **tracked 커밋 전제는 E1-S4**: `.copier-answers.yml` 커밋과 배포된 instance 파일의 git tracked 커밋(3-way merge 전제)은 E1-S4가 배선한다.
 - **dev-context 엔진은 E2**: `_tasks`가 seed하는 `dev-context.json`은 최소 placeholder이며, 스키마·상태 머신·Python 재작성은 E2가 소유한다.
 - **첫 git-tag 시점 DEFER**: 초기 버전 태그(v0.1.0 등) 부여 시점은 배포 정책(E1-S3/E1-S4)으로 미룬다 — 동작하는 copier.yml·물리 배포 검증 전 태깅은 조급하다.

@@ -62,6 +62,7 @@ Copier가 source를 렌더한 결과, instance 루트는 다음 형태가 된다
     ├── templates/      재사용 템플릿 (pr-body 등)
     ├── commit-scopes.md 프로젝트별 커밋 scope
     ├── .gitignore      `local/` ignore — 런타임 상태를 tracked 밖으로 강제
+    ├── config.json     공유 config (tracked) — 배포되지 않고 최초 shared 쓰기 시 CLI가 생성 (§7)
     └── local/          런타임 상태 (init-once 스캐폴드 → gitignored)
         ├── dev-context.json
         ├── backlog/ · active/ · done/    story 라이프사이클 산출물
@@ -100,8 +101,10 @@ source가 destination으로 렌더되는 방식은 네 가지다.
 "무엇을 git이 추적하는가"는 **source 층과 instance 층에서 다르다**.
 
 - **tack repo (template 저자)가 추적하는 것**: **source 트리(`template/`) 전체**. tack이 개발하는 배포용 구현체다.
-- **배포된 instance(소비 측 repo)가 추적하는 것**: 렌더된 공유 인프라(`.tack/{contracts,rules,scripts,templates,commit-scopes.md,.gitignore}`)·프롬프트(`.claude/`·`.codex/`)·컨텍스트 파일. instance 파일을 git tracked로 두는 이유는 `copier update`의 3-way merge와 `.copier-answers.yml` 커밋이 로컬 수정 보존을 위해 tracked를 전제하기 때문이다. `.tack/.gitignore`는 그 자신이 tracked이면서 `local/`을 untracked로 강제하는 배포 아티팩트다.
+- **배포된 instance(소비 측 repo)가 추적하는 것**: 렌더된 공유 인프라(`.tack/{contracts,rules,scripts,templates,commit-scopes.md,.gitignore}`)·프롬프트(`.claude/`·`.codex/`)·컨텍스트 파일, 그리고 **런타임이 생성하는 tracked 파일 `.tack/config.json`**. instance 파일을 git tracked로 두는 이유는 `copier update`의 3-way merge와 `.copier-answers.yml` 커밋이 로컬 수정 보존을 위해 tracked를 전제하기 때문이다. `.tack/.gitignore`는 그 자신이 tracked이면서 `local/`을 untracked로 강제하는 배포 아티팩트다.
 - **어느 층에서도 추적하지 않는 것**: `.tack/local/` — 배포되지 않는 per-checkout 런타임 스크래치. instance에서 tracked `.tack/.gitignore`의 `local/` 규칙으로 gitignored.
+
+**세 번째 범주 — 배포되지 않는 tracked 파일**: `.tack/config.json`은 §3 source→deploy 표의 어느 행에도 대응하지 않는다. `template/`에 대응 source가 없고 Copier가 렌더하지도 않으며, dev-context CLI가 `shared` layer 키를 처음 쓸 때 생성한다. 그런데도 tracked다 — 팀이 공유하는 config(`git.*`·`docs.sourceFilter`·`graphify.targets`·`risk.high_gate_enabled`)를 담기 때문이다. 이 파일을 배포 대상으로 두지 않는 이유는 빈 파일을 렌더하면 Copier 렌더 직후 결과가 dirty로 보이기 때문이고, `.tack/.gitignore`가 `local/`만 ignore하므로 별도 배선 없이 tracked가 된다. 결과적으로 `.tack/` 아래는 세 층으로 갈린다 — **배포 tracked**(contracts·rules·scripts·templates·commit-scopes.md·.gitignore), **런타임 생성 tracked**(config.json), **런타임 ignored**(local/). 키별로 어느 파일에 쓰이는지는 `.tack/contracts/config-schema.json`의 `layer` 필드가 결정한다(상세: `docs/specs/dev-context-engine.md`).
 
 **이중 tracked 경계**: 두 layer가 각각 tracked를 갖는다 — **tack repo는 source(`template/`)를 추적**하고, **target/dogfood instance repo는 배포 결과(렌더된 `.tack/`·프롬프트·컨텍스트 파일)를 추적**한다(D3). 둘은 서로 다른 layer의 서로 다른 대상이며 모순이 아니다. tack 개발자가 커밋하는 것은 source, 배포된 instance가 커밋하는 것은 렌더 결과다.
 
