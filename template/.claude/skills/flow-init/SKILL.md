@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 name: flow-init
 description: Initialize or update project section of CLAUDE.md and AGENTS.md. Detects the gh CLI version, records config.gh.*, and blocks the harness bootstrap when native sub-issue support (gh >= 2.94.0) is unavailable.
 origin: harness
@@ -192,7 +192,9 @@ Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 �
 
 `scripts/deploy-harness.sh` 파일 존재 여부로 저장소 유형을 감지하고 `config.docs.sourceFilter`를 설정한다.
 
-**보존 정책 (선결 조건)**: 기존 `config.docs.sourceFilter`가 **존재하면서 빈 배열·null·미설정이 아닌 경우** 감지 결과를 적용하지 않고 기존 값을 그대로 유지한다. `/flow-init`은 imports 재생성을 위해 재실행될 수 있으므로 (`/meta-add-language-rules` 안내), 사용자가 명시적으로 설정한 sourceFilter를 재실행마다 덮어쓰지 않는다. 보존이 발동하면 Step 8에 `[보존] config.docs.sourceFilter 기존 값 유지`를 출력한다.
+**쓰기 목적지**: `config.docs.sourceFilter`는 스키마에서 `shared` layer로 선언돼 있으므로 아래 `set-field` 호출은 **tracked 공유 config 파일 `.tack/config.json`**(커밋 대상)에 기록한다. 저장소 유형에 따른 문서 소스 필터는 팀 공통 값이다.
+
+**보존 정책 (선결 조건)**: 기존 `config.docs.sourceFilter`가 **존재하면서 빈 배열·null·미설정이 아닌 경우** 감지 결과를 적용하지 않고 기존 값을 그대로 유지한다. `/flow-init`은 imports 재생성을 위해 재실행될 수 있으므로 (`/meta-add-language-rules` 안내), 이미 확정된 sourceFilter를 재실행마다 덮어쓰지 않는다. 보존 판정은 `read` 결과를 보므로 개인 오버라이드(`--layer=local`)가 있으면 그 값이 기준이 된다. 보존이 발동하면 Step 8에 `[보존] config.docs.sourceFilter 기존 값 유지`를 출력한다.
 
 기존 값이 부재(미설정·빈 배열·null)일 때만 아래 감지 로직을 적용한다.
 
@@ -225,6 +227,8 @@ python3 .tack/scripts/dev_context.py set-field \
 Step 1에서 두 파일(`CLAUDE.md`, `AGENTS.md`) 모두 "중단"을 선택한 경우 이 단계를 건너뛴다.
 
 `config.graphify.targets`는 `/graphify` 풀 빌드의 분석 대상 디렉토리 배열이다. 본 Step은 배포 직후 미설정·빈 배열·null 상태일 때 저장소 유형별 추천값을 제시하고 `AskUserQuestion`으로 확정한다. 이미 비어 있지 않은 배열이 설정돼 있으면 보존한다 (멱등).
+
+**쓰기 목적지**: `config.graphify.targets`도 `shared` layer이므로 확정값은 **`.tack/config.json`**(tracked, 커밋 대상)에 기록된다. 분석 대상 디렉토리는 저장소 구조에서 나오는 팀 공통 값이다.
 
 **보존 정책 (선결 조건)**: 먼저 다음 명령으로 현재 값을 조회한다.
 
@@ -338,6 +342,8 @@ minor를 비교하기 전에 major 동등을 먼저 확정한다 — major 확�
 
 Step 5·6과 동일한 형태로 기록한다. 기록은 **4개 상태 모두에서 수행한다** — 차단 상태도 먼저 기록한 뒤 차단한다.
 
+**쓰기 목적지**: 호출 형태는 Step 5·6과 같지만 목적지가 다르다 — `config.gh.*` 4필드는 스키마에서 `cache` layer로 선언돼 있으므로 **git-ignored `.tack/local/dev-context.json`**에 기록된다 (Step 5·6의 `shared` 키는 tracked `.tack/config.json`으로 간다). 커밋 대상이 아니다. 이 머신에서 감지한 결과이므로 공유하면 다른 머신에서 잘못된 값으로 읽힌다.
+
 ```bash
 python3 .tack/scripts/dev_context.py set-field --field=config.gh.available --value="$GH_AVAILABLE"
 python3 .tack/scripts/dev_context.py set-field --field=config.gh.native_subissue --value="$GH_NATIVE_SUBISSUE"
@@ -353,6 +359,8 @@ python3 .tack/scripts/dev_context.py set-field --field=config.gh.checked_at --va
 | `config.gh.native_subissue` | bool-as-string (`true`/`false`) | 파싱된 버전이 2.94.0 이상인지 |
 | `config.gh.version` | semver 문자열 (`2.96.0`) 또는 빈 문자열 | `gh --version` 첫 줄에서 파싱한 `X.Y.Z` |
 | `config.gh.checked_at` | ISO8601 문자열 | 감지 시각 — `date -u +%Y-%m-%dT%H:%M:%SZ` |
+
+네 필드는 `cache` layer라 `--layer=shared`로 공유 층에 승격할 수 없다 — `set-field`가 non-zero exit으로 거부한다. 감지 캐시가 커밋되면 gh 버전이 다른 머신에서 stale 값을 참으로 읽게 되므로 의도된 차단이다.
 
 "bool-as-string"은 **CLI 인자 표현**을 가리킨다. `dev_context.py`의 `coerce_config_value`가 `"true"`/`"false"` 리터럴을 JSON boolean으로 변환해 저장하므로 `dev-context.json`에는 `"available": true`(따옴표 없음)로 기록되고, `read`가 다시 `true`/`false` 문자열로 출력한다. 소비자는 `read` 출력을 문자열 비교하는 `config.codex.*` 선례를 따른다.
 
