@@ -165,7 +165,7 @@
         "type": "boolean",
         "layer": "shared",
         "default": true,
-        "description": "high tier 토픽의 최종 리뷰에 붙는 human approval gate를 켤지 여부. Story 위험 tier 값의 SSOT는 plan 문서의 per-Story **Risk Tier** 필드이며, 판정 규칙은 contracts/implementation-plan.md의 ## Risk Tier 절이 소유한다. 이 키는 high tier human gate의 on/off 정책만 제어하고 tier 값을 담지 않는다. 무인 실행이 필요한 개인은 --layer=local로 끌 수 있다."
+        "description": "high tier 토픽의 최종 리뷰에 붙는 human approval gate를 켤지 여부. Story 위험 tier 값의 SSOT는 plan 문서의 per-Story **Risk Tier** 필드이며, 판정 규칙은 contracts/implementation-plan.md의 ## Risk Tier 절이 소유한다. 이 키는 high tier human gate의 on/off 정책만 제어하고 tier 값을 담지 않는다. 무인 실행이 필요한 개인은 --layer=local로 끌 수 있다. 소비처 해석 규칙: 이 키는 default가 true인 유일한 키이므로 다른 키의 '빈 출력 → false' 관례를 적용하지 않는다. 미설정(read 빈 출력)은 gate 켜짐으로 해석하고, 문자열 'false'와 정확히 일치할 때만 끈다 — 반대로 읽으면 human approval gate가 fail-open된다."
       }
     }
   }

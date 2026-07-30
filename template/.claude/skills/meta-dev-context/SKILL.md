@@ -1,7 +1,7 @@
 ---
-version: 6
+version: 7
 name: meta-dev-context
-description: Shared contract for reading and writing dev-context.json via the dev_context.py CLI. Load this skill whenever a command needs to inspect or mutate topic lifecycle state.
+description: Shared contract for reading and writing harness state via the dev_context.py CLI — topic lifecycle in .tack/local/dev-context.json and config in the two-layer store (tracked .tack/config.json plus the local file). Load this skill whenever a command needs to inspect or mutate topic lifecycle state or config.
 origin: harness
 ---
 
@@ -9,7 +9,16 @@ origin: harness
 
 ## Overview
 
-All dev-context.json access goes through `.tack/scripts/dev_context.py`. Never read or write the file directly. This skill defines the canonical invocation patterns for each workflow command.
+All harness state access goes through `.tack/scripts/dev_context.py`. Never read or write the underlying files directly. This skill defines the canonical invocation patterns for each workflow command.
+
+The CLI spans two stores:
+
+| Store | File | Tracked | Holds |
+|---|---|---|---|
+| Topic lifecycle | `.tack/local/dev-context.json` | no (git-ignored) | `current_topic`, `topics[*]`, and `local`/`cache` layer config keys |
+| Shared config | `.tack/config.json` | yes (committed) | `file_format` and `shared` layer config keys |
+
+Topic subcommands touch the first store only. `read --field=config.*` merges both; `set-field --field=config.*` picks one by schema layer. See `### set-field (config variant)`.
 
 ## CLI Reference
 
@@ -86,6 +95,46 @@ python3 .tack/scripts/dev_context.py set-field \
 ```
 
 > `--field=current_topic` must NOT be combined with `--topic`.
+
+### `set-field` (config variant)
+
+Write one config leaf. The path is exactly three segments — `config.<namespace>.<key>`.
+
+```bash
+# Default routing — the schema layer picks the destination file
+python3 .tack/scripts/dev_context.py set-field \
+  --field=config.<namespace>.<key> --value=<value>
+
+# Personal override of a shared key — writes to the git-ignored local file
+python3 .tack/scripts/dev_context.py set-field \
+  --field=config.<namespace>.<key> --layer=local --value=<value>
+```
+
+**Schema validation.** `.tack/contracts/config-schema.json` declares `type`, `layer`, and `default` for every key and is the source of truth for both. `set-field` rejects an unknown namespace, an unknown key, or a value whose inferred type differs from the declared one, and prints close-match suggestions on a name miss. A missing or unparseable schema file makes config writes exit non-zero.
+
+**`--layer` vocabulary.** The two accepted values are `local` and `shared`. Routing:
+
+| Declared layer | No `--layer` | `--layer=local` | `--layer=shared` |
+|---|---|---|---|
+| `shared` | `.tack/config.json` | `.tack/local/dev-context.json` | `.tack/config.json` |
+| `local` | `.tack/local/dev-context.json` | `.tack/local/dev-context.json` | rejected |
+| `cache` | `.tack/local/dev-context.json` | `.tack/local/dev-context.json` | rejected |
+
+Rejecting `--layer=shared` on `local` and `cache` keys is what keeps personal settings and machine detection caches out of the committed file. `--layer` belongs to `set-field` on a `config.*` field — every other subcommand, and `read`, exit non-zero when given it.
+
+`.tack/config.json` is created on the first shared write; the template does not ship it.
+
+### `read` (config variant)
+
+```bash
+python3 .tack/scripts/dev_context.py read --field=config.<namespace>.<key>
+```
+
+Resolution is per leaf: the local file wins when it owns the key (including a `null`, `false`, or `[]` value), otherwise the tracked file answers, otherwise the output is empty. Arrays replace wholesale — the two layers are never concatenated.
+
+`read` performs no schema lookup, so an unknown key returns empty output and exit 0 rather than blocking the caller. `default` in the schema is declarative metadata: `read` never synthesizes it, so an unset key reads as empty. Treat empty as `false` for the boolean gates, with `config.risk.high_gate_enabled` as the documented exception — it defaults to `true`.
+
+**No clear idiom on config leaves.** `--value=null` stores the literal string `"null"` here, unlike the topic-field and `current_topic` paths. The CLI has no path that removes a config leaf, so a local override keeps winning over the shared value until the local file is edited directly — overwriting it with the shared value hides the override without removing it.
 
 ---
 
