@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 3
 name: meta-harness-audit
 description: Run a deterministic harness health audit and return a prioritized scorecard. User-invocable via /meta-harness-audit.
 origin: harness
@@ -16,7 +16,7 @@ Scores the harness across 7 categories and lists the top actions to improve it.
 /meta-harness-audit [scope] [--format text|json]
 ```
 
-- `scope`: `repo` (default) · `hooks` · `skills` · `commands` · `agents`
+- `scope`: `repo` (default) · `hooks` · `skills` · `agents`
 - `--format`: `text` (default) · `json` for automation
 
 ## Execution
@@ -33,7 +33,7 @@ node .claude/scripts/harness-audit.js [scope] [--format text|json]
 |---|----------|---------------|
 | 1 | Tool Coverage | agents, skills, hook scripts, settings.json |
 | 2 | Context Efficiency | CLAUDE.md, performance rules, wf-compact |
-| 3 | Quality Gates | verify/review/checkpoint commands, testing rules |
+| 3 | Quality Gates | flow-verify/flow-review/flow-checkpoint skills, testing rules |
 | 4 | Memory Persistence | session-start hook, session-logger, sessions/ dir |
 | 5 | Eval Coverage | wf-tdd skill, wf-verification skill, /learn |
 | 6 | Security Guardrails | security-reviewer agent, security rules, hook guards |

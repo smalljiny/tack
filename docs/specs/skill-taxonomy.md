@@ -103,6 +103,7 @@ Codex 측(`template/.codex/`·`template/AGENTS.md.jinja`)은 `skills/`만 포함
 ## 7. 제약사항
 
 - **command 파일은 노출 채널이 아니다** — `template/.claude/`에 `commands/` 디렉토리는 없다. 새 사용자 진입점은 command 파일이 아닌 `user-invocable: true` 스킬로 만든다.
+- **`commands`는 감사 scope 축이 아니다** — `harness-audit.js`의 허용 scope는 `repo`·`hooks`·`skills`·`agents` 4개다. command-file-0 아래에서 `--scope=commands`는 판정할 대상이 0개이며, 0건 반환은 "전부 통과"로 오독되므로 오타와 동일하게 비제로 종료로 거부한다. Quality Gates 카테고리의 세 체크는 대응 `flow-verify`·`flow-review`·`flow-checkpoint` SKILL.md를 판정한다 — `id`의 `-command` 접미사는 감사 리포트 시계열 비교 키라서 개명하지 않고 유지한다.
 - **user-invocable은 명시** — 플랫폼 기본값에 의존하지 않고 노출 대상 스킬 frontmatter에 `true`를 직접 적는다.
 - **tier는 배치를, user-invocable은 노출을** — 두 결정을 섞지 않는다. `meta-` 스킬이라고 자동 노출되지 않고, `user-invocable: true`라고 tier가 바뀌지 않는다.
 - **canonical 규칙 우선** — 이 문서는 아키텍처 서술이며, 강제 규칙은 `template/.claude/rules/common/component-boundaries.md`가 소유한다. 충돌 시 규칙이 우선한다.
