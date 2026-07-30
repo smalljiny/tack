@@ -7,7 +7,7 @@ import pytest
 
 import config_schema
 import dev_context
-from _dc_helpers import SCHEMA_PATH, read_ctx, run, run_raw
+from _dc_helpers import SCHEMA_PATH, read_ctx, run, run_raw, shared_value
 
 
 class TestConfigPath:
@@ -169,11 +169,14 @@ class TestConfigPath:
         assert run(ctx_path, "read", "--field=config.dev_impl.auto_start").stdout.strip() == "true"
 
     # 14. JSON 배열
+    # `docs.sourceFilter`는 shared layer라 쓰기 라우팅이 공유 파일로 보낸다. 단언 의도는
+    # "타입 추론이 list를 만든다"이므로 목적지만 바로잡고 호출 형태(플래그 없음)는 실제
+    # 호출자와 같게 유지한다 — `--layer=local`을 붙이면 기본 라우팅을 검증에서 잃는다.
     def test_set_config_json_array(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=[".claude/",".tack/"]')
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["docs"]["sourceFilter"] == [".claude/", ".tack/"]
-        assert isinstance(ctx["config"]["docs"]["sourceFilter"], list)
+        stored = shared_value(ctx_path, "docs", "sourceFilter")
+        assert stored == [".claude/", ".tack/"]
+        assert isinstance(stored, list)
 
     def test_read_config_array_newline_joined(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=[".claude/",".tack/","CLAUDE.md"]')
@@ -181,9 +184,9 @@ class TestConfigPath:
 
     def test_set_config_empty_array(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[]")
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["docs"]["sourceFilter"] == []
-        assert isinstance(ctx["config"]["docs"]["sourceFilter"], list)
+        stored = shared_value(ctx_path, "docs", "sourceFilter")
+        assert stored == []
+        assert isinstance(stored, list)
 
     def test_read_config_empty_array_empty_output(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[]")
@@ -213,10 +216,11 @@ class TestConfigPath:
         assert isinstance(ctx["config"]["some"]["label"], str)
 
     def test_set_config_regex_scalar_not_array(self, ctx_path):
+        # `git.branchPattern`도 shared layer다 — 위 배열 케이스와 같은 이유로 공유 파일에서 읽는다.
         run(ctx_path, "set-field", "--field=config.git.branchPattern", "--value=[A-Z].*")
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["git"]["branchPattern"] == "[A-Z].*"
-        assert isinstance(ctx["config"]["git"]["branchPattern"], str)
+        stored = shared_value(ctx_path, "git", "branchPattern")
+        assert stored == "[A-Z].*"
+        assert isinstance(stored, str)
 
     def test_set_config_newline_array_element(self, ctx_path):
         err = run_raw(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=["src/\\nlib/"]')

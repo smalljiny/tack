@@ -87,8 +87,8 @@ class TestReadSharedConfig:
 class TestLoadSharedConfigIsStrict:
     """load_shared_config는 degrade 정책을 담지 않는다 — 손상을 ok=False로 구분해 돌려준다.
 
-    Story 4의 read-modify-write가 이 엄격 형태를 써야, 파싱하지 못한 tracked 파일을 단일
-    키로 덮어써 팀 config를 날리는 사고를 막을 수 있다. 관대 degrade는 read 경로 전용이다.
+    쓰기 경로의 read-modify-write가 이 엄격 형태를 쓰기 때문에, 파싱하지 못한 tracked
+    파일을 단일 키로 덮어써 팀 config를 날리는 사고가 막힌다. 관대 degrade는 read 전용이다.
     """
 
     def test_missing_file_is_ok_with_an_empty_envelope(self, tmp_path):
@@ -207,8 +207,11 @@ class TestReadMergeCli:
         assert run(ctx_path, "read", "--field=config.git.pushRemote").stdout == "origin\n"
 
     def test_local_value_wins_over_shared(self, ctx_path):
+        # `git.pushRemote`는 shared layer라 기본 라우팅이 공유 파일을 덮어쓴다 — 그러면
+        # 두 층에 같은 값이 남아 우선순위를 검증하지 못한다(단언은 통과하지만 의도가 사라진다).
+        # `--layer=local`이 두 층에 서로 다른 값을 만드는 유일한 호출 형태다.
         write_shared(shared_config_path(ctx_path), {"git": {"pushRemote": "origin"}})
-        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--value=fork")
+        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--layer=local", "--value=fork")
         assert run(ctx_path, "read", "--field=config.git.pushRemote").stdout == "fork\n"
 
     def test_local_json_null_does_not_fall_back_to_shared(self, ctx_path):
@@ -230,8 +233,11 @@ class TestReadMergeCli:
         assert run(ctx_path, "read", "--field=config.risk.high_gate_enabled").stdout == "true\n"
 
     def test_local_false_wins_over_shared_true(self, ctx_path):
+        # `risk.high_gate_enabled`도 shared layer다 — 위와 같은 이유로 `--layer=local`을 쓴다.
+        # 스키마 설명이 명시한 실사용 형태이기도 하다(무인 실행자가 개인 층에서 gate를 끈다).
         write_shared(shared_config_path(ctx_path), {"risk": {"high_gate_enabled": True}})
-        run(ctx_path, "set-field", "--field=config.risk.high_gate_enabled", "--value=false")
+        run(ctx_path, "set-field", "--field=config.risk.high_gate_enabled",
+            "--layer=local", "--value=false")
         assert run(ctx_path, "read", "--field=config.risk.high_gate_enabled").stdout == "false\n"
 
     def test_unset_key_stays_empty_and_does_not_synthesize_schema_default(self, ctx_path):
@@ -240,9 +246,10 @@ class TestReadMergeCli:
         assert run(ctx_path, "read", "--field=config.git.pushRemote").stdout == "\n"
         assert run(ctx_path, "read", "--field=config.risk.high_gate_enabled").stdout == "\n"
 
-    def test_set_field_writes_local_only_in_this_story(self, ctx_path):
-        # Story 2 범위: shared 쓰기는 없다 (Story 4 소관).
-        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--value=fork")
+    def test_layer_local_write_does_not_create_the_shared_file(self, ctx_path):
+        # 개인 층 쓰기는 tracked 파일을 만들지 않는다. 기본 라우팅의 shared 생성은
+        # test_config_layers.py가 덮는다.
+        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--layer=local", "--value=fork")
         assert read_ctx(ctx_path)["config"]["git"]["pushRemote"] == "fork"
         assert not os.path.exists(shared_config_path(ctx_path))
 
@@ -292,8 +299,11 @@ class TestMissingSharedFileDegradation:
 
         # 각 서브커맨드는 선행 guard(토픽 존재·전환 유효성)를 통과하는 입력으로 호출한다 —
         # 실패가 공유 파일 부재 이외의 이유에서 나오지 않게 한다.
+        # set-field는 `--layer=local`로 호출한다 — 기본 라우팅이면 shared 키가 tracked
+        # 파일을 만들어 "부재 상태"라는 이 케이스의 전제가 중간에 깨지고, 뒤따르는
+        # 서브커맨드들이 더 이상 부재 상태에서 실행되지 않는다.
         run(ctx_path, "register-topic", "--topic=g5", "--spec=some/spec.md")
-        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--value=origin")
+        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--layer=local", "--value=origin")
         run(ctx_path, "read", "--field=config.git.pushRemote")
         run(ctx_path, "update-state", "--topic=g5", "--phase=spec", "--status=reviewing")
         run(ctx_path, "force-state", "--topic=g5", "--phase=spec", "--status=drafting")
@@ -321,8 +331,11 @@ class TestCorruptSharedFileDegradation:
     def test_corrupt_shared_file_still_serves_local_value_without_warning(self, ctx_path):
         # local이 답하는 읽기는 공유 파일을 열지 않으므로 경고가 없어야 한다.
         # 경고가 새면 스킬층의 `VALUE=$(... read ...)` 호출마다 사용자 터미널로 샌다.
+        # 손상된 공유 파일에 shared 키를 기본 라우팅으로 쓰면 Story 4가 쓰기를 중단한다.
+        # 이 케이스가 고정하려는 것은 읽기 경고 억제이므로, local 값을 만드는 수단은
+        # 공유 파일을 열지 않는 `--layer=local`이다.
         Path(shared_config_path(ctx_path)).write_text("{ not json at all", encoding="utf-8")
-        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--value=fork")
+        run(ctx_path, "set-field", "--field=config.git.pushRemote", "--layer=local", "--value=fork")
         result = run(ctx_path, "read", "--field=config.git.pushRemote")
         assert result.stdout == "fork\n"
         assert result.stderr == ""

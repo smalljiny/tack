@@ -73,17 +73,33 @@ def run(ctx_path, *args, schema_path=None):
     return result
 
 
-def read_ctx(ctx_path):
-    with open(ctx_path, encoding="utf-8") as f:
+def read_json(path):
+    """JSON 파일을 그대로 읽어 dict로 반환한다 (층 무관 raw 리더).
+
+    dev_context.load_shared_config는 부재를 `(True, 빈 봉투)`로 접으므로 목적지 단언에
+    쓸 수 없다 — "파일이 없다"와 "빈 config가 들어 있다"가 구분되지 않는다.
+    """
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def write_shared_config(path, config):
-    """공유 config 픽스처를 직접 기록한다.
+# 층별 이름은 호출 지점의 의도를 드러내므로 유지하되, 본문은 하나만 둔다 — E4가 층을
+# 하나 더 넣어도 같은 본문을 세 번째로 복제하지 않게 한다.
+read_ctx = read_json
+read_shared_config_file = read_json
 
-    Story 2는 shared 쓰기를 구현하지 않으므로(Story 4 소관) CLI가 아니라 파일을 직접
-    만든다. Story 4의 쓰기 테스트도 사전 상태 구성에 이 헬퍼를 쓴다.
+
+def shared_value(ctx_path, ns, key):
+    """shared 층에 저장된 leaf 값 (목적지 단언용 축약).
+
+    `read_shared_config_file(shared_config_path(ctx_path))["config"][ns][key]` 4단 첨자를
+    한 호출로 접는다 — 봉투 모양이 바뀌어도 고칠 지점이 여기 한 곳이다.
     """
+    return read_shared_config_file(shared_config_path(ctx_path))["config"][ns][key]
+
+
+def write_shared_config(path, config):
+    """공유 config 픽스처를 직접 기록한다 — 사전 상태 구성용이라 CLI를 거치지 않는다."""
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"file_format": FILE_FORMAT, "config": config}, f, ensure_ascii=False)
 
