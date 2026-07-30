@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 7
 name: flow-impl
 description: Execute Stories from the implementation plan. Supports `--all` for sequential batch execution of all remaining Stories. Invokes the Story-Type-appropriate agent (tdd-specialist, prompt-engineer, refactor-cleaner) and code-reviewer per Story. Stops after one Story by default; `--all` or `config.dev_impl.batch_mode=true` runs all remaining Stories sequentially.
 origin: harness
@@ -38,6 +38,9 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
      python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchRunning --value=true
      python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchTopic --value=<current_topic>
      ```
+     - 토픽 이름이 전부 숫자(`-?[0-9]+`, 예: `2026`)이거나 `true`·`false`이면 마지막 줄을 `--value=` (빈 값)로 대체한다. 근거는 Step 11의 `#### currentBatchTopic reset 값` 절이 소유한다.
+
+     **알려진 한계**: 이런 토픽에서는 topic mismatch 감지가 비활성화된다. 그 배치가 비정상 종료된 뒤 **다른 토픽**에서 `/flow-impl`을 실행하면, stale 감지가 mismatch가 아니라 "empty → match" 분기로 떨어져 재개 다이얼로그가 뜬다. 이때 이전 배치의 토픽 이름을 메시지에 넣을 수 없고, 재개를 선택하면 **현재 토픽**의 남은 Story 전체가 배치로 실행된다. 그 경우 재개 다이얼로그가 쓰는 문구는 아래 (b)의 topic-match 분기가 정의한다.
    - (b) If `batch == false`, check for a stale batch state:
      - **명시적 Story 인자가 주어진 경우 stale 감지를 건너뛴다** (explicit-Story-wins). 이 호출이 Step 11에 도달하면 `currentBatchRunning`은 그때 초기화된다. 배치를 재개하려면 이후 `/flow-impl --all`을 사용한다.
      - 그 외에는 stale 감지를 수행한다:
@@ -52,9 +55,10 @@ Execute Stories from the implementation plan one at a time, or all at once in ba
        - If `currentBatchTopic` ≠ `current_topic` → **topic mismatch**: silently reset both fields and continue as single-Story:
          ```bash
          python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchRunning --value=false
-         python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchTopic --value=false
+         python3 .tack/scripts/dev_context.py set-field --field=config.dev_impl.currentBatchTopic --value=
          ```
-       - If topic matches (or `currentBatchTopic` is empty) → use `AskUserQuestion` (include topic name in message):
+         reset 값이 빈 문자열인 근거는 Step 11의 `#### currentBatchTopic reset 값` 절 참조.
+       - If topic matches (or `currentBatchTopic` is empty) → use `AskUserQuestion` (include topic name in message; `currentBatchTopic`이 빈 문자열이면 이름 대신 `이전 배치 토픽 미상 — 재개를 선택하면 현재 토픽(<current_topic>)의 남은 Story를 배치로 실행합니다.`를 넣는다):
          - **재개 (Recommended)**: 이전 배치(`<topic>`)를 이어 실행 — override `batch = true`, then execute (a) above
          - **초기화**: persisted batch 상태를 지우고 이 호출은 단일 Story만 실행 — run both reset commands above; continue as single-Story
      - 그 외 모든 값(empty string, `"false"`, 기타) → not stale; continue as single-Story
@@ -480,8 +484,12 @@ Reached only when the Batch Loop Decision (Step 10.5) jumps back to Step 2. Not 
 python3 .tack/scripts/dev_context.py set-field \
   --field=config.dev_impl.currentBatchRunning --value=false
 python3 .tack/scripts/dev_context.py set-field \
-  --field=config.dev_impl.currentBatchTopic --value=false
+  --field=config.dev_impl.currentBatchTopic --value=
 ```
+
+#### currentBatchTopic reset 값
+
+`currentBatchTopic`은 `string` 타입 키이므로 reset 값은 빈 문자열(`--value=`)이다 — `--value=false`는 config 값 타입 추론이 bool로 바꿔 타입 불일치로 거부된다. 같은 이유로 순수 숫자·`true`·`false` 형태의 토픽 이름도 그대로 기록할 수 없다. 빈 값은 Step 1 (b)와 Step 10.5 sub-step 0의 "`currentBatchTopic` is empty" 분기에 그대로 안착하므로 배치 재개는 계속 동작한다. 이 절이 reset 값 계약의 단일 진실 원천이며, Step 1 (a)·(b)는 이 절을 참조한다.
 
 *Single-Story mode (non-batch)*:
 ```

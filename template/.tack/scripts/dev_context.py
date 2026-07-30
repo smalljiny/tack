@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 # 런타임 검증은 is_valid_transition/allowed_transitions(update-state)와
 # STATE_ORDER/is_known_state/is_forward_jump(force-state)로 라우팅한다.
 # VALID_TRANSITIONS는 seam 배선(plan T1.3의 6-심볼 요구)으로 import하되 직접 참조는 없다.
+import config_schema
 from state_machine import (
     VALID_TRANSITIONS,  # noqa: F401 — seam 배선용, 직접 참조 없음(위 주석 참조)
     STATE_ORDER,
@@ -38,6 +39,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONTEXT_PATH = os.path.normpath(
     os.path.join(SCRIPT_DIR, "..", "..", ".tack", "local", "dev-context.json")
 )
+# config 키 계약(.tack/contracts/config-schema.json). local 경로와 달리 SCRIPT_DIR 기준으로
+# 유도한다 — 스키마는 배포 산출물의 일부라 DEV_CONTEXT_PATH 격리와 함께 움직이지 않는다.
+DEFAULT_CONFIG_SCHEMA_PATH = os.path.normpath(
+    os.path.join(SCRIPT_DIR, "..", "contracts", "config-schema.json")
+)
 
 # phase/status 설정 금지 필드
 PROTECTED_FIELDS = frozenset(["phase", "status"])
@@ -45,10 +51,124 @@ PROTECTED_FIELDS = frozenset(["phase", "status"])
 # 프로토타입 오염 방지: config 경로 세그먼트·토픽 이름에 예약 키 금지
 FORBIDDEN_CONFIG_SEGMENTS = frozenset(["__proto__", "constructor", "prototype"])
 
+# `--layer`로 지정할 수 있는 쓰기 목적지. 스키마 `layer` 어휘(shared|local|cache)와 다르다 —
+# 스펙 §3.3의 쓰기 라우팅 표를 그대로 옮긴 것. 행=스키마 선언 layer, 열=`--layer` 요청
+# (None=미지정), 값=목적지 파일 | None=거부.
+#
+# 표를 리터럴로 두는 이유는 두 가지다. (1) component-boundaries.md의 Flow Gate Pattern —
+# 복수 상태 처리는 early-stop guard를 쌓지 말고 exhaustive 표를 먼저 정의한다. (2) 스펙
+# §3.6의 E4 seam — 런타임 공유 층이 삽입될 때 행 하나 + writer 항목 하나만 늘면 되고,
+# 조건식을 재설계하지 않는다. `cache`는 선언 layer일 뿐 지정 가능한 목적지가 아니라서
+# `local`과 같은 파일로 접힌다.
+WRITE_ROUTES = {
+    "shared": {None: "shared", "local": "local", "shared": "shared"},
+    "local": {None: "local", "local": "local", "shared": None},
+    "cache": {None: "local", "local": "local", "shared": None},
+}
+# 선언 layer가 없거나 어휘 밖인 키(스키마 결함)의 폴백 행 — tracked 파일 쓰기로 번지지 않게
+# 전부 local로 접고 승격도 거부한다. `local` 행을 복제하지 않고 별칭으로 둔다 — 셀을 두 번
+# 적으면 열이 늘어날 때 한쪽만 갱신되고, 그 누락이 가장 덜 실행되는 경로에서 드러난다.
+_UNDECLARED_ROUTE = WRITE_ROUTES["local"]
+# 사용자가 `--layer`로 지정할 수 있는 값. 표의 **열 키**에서 유도한다 — 목적지 값에서
+# 유도하면 두 축이 우연히 일치하는 동안만 맞고, 지정 불가한 목적지가 생기는 순간(오늘의
+# `cache`가 행 축에서 그렇다) CLI가 고를 수 없는 값을 허용 값으로 광고한다.
+# 정렬은 오류 메시지 나열 순서를 결정한다.
+WRITE_LAYERS = tuple(sorted({k for row in WRITE_ROUTES.values() for k in row if k}))
+
 
 def resolve_context_path():
     """DEV_CONTEXT_PATH env override, 미설정 시 스크립트 상대 기본 경로."""
     return os.environ.get("DEV_CONTEXT_PATH") or DEFAULT_CONTEXT_PATH
+
+
+def resolve_shared_config_path():
+    """DEV_CONFIG_PATH env override, 미설정 시 **해석된 local 경로**의 2-hop 상위.
+
+    `.tack/local/dev-context.json` → dirname 2회 → `.tack/` → `.tack/config.json`.
+
+    SCRIPT_DIR 기준으로 유도하지 않는다 — 그러면 DEV_CONTEXT_PATH로 격리된 호출자(테스트·
+    worktree)가 실제 저장소의 공유 파일을 읽고 쓰게 된다. 렌더 스모크 테스트는 env를
+    설정하지 않고 이 2-hop 유도에 의존하므로 hop 수를 바꾸지 않는다.
+    """
+    return os.environ.get("DEV_CONFIG_PATH") or os.path.normpath(
+        os.path.join(os.path.dirname(os.path.dirname(resolve_context_path())), "config.json")
+    )
+
+
+def resolve_config_schema_path():
+    """DEV_CONFIG_SCHEMA_PATH env override, 미설정 시 스크립트 상대 계약 경로.
+
+    DEV_CONTEXT_PATH 선례를 따르는 테스트·격리 seam이다.
+    """
+    return os.environ.get("DEV_CONFIG_SCHEMA_PATH") or DEFAULT_CONFIG_SCHEMA_PATH
+
+
+def _empty_shared_config():
+    return {"file_format": "1.0", "config": {}}
+
+
+def load_shared_config(path):
+    """공유 config 파일을 엄격하게 읽는다. `(ok, data_or_reason)`.
+
+    degrade 정책을 담지 않는다 — 부재는 `(True, 빈 층)`, 손상은 `(False, 사유)`로
+    구분해 돌려준다. 읽기 경로는 read_shared_config가 이 결과에 관대 정책을 씌우고,
+    쓰기 경로(read-modify-write)는 `ok=False`에서 멈춰 파싱하지 못한 tracked 파일을
+    단일 키로 덮어쓰지 않아야 한다.
+    """
+    if not os.path.exists(path):
+        return True, _empty_shared_config()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError, RecursionError) as e:
+        return False, f"읽을 수 없습니다 ({path}): {e}"
+    if not isinstance(data, dict) or not isinstance(data.get("config"), dict):
+        return False, f"형식이 올바르지 않습니다 ({path})."
+    return True, data
+
+
+def read_shared_config():
+    """tracked 공유 config(.tack/config.json)를 읽는다. 부재·손상 시 빈 층으로 degrade.
+
+    읽기는 관대하다 — 공유 파일이 없거나 깨져 있어도 die하지 않고 경고 1줄만 남긴 뒤
+    빈 층을 돌려준다. 공유 파일 하나가 워크플로 진입 전체를 막지 않게 하기 위함이다(G5).
+    """
+    ok, data = load_shared_config(resolve_shared_config_path())
+    if not ok:
+        sys.stderr.write(f"경고: 공유 config 파일을 {data} 빈 층으로 처리합니다.\n")
+        return _empty_shared_config()
+    return data
+
+
+# 미설정(양층 miss) 센티널. JSON null·빈 배열·false는 모두 유효한 local 값이므로
+# None을 miss 신호로 쓸 수 없다 — local hit(None)과 miss를 구분하려면 별도 센티널이 필요하다.
+_MISSING = object()
+
+
+def resolve_config_leaf(layers, ns, key):
+    """leaf 단위 병합: 우선순위 순 layer들을 훑어 첫 own property를 반환. 없으면 _MISSING.
+
+    `layers`는 우선순위 내림차순 iterable이다 (현재: local → shared). 값이 JSON
+    null·빈 배열·false여도 앞선 layer에 own property가 있으면 그 layer가 이긴다.
+    배열은 통째 교체이며 층을 concat하지 않는다.
+
+    iterable을 받는 이유는 스펙 §3.6의 E4 seam이다 — 런타임 공유 층(Mongo)은 tracked와
+    local 사이에 원소 하나로 삽입되며, 호출자는 generator를 넘겨 뒤쪽 layer의 획득을
+    지연시킨다(파일 열기·네트워크 호출을 앞선 layer가 답하면 수행하지 않는다).
+
+    Python dict는 상속 데이터 키가 없어 `in`이 곧 hasOwn 가드다. 예약 키는 호출 전
+    parse_config_path가 이미 거부하지만, layer는 모두 파일에서 온 신뢰 밖 데이터이므로
+    여기서도 동일하게 차단한다.
+    """
+    if ns in FORBIDDEN_CONFIG_SEGMENTS or key in FORBIDDEN_CONFIG_SEGMENTS:
+        return _MISSING
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        ns_obj = layer.get(ns)
+        if isinstance(ns_obj, dict) and key in ns_obj:
+            return ns_obj[key]
+    return _MISSING
 
 
 def _iso_now():
@@ -80,17 +200,25 @@ def read_context():
     return ctx
 
 
-def write_context(ctx):
-    path = resolve_context_path()
-    ctx["updatedAt"] = _iso_now()
+def atomic_write_json(path, data):
+    """JSON을 원자적으로 기록한다 — 임시 파일에 쓴 뒤 rename.
+
+    쓰기 목적지가 둘(local dev-context.json · tracked config.json)이므로 관용구를 여기
+    한 곳에 둔다. `updatedAt` 스탬핑은 이 함수가 하지 않는다 — tracked 파일은 매 쓰기가
+    diff 노이즈가 되므로 타임스탬프를 갖지 않으며, 스탬핑은 write_context의 책임이다.
+    """
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    # 원자적 쓰기: 임시 파일에 쓴 뒤 rename
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(json.dumps(ctx, indent=2, ensure_ascii=False) + "\n")
+        f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     os.replace(tmp, path)
+
+
+def write_context(ctx):
+    ctx["updatedAt"] = _iso_now()
+    atomic_write_json(resolve_context_path(), ctx)
 
 
 def parse_args(argv):
@@ -161,6 +289,96 @@ def coerce_config_value(value):
             )
         return parsed
     return value
+
+
+def _candidate_hint(name, candidates):
+    """오타 후보 문구. 근접 후보가 없으면 전체 후보를 나열한다.
+
+    difflib cutoff에 걸리지 않는 입력('bogus' 등)에서 빈 문구를 내보내면 사용자가 다음
+    행동을 알 수 없다 — 후보 집합이 유한하고 작으므로 전체를 보여주는 편이 낫다.
+    """
+    close = config_schema.suggest(name, candidates)
+    if close:
+        return "가까운 후보: " + ", ".join(close)
+    return "사용 가능: " + ", ".join(candidates)
+
+
+def load_config_schema():
+    """config 키 계약을 fail-closed로 읽는다 — 부재·손상이면 해석된 경로를 담아 die.
+
+    env override 경로에도 같은 정책을 적용한다(프로덕션/테스트 동작 분기를 만들지 않는다).
+    이 경로는 config **쓰기**에서만 호출된다 — read는 스키마를 조회하지 않으므로 스키마
+    한 파일이 워크플로 진입 전체를 막지 않는다(스펙 §3.4).
+    """
+    try:
+        return config_schema.load_schema(resolve_config_schema_path())
+    except config_schema.SchemaError as e:
+        die(f"set-field: {e}")
+
+
+def validate_config_write(schema, ns, key, value):
+    """스키마 대조 후 저장할 값을 반환한다. 위반은 die.
+
+    순서: (1) 네임스페이스 조회 → (2) 키 조회 → (3) 타입 추론 → (4) 타입 검사.
+    목적지 결정은 `resolve_write_target`이 소유한다 — 이 함수는 검증만 한다.
+    경로 깊이·예약 키 검사(parse_config_path)와 `--layer` 값 검사는 호출 전에 끝나 있어야
+    한다 — 그 메시지들이 스키마 조회 메시지보다 먼저 나와야 기존 계약이 유지되고, 플래그
+    오타가 "알 수 없는 네임스페이스"로 표면화되지 않는다.
+
+    `schema`를 인자로 받는다 — 로드는 호출자(I/O 층)가 하고 이 함수는 판정만 한다.
+    """
+    if ns not in config_schema.namespaces(schema):
+        die(
+            f"set-field: 알 수 없는 config 네임스페이스 '{ns}' — "
+            f"{_candidate_hint(ns, config_schema.namespaces(schema))}"
+        )
+    entry = config_schema.lookup(schema, ns, key)
+    if entry is None:
+        die(
+            f"set-field: 알 수 없는 config 키 '{ns}.{key}' — "
+            f"{_candidate_hint(key, config_schema.keys_of(schema, ns))}"
+        )
+
+    coerced = coerce_config_value(value)
+    declared = entry.get("type")
+    if not config_schema.check_type(declared, coerced):
+        if not isinstance(value, str):
+            # 등호 없는 bare `--value`는 parse_args가 True로 만든다. 사용자가 입력한
+            # 문자열이 아니므로 '입력: true' 표기만으로는 원인이 드러나지 않는다.
+            shown = "등호 없는 '--value' 플래그"
+            hint = " 값을 주려면 '--value=<값>' 형태를 사용합니다."
+        else:
+            shown = f"입력값: '{value}'"
+            # 'false'·'2026' 같은 문자열은 타입 추론이 bool·int로 바꾼다. 빈 문자열
+            # 저장은 등호를 붙인 `--value=` 형태여야 한다.
+            hint = " 빈 문자열을 저장하려면 '--value=' 형태를 사용합니다." if declared == "string" else ""
+        die(
+            f"set-field: config.{ns}.{key} 키는 {declared} 타입이지만 입력이 "
+            f"{config_schema.type_name(coerced)} 타입으로 해석됐습니다 ({shown}).{hint}"
+        )
+
+    return coerced
+
+
+def resolve_write_target(schema, ns, key, requested_layer=None):
+    """WRITE_ROUTES 표에서 쓰기 목적지 파일을 결정한다. 거부 셀은 die.
+
+    반환값은 선언 layer가 아니라 **파일 선택**이다 — `cache` 선언 키는 `local` 목적지로
+    접힌다. 호출자는 'shared'/'local' 두 값만 분기하면 된다.
+
+    검증(validate_config_write) 다음에 호출한다 — 타입 불일치와 승격 거부가 함께 걸리는
+    입력에서 타입 오류가 먼저 보고돼야 사용자가 원인을 안다.
+    """
+    declared_layer = config_schema.layer_of(schema, ns, key)
+    route = WRITE_ROUTES.get(declared_layer, _UNDECLARED_ROUTE)
+    target = route.get(requested_layer)
+    if target is None:
+        die(
+            f"set-field: config.{ns}.{key} 키는 {declared_layer or '미선언'} layer이므로 "
+            f"--layer={requested_layer}로 승격할 수 없습니다 — 개인 설정·감지 캐시가 "
+            "커밋되면 다른 머신에서 잘못된 값으로 읽힙니다."
+        )
+    return target
 
 
 def cmd_register_topic(args):
@@ -236,6 +454,117 @@ def cmd_update_state(args):
     write_context(ctx)
 
 
+def _validate_layer_flag(layer):
+    """`--layer` 값이 지정 가능한 목적지인지 검사한다. 위반은 die.
+
+    스키마 조회보다 **먼저** 호출한다 — `--layer=shard` 같은 플래그 오타는 호출 오류이지
+    스키마 오류가 아니며, "알 수 없는 네임스페이스"로 표면화되면 원인을 찾을 수 없다.
+    """
+    if layer is None or layer in WRITE_LAYERS:
+        return
+    # 등호 없는 bare `--layer`는 parse_args가 True로 만든다 — 입력 문자열이 아니다.
+    # 문자열일 때만 `_candidate_hint`에 넘긴다 (difflib은 문자열을 요구한다). 후보 문구를
+    # 스키마 오류와 같은 헬퍼로 렌더해 한 명령이 세 가지 나열 형식을 내보내지 않게 한다.
+    if isinstance(layer, str):
+        die(f"set-field: --layer 값이 올바르지 않습니다 (입력: '{layer}'). {_candidate_hint(layer, WRITE_LAYERS)}")
+    die(
+        "set-field: --layer에 값이 없습니다 (등호 없는 '--layer' 플래그). "
+        + _candidate_hint("", WRITE_LAYERS)
+    )
+
+
+def _write_shared_config_leaf(ns, key, value):
+    """tracked 공유 config(.tack/config.json)의 leaf 하나를 교체한다.
+
+    엄격 로더를 쓰고 `ok=False`면 중단한다 — 파싱하지 못한 tracked 파일을 단일 키로
+    덮어쓰면 커밋된 팀 설정이 사라진다. 파일 부재는 `(True, 빈 봉투)`이므로 정상 생성 경로다.
+
+    타임스탬프를 넣지 않는다 — 커밋 대상 파일이라 매 쓰기가 diff 노이즈가 된다.
+    """
+    path = resolve_shared_config_path()
+    ok, data = load_shared_config(path)
+    if not ok:
+        die(
+            # 사유 문구는 주어 없이 이어붙인다 — load_shared_config는 "읽을 수 없습니다"와
+            # "형식이 올바르지 않습니다" 두 형태를 돌려주고, 목적어를 앞세우면 후자가
+            # "파일을 형식이 올바르지 않습니다"로 어긋난다.
+            f"set-field: 공유 config 파일에 문제가 있습니다 — {data}\n"
+            "손상된 파일을 덮어쓰지 않기 위해 쓰기를 중단합니다. 파일을 고치거나 "
+            "--layer=local로 개인 층에 기록하세요."
+        )
+    # die는 쓰기 전에 종료하므로 setdefault로 먼저 자리를 만들어도 부작용이 없다.
+    ns_obj = data["config"].setdefault(ns, {})
+    if not isinstance(ns_obj, dict):
+        # 엄격 로더는 최상위 config가 dict인지만 본다. 네임스페이스 자리가 dict가 아닌
+        # 파일을 빈 dict로 갈아끼우면 커밋된 내용이 조용히 사라지므로 손상과 같은 등급이다.
+        die(
+            f"set-field: 공유 config 파일의 '{ns}' 네임스페이스가 객체가 아닙니다 ({path}).\n"
+            "내용을 덮어쓰지 않기 위해 쓰기를 중단합니다."
+        )
+    ns_obj[key] = value
+    atomic_write_json(path, data)
+
+
+def _write_local_config_leaf(ns, key, value):
+    """local dev-context.json의 config leaf 하나를 교체한다 (중간 객체 자동 생성)."""
+    ctx = read_context()
+    if not isinstance(ctx["config"].get(ns), dict):
+        ctx["config"][ns] = {}
+    ctx["config"][ns][key] = value
+    write_context(ctx)
+
+
+# 목적지 태그 → writer. `WRITE_ROUTES`의 셀 값이 여기 키와 1:1로 대응한다 — if/else의
+# 관대한 `else`로 두면 E4가 행을 늘려 새 태그를 반환할 때 그 쓰기가 조용히 local 파일로
+# 떨어진다. dict 조회는 미등록 태그에서 KeyError로 즉시 드러나고, 아래 parity 테스트가
+# 표의 모든 셀에 항목이 있음을 고정한다.
+WRITE_TARGETS = {"shared": _write_shared_config_leaf, "local": _write_local_config_leaf}
+
+
+def _set_config_field(field, value, layer=None):
+    """config 점 경로 쓰기: 경로 검증 → layer 플래그 검증 → 스키마 검증 → 목적지 파일 갱신.
+
+    스키마는 여기서 한 번 로드해 검증에 넘긴다. layer 라우팅도 같은 객체를 소비하므로
+    목적지 결정이 검증과 같은 지점에서 이어진다.
+    """
+    parsed = parse_config_path(field)
+    if not parsed["ok"]:
+        die(f"set-field: {parsed['reason']}")
+    _validate_layer_flag(layer)
+    ns = parsed["ns"]
+    key = parsed["key"]
+    schema = load_config_schema()
+    # 검증이 read-modify-write보다 앞선다 — 거부된 쓰기는 파일을 만들지도 건드리지도 않는다.
+    coerced = validate_config_write(schema, ns, key, value)
+    WRITE_TARGETS[resolve_write_target(schema, ns, key, layer)](ns, key, coerced)
+
+
+def _set_topic_field(topic, field, value):
+    """토픽 필드 하나를 갱신한다. 값은 타입 추론 없이 문자열 그대로 저장한다."""
+    if not topic:
+        die("set-field: --topic 필요 (current_topic 제외)")
+    if field in PROTECTED_FIELDS:
+        die(f"set-field: '{field}' 필드는 update-state 전용입니다")
+    # 프로토타입 오염 방지: topic 필드 예약 키 금지 (config 세그먼트와 같은 집합)
+    if field in FORBIDDEN_CONFIG_SEGMENTS:
+        die(f"set-field: '{field}' 필드는 사용할 수 없습니다")
+
+    ctx = read_context()
+    t = ctx["topics"].get(topic)
+    if t is None:
+        die(f"set-field: 토픽 '{topic}' 미존재")
+
+    # 타입 추론은 config 전용이다 — 토픽 필드는 문자열 그대로 보존한다.
+    t[field] = None if value == "null" else value
+    t["updatedAt"] = _iso_now()
+    write_context(ctx)
+
+
+def _is_config_path(field):
+    """`config` 점 경로인지 — 쓰기·읽기 두 경로가 같은 판정을 쓴다."""
+    return field == "config" or field.startswith("config.")
+
+
 def cmd_set_field(args):
     field = args.get("field")
     topic = args.get("topic")
@@ -244,6 +573,15 @@ def cmd_set_field(args):
     if "value" not in args:  # 레퍼런스 value === undefined (키 부재만)
         die("set-field: --value 필요")
     value = args["value"]
+    layer = args.get("layer")
+
+    if layer is not None and not _is_config_path(field):
+        # 목적지 선택은 스키마 layer가 선언된 config 키에만 의미가 있다. 토픽 필드·
+        # current_topic은 local dev-context.json 전용이므로 무음 무시가 아니라 명시 거부한다.
+        die(
+            f"set-field: --layer는 config.<namespace>.<key> 쓰기에만 사용합니다 "
+            f"(입력 필드: {field})"
+        )
 
     # 글로벌 필드: current_topic (--topic 없이 사용, read와 대칭)
     if field == "current_topic":
@@ -255,39 +593,13 @@ def cmd_set_field(args):
         return
 
     # 글로벌 config 점 경로 (config.<ns>.<key>)
-    if field == "config" or field.startswith("config."):
+    if _is_config_path(field):
         if topic:
             die("set-field: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
-        parsed = parse_config_path(field)
-        if not parsed["ok"]:
-            die(f"set-field: {parsed['reason']}")
-        ctx = read_context()
-        ns = parsed["ns"]
-        if not isinstance(ctx["config"].get(ns), dict):
-            ctx["config"][ns] = {}
-        ctx["config"][ns][parsed["key"]] = coerce_config_value(value)
-        write_context(ctx)
+        _set_config_field(field, value, layer)
         return
 
-    if not topic:
-        die("set-field: --topic 필요 (current_topic 제외)")
-
-    if field in PROTECTED_FIELDS:
-        die(f"set-field: '{field}' 필드는 update-state 전용입니다")
-
-    # 프로토타입 오염 방지: topic 필드 예약 키 금지
-    if field in ("__proto__", "constructor", "prototype"):
-        die(f"set-field: '{field}' 필드는 사용할 수 없습니다")
-
-    ctx = read_context()
-    t = ctx["topics"].get(topic)
-    if t is None:
-        die(f"set-field: 토픽 '{topic}' 미존재")
-
-    # 토픽 필드 값은 타입 추론 없이 문자열 그대로 저장 (타입 추론은 config 전용)
-    t[field] = None if value == "null" else value
-    t["updatedAt"] = _iso_now()
-    write_context(ctx)
+    _set_topic_field(topic, field, value)
 
 
 def _js_string(val):
@@ -308,6 +620,31 @@ def _js_string(val):
 def _emit_scalar(val):
     """레퍼런스 process.stdout.write((val==null? '' : String(val)) + '\\n')와 동일."""
     sys.stdout.write(_js_string(val) + "\n")
+
+
+def _read_config_field(ctx, field):
+    """config 점 경로 읽기: 경로 검증 → 우선순위 층 병합 → 출력."""
+    parsed = parse_config_path(field)
+    if not parsed["ok"]:
+        # 경로 검증이 공유 파일 읽기보다 먼저다 — 깊이·예약 키 위반이 손상된 공유
+        # 파일 경고를 앞세우지 않게 한다.
+        die(f"read: {parsed['reason']}")
+    # generator로 넘겨 뒤쪽 층의 획득을 지연시킨다 — local이 답하는 읽기에서는 공유
+    # 파일을 열지 않아, 손상된 공유 파일의 경고가 무관한 읽기마다 스킬층 stdout 캡처
+    # 옆으로 반복 출력되지 않는다.
+    layers = (layer() for layer in (lambda: ctx.get("config"), lambda: read_shared_config()["config"]))
+    val = resolve_config_leaf(layers, parsed["ns"], parsed["key"])
+    if val is _MISSING:
+        # 미설정은 빈 출력이다 — 스키마 default를 합성하지 않는다 (G6).
+        val = None
+    if isinstance(val, list):
+        # 빈 배열은 join 시맨틱상 그대로 빈 줄이 되므로 미설정과 같은 출력이다.
+        # 원소를 _js_string으로 통과시켜 레퍼런스 val.join('\n')과 파리티를 맞춘다 —
+        # JS join은 비-문자열을 강제 변환하고 null을 빈 문자열로 만든다. 손으로 편집되는
+        # tracked 공유 파일에 비-문자열 원소가 들어와도 read가 exit 1로 죽지 않아야 한다.
+        sys.stdout.write("\n".join(_js_string(v) for v in val) + "\n")
+    else:
+        _emit_scalar(val)
 
 
 def cmd_read(args):
@@ -333,21 +670,10 @@ def cmd_read(args):
         return
 
     # 글로벌 config 점 경로 (config.<ns>.<key>)
-    if field == "config" or field.startswith("config."):
+    if _is_config_path(field):
         if topic:
             die("read: config.* 는 글로벌 필드이므로 --topic과 함께 사용할 수 없습니다")
-        parsed = parse_config_path(field)
-        if not parsed["ok"]:
-            die(f"read: {parsed['reason']}")
-        # Python dict는 상속 데이터 키가 없어 `in`이 곧 hasOwn 가드다.
-        config = ctx.get("config")
-        ns_obj = config.get(parsed["ns"]) if isinstance(config, dict) else None
-        val = ns_obj.get(parsed["key"]) if isinstance(ns_obj, dict) else None
-        if isinstance(val, list):
-            # 빈 배열과 미설정은 모두 빈 출력(빈 줄)을 낸다.
-            sys.stdout.write(("\n".join(val) + "\n") if len(val) > 0 else "\n")
-        else:
-            _emit_scalar(val)
+        _read_config_field(ctx, field)
         return
 
     if not topic:
@@ -433,6 +759,23 @@ def cmd_force_state(args):
 def main(argv):
     subcommand = argv[1] if len(argv) > 1 else None
     args = parse_args(argv[2:])
+
+    # `--layer` 서브커맨드 축의 거부를 여기 한 곳에 둔다. 커맨드별 인라인 가드를 쌓으면
+    # 새 서브커맨드가 늘어날 때마다 거부/무음 무시가 저자 재량으로 갈린다 — 층을 고르는
+    # 것은 set-field의 계약이므로, 나머지 전부에서 무음 무시가 아니라 명시 거부한다.
+    # 필드 축(config 점 경로인지)은 cmd_set_field가 소유한다.
+    if args.get("layer") is not None and subcommand != "set-field":
+        # read에만 부연을 붙인다 — 층을 고르고 싶은 호출자가 실제로 오는 곳이고, 출력
+        # 계약(병합된 값 하나)이 왜 층 선택을 받지 않는지 설명해야 다음 행동을 안다.
+        why = (
+            " read는 local → shared 우선순위로 병합된 값 하나만 출력합니다."
+            if subcommand == "read"
+            else ""
+        )
+        die(
+            f"--layer는 set-field의 config.<namespace>.<key> 쓰기에만 사용합니다 "
+            f"(입력 서브커맨드: {subcommand}).{why}"
+        )
 
     if subcommand == "register-topic":
         cmd_register_topic(args)

@@ -200,6 +200,8 @@ tier는 plan 문서의 per-Story `**Risk Tier**` 필드에 **기록만** 한다.
 
 **Backward compatibility**: `**Risk Tier**` 필드가 없는 plan은 실패로 처리하지 않는다. `plan-review`는 필드 부재를 warning 없이 통과시킨다 — 필드는 기대값이며 강제 대상이 아니다.
 
+tier **값**의 SSOT는 이 절과 plan 문서의 per-Story `**Risk Tier**` 필드다. config 키 `config.risk.high_gate_enabled`(선언: `contracts/config-schema.json`)는 `high` tier human gate의 on/off 정책만 제어하며 tier 값을 보관하지 않는다 — config에서 tier 값을 읽는 소비처는 없다.
+
 ## Scenario ↔ Completion Criteria Mapping
 
 spec `## 8. Delta`의 각 GIVEN/WHEN/THEN scenario 1개는 그 Story의 Completion Criterion 1개로 1:1 매핑된다. 이 절이 매핑 규칙의 canonical 출처다.

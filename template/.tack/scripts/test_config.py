@@ -3,7 +3,11 @@
 import json
 from pathlib import Path
 
-from _dc_helpers import read_ctx, run, run_raw
+import pytest
+
+import config_schema
+import dev_context
+from _dc_helpers import SCHEMA_PATH, read_ctx, run, run_raw, shared_value
 
 
 class TestConfigPath:
@@ -48,20 +52,26 @@ class TestConfigPath:
         ctx = read_ctx(ctx_path)
         assert ctx["config"]["dev_impl"]["auto_start"] is False
 
-    def test_set_config_integer(self, ctx_path):
-        run(ctx_path, "set-field", "--field=config.some.count", "--value=42")
+    # `some.*`는 실사용 인벤토리에 없는 합성 네임스페이스다. 실사용 스키마에 `integer`
+    # 타입 키가 하나도 없어 실제 키로 옮기면 `^-?[0-9]+$ → int` 규칙의 커버리지가 사라지므로,
+    # 픽스처 스키마(conftest.FIXTURE_SCHEMA)로 실행한다.
+    def test_set_config_integer(self, ctx_path, fixture_schema_path):
+        run(ctx_path, "set-field", "--field=config.some.count", "--value=42",
+            schema_path=fixture_schema_path)
         ctx = read_ctx(ctx_path)
         assert ctx["config"]["some"]["count"] == 42
         assert isinstance(ctx["config"]["some"]["count"], int)
 
-    def test_set_config_negative_integer(self, ctx_path):
-        run(ctx_path, "set-field", "--field=config.some.count", "--value=-7")
+    def test_set_config_negative_integer(self, ctx_path, fixture_schema_path):
+        run(ctx_path, "set-field", "--field=config.some.count", "--value=-7",
+            schema_path=fixture_schema_path)
         ctx = read_ctx(ctx_path)
         assert ctx["config"]["some"]["count"] == -7
         assert isinstance(ctx["config"]["some"]["count"], int)
 
-    def test_set_config_string(self, ctx_path):
-        run(ctx_path, "set-field", "--field=config.some.label", "--value=foo")
+    def test_set_config_string(self, ctx_path, fixture_schema_path):
+        run(ctx_path, "set-field", "--field=config.some.label", "--value=foo",
+            schema_path=fixture_schema_path)
         ctx = read_ctx(ctx_path)
         assert ctx["config"]["some"]["label"] == "foo"
         assert isinstance(ctx["config"]["some"]["label"], str)
@@ -97,10 +107,15 @@ class TestConfigPath:
     def test_set_config_depth_3_non_zero(self, ctx_path):
         err = run_raw(ctx_path, "set-field", "--field=config.a.b.c", "--value=true")
         assert err.returncode != 0
+        assert "config.<namespace>.<key>" in err.stderr
+        # 깊이 검사가 스키마 조회보다 먼저다 — 스키마 메시지가 섞이면 순서가 뒤집힌 것이다.
+        assert "네임스페이스" not in err.stderr
 
     def test_set_config_bare_non_zero(self, ctx_path):
         err = run_raw(ctx_path, "set-field", "--field=config", "--value=true")
         assert err.returncode != 0
+        assert "config.<namespace>.<key>" in err.stderr
+        assert "네임스페이스" not in err.stderr
 
     # 12. config.* + --topic (set-field)
     def test_set_config_with_topic_non_zero(self, ctx_path):
@@ -121,6 +136,8 @@ class TestConfigPath:
         err = run_raw(ctx_path, "set-field", "--field=config.__proto__.polluted", "--value=yes")
         assert err.returncode != 0
         assert "예약된 키" in err.stderr
+        # 예약 키 검사가 스키마 조회보다 먼저다.
+        assert "네임스페이스" not in err.stderr
 
     def test_set_config_constructor_reserved(self, ctx_path):
         err = run_raw(ctx_path, "set-field", "--field=config.constructor.x", "--value=y")
@@ -152,11 +169,14 @@ class TestConfigPath:
         assert run(ctx_path, "read", "--field=config.dev_impl.auto_start").stdout.strip() == "true"
 
     # 14. JSON 배열
+    # `docs.sourceFilter`는 shared layer라 쓰기 라우팅이 공유 파일로 보낸다. 단언 의도는
+    # "타입 추론이 list를 만든다"이므로 목적지만 바로잡고 호출 형태(플래그 없음)는 실제
+    # 호출자와 같게 유지한다 — `--layer=local`을 붙이면 기본 라우팅을 검증에서 잃는다.
     def test_set_config_json_array(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=[".claude/",".tack/"]')
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["docs"]["sourceFilter"] == [".claude/", ".tack/"]
-        assert isinstance(ctx["config"]["docs"]["sourceFilter"], list)
+        stored = shared_value(ctx_path, "docs", "sourceFilter")
+        assert stored == [".claude/", ".tack/"]
+        assert isinstance(stored, list)
 
     def test_read_config_array_newline_joined(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=[".claude/",".tack/","CLAUDE.md"]')
@@ -164,9 +184,9 @@ class TestConfigPath:
 
     def test_set_config_empty_array(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[]")
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["docs"]["sourceFilter"] == []
-        assert isinstance(ctx["config"]["docs"]["sourceFilter"], list)
+        stored = shared_value(ctx_path, "docs", "sourceFilter")
+        assert stored == []
+        assert isinstance(stored, list)
 
     def test_read_config_empty_array_empty_output(self, ctx_path):
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[]")
@@ -182,17 +202,25 @@ class TestConfigPath:
         assert err.returncode != 0
         assert "문자열 원소만 허용" in err.stderr
 
-    def test_set_config_unclosed_bracket_scalar(self, ctx_path):
-        run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[invalid")
+    def test_set_config_unclosed_bracket_scalar(self, ctx_path, fixture_schema_path):
+        # 닫히지 않은 대괄호는 배열 정규식에 미매치해 문자열로 보존된다. 단언 의도가
+        # "문자열 보존"이므로 문자열 타입 키에서 검증한다 — array 타입 키에 두면 스키마
+        # 타입 검사가 먼저 거부해 의도가 사라진다.
+        # 실사용 인벤토리의 string 키는 전부 shared·cache layer라 Story 4의 쓰기 라우팅이
+        # 목적지를 옮긴다. local layer의 string 키인 픽스처 `some.label`을 쓰면 이 단언이
+        # 라우팅 도입 후에도 dev-context.json을 계속 가리킨다.
+        run(ctx_path, "set-field", "--field=config.some.label", "--value=[invalid",
+            schema_path=fixture_schema_path)
         ctx = read_ctx(ctx_path)
-        assert ctx["config"]["docs"]["sourceFilter"] == "[invalid"
-        assert isinstance(ctx["config"]["docs"]["sourceFilter"], str)
+        assert ctx["config"]["some"]["label"] == "[invalid"
+        assert isinstance(ctx["config"]["some"]["label"], str)
 
     def test_set_config_regex_scalar_not_array(self, ctx_path):
+        # `git.branchPattern`도 shared layer다 — 위 배열 케이스와 같은 이유로 공유 파일에서 읽는다.
         run(ctx_path, "set-field", "--field=config.git.branchPattern", "--value=[A-Z].*")
-        ctx = read_ctx(ctx_path)
-        assert ctx["config"]["git"]["branchPattern"] == "[A-Z].*"
-        assert isinstance(ctx["config"]["git"]["branchPattern"], str)
+        stored = shared_value(ctx_path, "git", "branchPattern")
+        assert stored == "[A-Z].*"
+        assert isinstance(stored, str)
 
     def test_set_config_newline_array_element(self, ctx_path):
         err = run_raw(ctx_path, "set-field", "--field=config.docs.sourceFilter", '--value=["src/\\nlib/"]')
@@ -221,8 +249,9 @@ class TestConfigPath:
         run(ctx_path, "set-field", "--field=config.docs.sourceFilter", "--value=[]")
         assert run(ctx_path, "read", "--field=config.docs.sourceFilter").stdout == "\n"
 
-    def test_non_ascii_config_value_byte_parity(self, ctx_path):
-        run(ctx_path, "set-field", "--field=config.some.label", "--value=한글")
+    def test_non_ascii_config_value_byte_parity(self, ctx_path, fixture_schema_path):
+        run(ctx_path, "set-field", "--field=config.some.label", "--value=한글",
+            schema_path=fixture_schema_path)
         raw = Path(ctx_path).read_text(encoding="utf-8")
         assert "한글" in raw
         assert "\\u" not in raw  # ensure_ascii=False → escape 미포함
@@ -250,3 +279,200 @@ class TestConfigPath:
                       "--value=" + value)
         assert err.returncode != 0
         assert "Traceback (most recent call last)" not in err.stderr
+
+
+class TestSetFieldSchemaValidation:
+    """set-field config 경로의 스키마 검증 (G3 — 키·타입). read는 관대성을 유지한다."""
+
+    # --- 알 수 없는 네임스페이스·키 ---
+    def test_unknown_namespace_non_zero_with_candidates(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.bogus.key", "--value=x")
+        assert err.returncode != 0
+        # 'bogus'는 어느 네임스페이스와도 근접하지 않는다(difflib cutoff 0.6 미달) —
+        # 근접 후보가 없으면 전체 후보를 나열해야 사용자가 다음 행동을 안다.
+        assert "git" in err.stderr
+        assert "dev_impl" in err.stderr
+
+    def test_unknown_namespace_suggests_close_match(self, ctx_path):
+        # 오타 네임스페이스는 전체 나열이 아니라 근접 후보를 좁혀 제시해야 한다.
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impll.auto_start", "--value=true")
+        assert err.returncode != 0
+        assert "dev_impl" in err.stderr
+        # 근접 후보가 잡혔으면 무관한 네임스페이스까지 나열하지 않는다.
+        assert "graphify" not in err.stderr
+
+    def test_unknown_key_suggests_close_match(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_comit", "--value=true")
+        assert err.returncode != 0
+        assert "auto_commit" in err.stderr
+
+    def test_unknown_key_message_names_the_namespace(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.git.bogusKey", "--value=x")
+        assert err.returncode != 0
+        assert "git" in err.stderr
+
+    def test_rejected_write_leaves_no_context_file(self, ctx_path):
+        # 검증이 read-modify-write보다 앞선다 — 거부된 쓰기는 파일을 만들지 않는다.
+        run_raw(ctx_path, "set-field", "--field=config.bogus.key", "--value=x")
+        assert not Path(ctx_path).exists()
+
+    def test_rejected_write_preserves_existing_value(self, ctx_path):
+        run(ctx_path, "set-field", "--field=config.dev_impl.auto_start", "--value=true")
+        run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_start", "--value=maybe")
+        assert read_ctx(ctx_path)["config"]["dev_impl"]["auto_start"] is True
+
+    # --- 타입 불일치 ---
+    def test_string_on_boolean_key_non_zero(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_start", "--value=maybe")
+        assert err.returncode != 0
+        assert "boolean" in err.stderr
+
+    def test_string_on_array_key_non_zero(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.graphify.targets", "--value=src")
+        assert err.returncode != 0
+        assert "array" in err.stderr
+
+    def test_integer_on_boolean_key_non_zero(self, ctx_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_start", "--value=1")
+        assert err.returncode != 0
+
+    def test_boolean_on_string_key_non_zero(self, ctx_path):
+        # T3.5 근거 재현 — currentBatchTopic은 string인데 'false'는 bool로 추론된다.
+        err = run_raw(ctx_path, "set-field",
+                      "--field=config.dev_impl.currentBatchTopic", "--value=false")
+        assert err.returncode != 0
+        assert "boolean" in err.stderr
+
+    def test_bare_value_flag_on_string_key_non_zero(self, ctx_path):
+        # 등호 없는 bare `--value`는 parse_args가 True로 만든다 — 등호 있는 `--value=`와
+        # 실패 양상이 달라야 사용자가 원인을 구분할 수 있다.
+        err = run_raw(ctx_path, "set-field",
+                      "--field=config.dev_impl.currentBatchTopic", "--value")
+        assert err.returncode != 0
+        assert "boolean" in err.stderr
+
+    def test_all_digit_value_on_string_key_non_zero(self, ctx_path):
+        # 전부 숫자인 토픽 이름은 int로 추론된다 — flow-impl Step 1(a)이 이 케이스를
+        # 빈 문자열 기록으로 우회한다(알려진 한계: 그 토픽에서 mismatch 감지 비활성).
+        err = run_raw(ctx_path, "set-field",
+                      "--field=config.dev_impl.currentBatchTopic", "--value=2026")
+        assert err.returncode != 0
+        assert "integer" in err.stderr
+
+    def test_integer_key_rejects_string(self, ctx_path, fixture_schema_path):
+        err = run_raw(ctx_path, "set-field", "--field=config.some.count", "--value=many",
+                      schema_path=fixture_schema_path)
+        assert err.returncode != 0
+
+    def test_integer_key_rejects_boolean(self, ctx_path, fixture_schema_path):
+        # Python bool은 int의 서브클래스다 — 명시 배제가 없으면 통과한다.
+        err = run_raw(ctx_path, "set-field", "--field=config.some.count", "--value=true",
+                      schema_path=fixture_schema_path)
+        assert err.returncode != 0
+
+    # --- T3.5 대체 형태: 빈 문자열 ---
+    def test_empty_value_reads_back_empty(self, ctx_path):
+        run(ctx_path, "set-field", "--field=config.dev_impl.currentBatchTopic", "--value=")
+        assert run(ctx_path, "read", "--field=config.dev_impl.currentBatchTopic").stdout == "\n"
+
+    def test_empty_value_clears_previous_topic(self, ctx_path):
+        run(ctx_path, "set-field", "--field=config.dev_impl.currentBatchTopic", "--value=E2-S3")
+        run(ctx_path, "set-field", "--field=config.dev_impl.currentBatchTopic", "--value=")
+        stored = read_ctx(ctx_path)["config"]["dev_impl"]["currentBatchTopic"]
+        assert stored == ""
+        # bool False가 아니라 빈 문자열이어야 한다 — string 타입 키의 reset 값 계약.
+        assert isinstance(stored, str)
+
+    # --- 읽기 관대성 (G6) ---
+    def test_read_unknown_namespace_is_lenient(self, ctx_path):
+        result = run(ctx_path, "read", "--field=config.bogus.key")
+        assert result.stdout == "\n"
+
+    def test_read_unknown_key_is_lenient(self, ctx_path):
+        result = run(ctx_path, "read", "--field=config.dev_impl.auto_comit")
+        assert result.stdout == "\n"
+
+    # --- 스키마 부재·손상 → config 쓰기만 fail-closed ---
+    def test_missing_schema_blocks_config_write(self, ctx_path, tmp_path):
+        missing = str(tmp_path / "absent-config-schema.json")
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_start",
+                      "--value=true", schema_path=missing)
+        assert err.returncode != 0
+        assert missing in err.stderr
+
+    def test_corrupt_schema_blocks_config_write_without_traceback(self, ctx_path, tmp_path):
+        broken = tmp_path / "broken-config-schema.json"
+        broken.write_text("{not json", encoding="utf-8")
+        err = run_raw(ctx_path, "set-field", "--field=config.dev_impl.auto_start",
+                      "--value=true", schema_path=str(broken))
+        assert err.returncode != 0
+        assert "Traceback (most recent call last)" not in err.stderr
+
+    def test_missing_schema_does_not_block_read(self, ctx_path, tmp_path):
+        run(ctx_path, "set-field", "--field=config.dev_impl.auto_start", "--value=true")
+        missing = str(tmp_path / "absent-config-schema.json")
+        result = run(ctx_path, "read", "--field=config.dev_impl.auto_start",
+                     schema_path=missing)
+        assert result.stdout == "true\n"
+
+    def test_missing_schema_does_not_block_topic_field_write(self, ctx_path, tmp_path):
+        missing = str(tmp_path / "absent-config-schema.json")
+        run(ctx_path, "register-topic", "--topic=sch-miss", "--spec=some/spec.md",
+            schema_path=missing)
+        run(ctx_path, "set-field", "--topic=sch-miss", "--field=plan", "--value=p.md",
+            schema_path=missing)
+        assert read_ctx(ctx_path)["topics"]["sch-miss"]["plan"] == "p.md"
+
+    # --- 살아 있는 호출자 형태가 실 스키마를 통과하는지 (G6 무회귀) ---
+    # 각 값은 스킬 문서가 실제로 만들어 내는 형태다. flow-init은 GH_AVAILABLE·
+    # GH_NATIVE_SUBISSUE를 'true'/'false' 리터럴로만 두고, GH_VERSION은 `X.Y.Z` 정규식을
+    # 통과한 문자열이거나 빈 문자열이다(파싱 실패·미설치). 두 경우를 모두 건다.
+
+
+# 살아 있는 호출자가 쓰는 (ns, key, 리터럴) 조합. 각 항목은 스킬층·규칙 문서의 실제 호출
+# 지점에서 그대로 옮겼다. 검증 대상은 "이 리터럴이 선언 타입에 부합하는가"라는 순수 함수
+# 합성이므로 subprocess를 띄우지 않는다 — CLI 계약(exit code·stderr 문구)은 위 클래스가 덮는다.
+LIVE_CALLER_SHAPES = [
+    # flow-impl/SKILL.md Step 1(a)·1(b)·11
+    ("dev_impl", "currentBatchRunning", "true"),
+    ("dev_impl", "currentBatchRunning", "false"),
+    ("dev_impl", "currentBatchTopic", "E2-S3"),
+    ("dev_impl", "currentBatchTopic", ""),
+    # flow-init/SKILL.md Step 7 (gh 감지 성공·실패 두 경로)
+    ("gh", "available", "true"),
+    ("gh", "available", "false"),
+    ("gh", "native_subissue", "false"),
+    ("gh", "version", "2.96.0"),
+    ("gh", "version", ""),
+    ("gh", "checked_at", "2026-07-30T00:00:00Z"),
+    # flow-init/SKILL.md Step 5·6
+    ("docs", "sourceFilter", '[".claude/",".codex/",".tack/","CLAUDE.md","AGENTS.md"]'),
+    ("docs", "sourceFilter", "[]"),
+    ("graphify", "targets", '["./src"]'),
+    # flow-setup/SKILL.md Step 9
+    ("git", "pushRemote", "origin"),
+    ("git", "pullRemote", "upstream"),
+    ("git", "baseBranch", "main"),
+    ("git", "branchPattern", "^(feature|fix|chore)/"),
+    # flow-review/SKILL.md · .tack/rules/git-workflow.md
+    ("review", "adversarial_enabled", "true"),
+    ("dev_impl", "auto_commit", "true"),
+    ("spec", "auto_review", "true"),
+    ("plan", "auto_review", "true"),
+]
+
+
+@pytest.mark.parametrize("ns,key,literal", LIVE_CALLER_SHAPES)
+def test_live_caller_literal_satisfies_declared_type(ns, key, literal):
+    """G6 무회귀 스윕 — 살아 있는 호출자의 값 리터럴이 스키마 타입 검사를 통과한다.
+
+    하나라도 실패하면 그 호출 지점이 검증 도입 즉시 hard failure가 된다는 뜻이다.
+    """
+    schema = config_schema.load_schema(SCHEMA_PATH)
+    entry = config_schema.lookup(schema, ns, key)
+    assert entry is not None, f"config.{ns}.{key}가 스키마에 선언돼 있지 않다"
+    coerced = dev_context.coerce_config_value(literal)
+    assert config_schema.check_type(entry["type"], coerced), (
+        f"config.{ns}.{key}는 {entry['type']} 타입인데 리터럴 {literal!r}가 "
+        f"{config_schema.type_name(coerced)}로 추론된다"
+    )
