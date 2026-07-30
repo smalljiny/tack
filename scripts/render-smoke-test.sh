@@ -15,8 +15,12 @@
 #   (a3) 렌더 dest에 dev-context.js 엔진 파리티 잔존 (G5)
 #   (a4) 스킬층(.claude/skills · .claude/scripts)에 stale inline node dev-context.js 실행 호출 0건
 #        (훅층 split-line 콜러 detect-and-cache.js는 의도적 스코프 밖 — E7-S1까지 Node 유지)
+#   (a5) 렌더 dest에 config 스키마(.tack/contracts/config-schema.json) 존재 + JSON 파싱 가능
+#   (a6) shared 층 end-to-end: 사전 부재 → shared 키 set-field → .tack/config.json 생성
+#        → 파일 내용 확인 → read-back 일치
+#   (a7) cache 키의 --layer=shared 승격 거부 (거부 문구 + 파일 미변경까지 단언)
 #   (b)  렌더 dest에 stale 경로 토큰(.harness · docs/_local/) 0건
-#   (c)  git repo 안에서 .tack/local/ 이 gitignore로 무시됨
+#   (c)  git repo 안에서 .tack/local/ 이 gitignore로 무시되고, .tack/config.json 은 무시되지 않음
 #
 # uvx 부재 시: clean skip + exit 0 (가용성 게이트).
 # 종료 코드: 전부 통과 0 / 하나라도 실패 nonzero / uvx 부재 clean skip 0.
@@ -32,6 +36,11 @@ if ! command -v uvx >/dev/null 2>&1; then
   echo "[skip] uvx 없음 — copier 렌더 스모크 테스트를 건너뜁니다 (exit 0)."
   exit 0
 fi
+
+# 상속된 경로 override를 걷어낸다. (a6)은 공유 config 경로의 2-hop 유도가 렌더
+# 레이아웃에서 성립하는지를 검증하므로 override가 살아 있으면 그 전제가 무너지고,
+# 더 나쁘게는 tracked 파일 쓰기가 override가 가리키는 실제 저장소로 떨어진다.
+unset DEV_CONTEXT_PATH DEV_CONFIG_PATH DEV_CONFIG_SCHEMA_PATH
 
 DEST="$(mktemp -d)"
 # mktemp 실패 시 DEST가 빈 문자열이 되면 copier가 dest=""(=cwd)로 렌더해
@@ -101,7 +110,71 @@ if [ -n "$STALE_NODE" ]; then
 fi
 echo "[PASS] (a4) 스킬층 stale inline node dev-context.js 실행 호출 0건"
 
+# --- Check (a5): config 스키마 존재 + 파싱 가능 (T7.1) ---
+# 스키마는 set-field의 fail-closed 입력이다 — 배포 산출물에서 빠지거나 깨지면 config
+# 쓰기 전체가 막히므로, 렌더 형태 그대로 존재·파싱을 확인한다.
+SCHEMA_DEST="$DEST/.tack/contracts/config-schema.json"
+if [ ! -f "$SCHEMA_DEST" ]; then
+  fail "(a5) config 스키마 파일 부재: .tack/contracts/config-schema.json"
+fi
+if ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$SCHEMA_DEST" >/dev/null 2>&1; then
+  fail "(a5) config 스키마가 유효한 JSON이 아님: .tack/contracts/config-schema.json"
+fi
+echo "[PASS] (a5) config 스키마 존재 + JSON 파싱 가능"
+
+# --- Check (a6): shared 층 end-to-end 쓰기 + read-back (T7.2) ---
+# DEV_CONFIG_PATH를 설정하지 않는다 — 공유 config 경로의 2-hop 유도(해석된 local 경로의
+# dirname 2회 → .tack/config.json)가 렌더 레이아웃에서 성립하는지가 이 체크의 대상이다.
+# env override를 주면 검증 대상인 그 유도를 잃는다.
+# git.pushRemote는 shared layer라 기본 라우팅(플래그 없음)이 tracked 파일로 보낸다.
+
+# 쓰기 이전 부재를 먼저 고정한다. 렌더 산출물에 .tack/config.json이 미리 들어오면
+# 아래 세 단언이 전부 vacuous해진다 — 파일이 이미 있고 값이 스키마 default(`origin`)와
+# 같으면 쓰기가 아무 일도 하지 않아도 통과한다. "생성 확인"은 사전 부재를 전제한다.
+if [ -f "$DEST/.tack/config.json" ]; then
+  fail "(a6) 렌더 산출물에 .tack/config.json 이 이미 존재함 — shared 쓰기 검증이 무의미해진다"
+fi
+# stderr를 버리지 않는다 — 스키마가 JSON으로는 파싱되지만 구조가 무효인 경우((a5)가
+# 잡지 못하는 유일한 경로) load_config_schema의 fail-closed 메시지가 원인을 담고 있다.
+SET_ERR="$(python3 "$DEST/.tack/scripts/dev_context.py" set-field --field=config.git.pushRemote --value=origin 2>&1)" \
+  || fail "(a6) shared 키 set-field가 nonzero exit로 종료됨: $SET_ERR"
+if [ ! -f "$DEST/.tack/config.json" ]; then
+  fail "(a6) shared 쓰기가 .tack/config.json 을 생성하지 않음 (2-hop 경로 유도 실패)"
+fi
+# 병합된 read보다 공유 파일 자체를 먼저 본다 — local 층이 답해도 read-back은 통과하므로,
+# 파일 내용 확인 없이는 shared 경로가 검증되지 않는다.
+if ! python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["config"]["git"]["pushRemote"]=="origin" else 1)' "$DEST/.tack/config.json" >/dev/null 2>&1; then
+  fail "(a6) .tack/config.json 에 config.git.pushRemote=origin 이 기록되지 않음"
+fi
+SHARED_READ="$(python3 "$DEST/.tack/scripts/dev_context.py" read --field=config.git.pushRemote 2>/dev/null)"
+if [ "$SHARED_READ" != "origin" ]; then
+  fail "(a6) shared 층 read-back 불일치: 기대 'origin', 실제 '$SHARED_READ'"
+fi
+echo "[PASS] (a6) shared 층 쓰기 + .tack/config.json 생성 + read-back(origin)"
+
+# --- Check (a7): cache 키의 shared 승격 거부 (T7.3) ---
+# 이 스크립트에서 성공한 명령이 실패 신호인 유일한 체크다 — `!` 없이 성공을 fail로
+# 판정한다. codex.available은 cache layer이므로 감지 캐시가 커밋 대상 파일로 승격되면
+# 다른 머신에서 잘못된 값으로 읽힌다.
+A7_ERR="$(python3 "$DEST/.tack/scripts/dev_context.py" set-field --field=config.codex.available --layer=shared --value=true 2>&1)" \
+  && fail "(a7) cache 키의 --layer=shared 승격이 거부되지 않음"
+# nonzero exit만으로는 부족하다 — 키 이름 변경·타입 변경·`--layer` 어휘 변경도 모두
+# nonzero를 내므로, 검증 대상 guard가 실패 원인인지 문구로 고정한다
+# (testing.md 다층 Guard 테스트 원칙: "테스트가 실패하는 이유가 검증 대상 guard인가?").
+case "$A7_ERR" in
+  *"승격할 수 없습니다"*) : ;;
+  *) fail "(a7) 승격 거부가 아닌 다른 사유로 실패했습니다: $A7_ERR" ;;
+esac
+# 거부는 exit code만이 아니라 "파일 미변경"까지 포함한다 — dev_context.py의 검증-선행
+# 불변식(거부된 쓰기는 파일을 만들지도 건드리지도 않는다)의 관측 가능한 절반이다.
+# (a6)이 이미 파일을 만들어 뒀으므로 존재 여부로는 이 절반을 볼 수 없다.
+if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if "codex" in d["config"] else 1)' "$DEST/.tack/config.json" >/dev/null 2>&1; then
+  fail "(a7) 거부된 승격이 .tack/config.json 에 codex 네임스페이스를 남겼음"
+fi
+echo "[PASS] (a7) cache 키 --layer=shared 승격 거부 (파일 미변경 포함)"
+
 # --- Check (b): 렌더 dest에 stale 토큰 0건 (T5.4) ---
+# (a6)이 기록한 값은 'origin'이라 아래 grep에 걸리는 토큰을 포함하지 않는다.
 # git init(c) 이전에 실행해 .git 메타데이터를 스캔에서 배제한다.
 # `docs/_local`은 후행 슬래시를 요구하지 않는다 — 슬래시 없는 bare 산문 참조
 # (예: "the docs/_local dir")까지 잡아 가드를 마이그레이션 검증 스윕과 정렬한다.
@@ -117,11 +190,23 @@ echo "[PASS] (b) stale-token grep 0건"
 if ! git -C "$DEST" init -q >/dev/null 2>&1; then
   fail "(c) dest git init 실패"
 fi
-if ! git -C "$DEST" check-ignore .tack/local/dev-context.json >/dev/null 2>&1; then
+# core.excludesFile=/dev/null: 두 단언의 유일한 입력을 렌더 dest의 .tack/.gitignore로
+# 고정한다. 없으면 config.json을 전역 ignore한 메인테이너 환경에서 아래 단언이 false FAIL
+# 한다 (secrets 습관으로 흔하다).
+if ! git -C "$DEST" -c core.excludesFile=/dev/null check-ignore .tack/local/dev-context.json >/dev/null 2>&1; then
   fail "(c) .tack/local/dev-context.json 이 gitignore로 무시되지 않음"
 fi
-echo "[PASS] (c) .tack/local/ gitignore 무시 확인"
+# tracked 공유 config는 반대 방향을 단언한다 (T7.4). exit code를 정확히 1로 요구한다 —
+# "nonzero" 판정은 git 오류(128)까지 통과시켜 체크가 실패할 수 없게 만든다.
+# 이 한 줄은 파일에서 유일하게 exit status가 load-bearing인 bare 호출이다 — `set -e`가
+# 꺼져 있어야 다음 줄의 `$?` 캡처에 도달한다.
+git -C "$DEST" -c core.excludesFile=/dev/null check-ignore .tack/config.json >/dev/null 2>&1
+CHECK_IGNORE_RC=$?
+if [ "$CHECK_IGNORE_RC" -ne 1 ]; then
+  fail "(c) .tack/config.json 은 ignore 대상이 아니어야 한다 (check-ignore exit=$CHECK_IGNORE_RC — 0=ignore됨, 128=git 오류)"
+fi
+echo "[PASS] (c) .tack/local/ ignore + .tack/config.json non-ignore 확인"
 
 # --- 전부 통과 ---
-echo "[OK] 렌더 스모크 테스트 모든 검증 통과 (a·a2·a3·a4·b·c)."
+echo "[OK] 렌더 스모크 테스트 모든 검증 통과 (a·a2·a3·a4·a5·a6·a7·b·c)."
 exit 0
