@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RUBRIC_VERSION = '2026-04-15';
+const RUBRIC_VERSION = '2026-07-30';
 
 const CATEGORIES = [
   'Tool Coverage',
@@ -202,6 +202,9 @@ function getChecks(root) {
     },
 
     // ── Quality Gates ────────────────────────────────────────────────────
+    // 아래 세 체크의 `-command` 접미사는 대응 컴포넌트가 command 파일에서
+    // flow-* 스킬로 이전된 뒤에도 유지한다. `id`는 감사 리포트 시계열 비교의
+    // 키이므로, 개명하면 이전 리포트와의 점수 이력이 끊긴다.
     {
       id: 'quality-verify-command',
       category: 'Quality Gates',
@@ -322,7 +325,7 @@ function getChecks(root) {
       category: 'Eval Coverage',
       points: 2,
       scopes: ['repo'],
-      path: 'docs/roadmap.md | docs/roadmap/',
+      path: 'docs/roadmap/',
       description: 'Roadmap tracks component backlog',
       pass: exists(root, 'docs/roadmap.md') || exists(root, 'docs/roadmap'),
       fix: 'Add docs/roadmap.md or docs/roadmap/ to track planned harness improvements.',
